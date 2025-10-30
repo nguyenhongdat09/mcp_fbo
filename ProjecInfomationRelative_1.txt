@@ -1,0 +1,2881 @@
+\<?xml version=\"1.0\" encoding=\"utf-8\"?\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FASTBUSINESS XML - COMPLETE QUICK REFERENCE CARD
+
+Dành cho AI Autocomplete Extension & Developer
+
+Version: 3.0 - Full Complete Edition
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MỤC LỤC NHANH:
+
+\- SECTION 1-4: File Detection & Language Detection & Partition & SQL
+Result
+
+\- SECTION 5-7: Field Definitions & Form API & Grid API
+
+\- SECTION 8-10: Command Events & Response Patterns & View Layouts
+
+\- SECTION 11-13: Toolbar & Import Excel & Entity Declarations
+
+\- SECTION 14-16: Reports (PDF/Excel/Pivot)
+
+\- SECTION 17-19: Hyperlink & Config Files & Barcode/Image
+
+\- SECTION 20-23: Mistakes & System Vars & Troubleshooting & AI Guide
+
+═══════════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 1: FILE TYPE DETECTION (CRITICAL - Always Check First!)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+DETECTION ALGORITHM (Priority Order):
+
+1\. Check \<dir type=\"Report\"\> + \<!ENTITY XMLWhenFilterLoading\> →
+FILTER XML
+
+2\. Check \<grid type=\"Detail\"\> without \<toolbar\> → GRID DETAIL XML
+
+3\. Check \<grid\> + \<queries\> + \<toolbar\> → GRID VIEW XML
+
+4\. Check \<dir type=\"Voucher\|Category\"\> → DIR FORM XML
+
+FILE TYPE 1: FILTER XML
+
+Signature:
+
+\<dir type=\"Report\" cache=\"true\"\>
+
+\<!ENTITY XMLWhenFilterLoading SYSTEM \"\...\"\>
+
+\<command event=\"Processing\"\>
+
+Purpose: Báo cáo có điều kiện lọc
+
+Key Events: Processing (execute report)
+
+FILE TYPE 2: DIR XML (Form)
+
+Signature:
+
+\<dir type=\"Voucher\"\> or \<dir type=\"Category\"\>
+
+\<command event=\"Inserting\"\>
+
+\<command event=\"Updating\"\>
+
+Purpose: Form nhập liệu chứng từ/danh mục
+
+Key Events: Inserting, Updating, Deleting
+
+FILE TYPE 3: GRID VIEW XML
+
+Signature:
+
+\<grid type=\"Voucher\"\> or \<grid type=\"Category\"\>
+
+\<queries\>\<query event=\"Loading\"\>
+
+\<toolbar\> (full toolbar)
+
+Purpose: Danh sách chứng từ/danh mục với pagination
+
+Key Events: Loading, Finding
+
+FILE TYPE 4: GRID DETAIL XML
+
+Signature:
+
+\<grid type=\"Detail\"\>
+
+NO \<toolbar\> element
+
+Embedded in \<dir\>
+
+Purpose: Chi tiết trong Form
+
+Key Feature: MUST access parentForm
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 2: LANGUAGE DETECTION IN CDATA
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+SQL SERVER INDICATORS:
+
+\- Keywords: declare, select, insert, update, delete, exec, begin, end
+
+\- Variables: \@variable, @@userID, @@language, @@partition
+
+\- Functions: dbo.FastBusiness\$\..., exists(), rtrim()
+
+\- Found in: \<command\>, \<action\>, \<query\>
+
+JAVASCRIPT INDICATORS:
+
+\- Keywords: function, var, const, let, return, switch
+
+\- Methods: .getItemValue(), .setItemValue(), sender, e.type
+
+\- Objects: f (form), g (grid), result
+
+\- Found in: \<script\>, \<clientScript\>
+
+XML STRUCTURE:
+
+\- Tags: \<field\>, \<view\>, \<command\>, \<toolbar\>
+
+\- Attributes: name=, type=, width=, hidden=
+
+\- Outside CDATA blocks
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 3: PARTITION STRATEGY (CRITICAL!)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+TABLE STRUCTURE:
+
+Template: d91\$000000
+
+Data: d91\$202501 (Jan 2025), d91\$202502 (Feb 2025)
+
+PLACEHOLDERS (ALWAYS USE):
+
+@@partition\$current → 202501
+
+@@partition\$previous → 202412
+
+@@master → m91\$202501
+
+@@prime\$partition\$current → d91\$202501
+
+@@prime\$partition\$previous → d91\$202412
+
+PATTERNS:
+
+\-- Insert new
+
+insert into @@prime\$partition\$current select \* from \@d91
+
+\-- Update same month
+
+update @@prime\$partition\$current set so_luong = \@so_luong
+
+where stt_rec = \@stt_rec
+
+\-- Update cross-month (date changed)
+
+delete @@prime\$partition\$previous where stt_rec = \@stt_rec
+
+insert into @@prime\$partition\$current select \* from \@d91
+
+\-- Query multiple months
+
+exec FastBusiness\$Partition\$Execute
+
+\'select \* from d91\$%Partition where %\[ngay_ct between \@from and
+\@to\]%\',
+
+null, \'ngay_ct\', \@from, \@to, @@userID, @@admin
+
+RULES:
+
+❌ NEVER: select \* from d91\$202501
+
+✅ ALWAYS: select \* from @@prime\$partition\$current
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 4: SQL RESULT ACCESS (CRITICAL!)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+GOLDEN RULE: Access by INDEX, not by property name!
+
+SQL:
+
+\<action id=\"GetCustomer\"\>
+
+\<text\>\<\![CDATA\[
+
+select ma_kh, ten_kh, dia_chi, dien_thoai
+
+from dmkh where ma_kh = \@ma_kh
+
+\]\]\>\</text\>
+
+\</action\>
+
+JAVASCRIPT:
+
+function on\$Form\$ResponseComplete(sender, e) {
+
+if (e.type.Context == \'GetCustomer\') {
+
+var result = e.type.Result;
+
+// ✅ CORRECT
+
+var maKH = result\[0\].Value; // ma_kh
+
+var tenKH = result\[1\].Value; // ten_kh
+
+var diaChi = result\[2\].Value; // dia_chi
+
+// ❌ WRONG - Doesn\'t work!
+
+var maKH = result\[0\].ma_kh; // UNDEFINED!
+
+}
+
+}
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 5: FIELD DEFINITION PATTERNS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+COMMON ATTRIBUTES:
+
+\<field name=\"ma_kh\"
+
+type=\"String\|DateTime\|Decimal\|Int16\|Boolean\"
+
+width=\"100\"
+
+align=\"left\|right\|center\"
+
+allowNulls=\"false\" → Required
+
+readOnly=\"true\" → Not editable
+
+hidden=\"true\" → Not visible
+
+external=\"true\" → Not in DB
+
+clientDefault=\"value\" → Default for new
+
+inactivate=\"true\" → Readonly when editing
+
+isPrimaryKey=\"true\" → Primary key
+
+categoryIndex=\"1\" → Tab index
+
+dataFormatString=\"@datetimeFormat\"
+
+aggregate=\"Sum\|Count\|Average\"
+
+allowSorting=\"true\"
+
+allowFilter=\"true\"
+
+\>
+
+\<header v=\"Tiếng Việt\" e=\"English\"/\>
+
+\<!\-- LOOKUP \--\>
+
+\<items style=\"AutoComplete\"
+
+controller=\"Customer\"
+
+reference=\"ten_kh%l\"
+
+key=\"status = \'1\'\"
+
+information=\"ma_kh\$dmkh.ten_kh%l\"
+
+new=\"Default\"\>
+
+\</items\>
+
+\<!\-- DROPDOWN \--\>
+
+\<items style=\"DropDownList\"\>
+
+\<item value=\"1\"\>\<text v=\"Chờ duyệt\" e=\"Pending\"/\>\</item\>
+
+\<item value=\"2\"\>\<text v=\"Đã duyệt\" e=\"Approved\"/\>\</item\>
+
+\</items\>
+
+\<!\-- GRID DETAIL \--\>
+
+\<items style=\"Grid\" controller=\"DetailController\" row=\"1\"\>
+
+\<item value=\"ForeignKey\"\>
+
+\<text v=\"String: stt_rec, stt_rec\"/\>
+
+\</item\>
+
+\</items\>
+
+\</field\>
+
+LOOKUP COMPANION (REQUIRED):
+
+\<field name=\"ten_kh%l\" external=\"true\" readOnly=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 6: FORM API (JAVASCRIPT)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+FORM METHODS (f = form object):
+
+// Get/Set Values
+
+f.getItem(name) → Get field object
+
+f.getItem(name).value → Get/set text
+
+f.getItemValue(name) → Get number/date
+
+f.setItemValue(name, value) → Set any value
+
+// Form State
+
+f.\_action → \'New\'/\'Edit\'/\'View\'
+
+f.\_fields → All fields array
+
+f.\_fields.length → Field count
+
+// Validation
+
+f.validFields(\'field1, field2\') → Validate
+
+f.setReadOnlyFields(\'field1\') → Make readonly
+
+// Focus
+
+f.live(o) → Focus to object
+
+f.getItem(name).focus() → Focus to field
+
+// Tabs
+
+f.\_tabContainer.\_activeTabIndex → Current tab
+
+f.\_tabContainer.set_activeTabIndex(i) → Set tab
+
+// Buttons
+
+f.\_findButton(\'Save\') → Get button
+
+// Request
+
+f.request(\'ActionID\', \'Context\', \[\'param1\'\], o)
+
+// Grid Detail
+
+f.grid → Get detail grid
+
+LIFECYCLE:
+
+function init\$Form(f) { } → Initialization
+
+function active\$Form(f) { } → Activated
+
+function close\$Form(f) { } → Closing
+
+EVENTS:
+
+function on\$Form\$ResponseComplete(sender, e) {
+
+var f = e.object;
+
+var context = e.type.Context;
+
+var result = e.type.Result;
+
+}
+
+function on\$Form\$ExecuteCommand(sender, e) {
+
+var action = e.type.Action;
+
+var f = sender;
+
+}
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 7: GRID API (JAVASCRIPT)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+GRID METHODS (g = grid object):
+
+// Cell Access
+
+g.\_getItemValue(row, col) → Get value
+
+g.\_setItemValue(row, col, val) → Set value
+
+// Column
+
+g.\_getColumnOrder(\'field_name\') → Get col index
+
+g.\_getColumnTitle(col) → Get header
+
+// Row
+
+g.\_rowCount → Total rows
+
+g.\_activeRow → Current row (1-based)
+
+g.\_appendRow(null, true) → Add row
+
+g.\_deleteRow(row) → Delete row
+
+// Selection
+
+g.\_\$t → Checkbox column
+
+g.\_getItemValue(row, g.\_\$t) → Check if selected
+
+// Parent Form (GRID DETAIL ONLY!)
+
+var f = g.get_element().parentForm;
+
+// Calculations
+
+g.\$a = {
+
+tien: \'\[tien\]:=\[so_luong\]\*\[gia\]\',
+
+gia_vnd: \'\[gia_vnd\]:=\[gia_nt\]\*\[\$ty_gia\]\', // \$ = parent
+
+t_tien: \[\'t_tien\', \'tien\'\] // Aggregate
+
+};
+
+g.validExpression(o, \[g.\$a.tien\], \[g.\$a.t_tien\]);
+
+g.executeAggregate(\[g.\$a.t_tien\]);
+
+// Request params (include parent fields)
+
+g.\$h = \[\'ngay_ct\', \'ty_gia\', \'stt_rec\'\];
+
+// Show form
+
+g.showForm(\'FilterName\');
+
+LIFECYCLE:
+
+function load\$GridName\$(g) { }
+
+function active\$GridName\$(g) { }
+
+function dispose\$GridName\$(g) { }
+
+EVENTS:
+
+function on\$GridName\$ResponseComplete(sender, e) {
+
+var g = e.object;
+
+var o = e.type.Object; // Current cell
+
+var context = e.type.Context;
+
+var result = e.type.Result;
+
+}
+
+function on\$GridName\$ExecuteCommand(sender, e) {
+
+var action = e.type.Action;
+
+var value = e.type.Value; // commandArgument
+
+var g = sender;
+
+}
+
+function onChange\$GridName\$(sender, e) {
+
+var o = e.get_object();
+
+var g = o.grid;
+
+switch(o.field.Name) {
+
+case \'so_luong\':
+
+g.validExpression(o, \[g.\$a.tien\], \[g.\$a.t_tien\]);
+
+break;
+
+}
+
+}
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 8: COMMAND EVENTS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+DIR EVENTS:
+
+\<command event=\"Loading\"\> → Form load
+
+\<command event=\"Closing\"\> → Form close
+
+\<command event=\"InitExternalFields\"\> → Init external
+
+\<command event=\"Declare\"\> → Declare vars
+
+\<command event=\"Inserting\"\> → Before insert
+
+\<command event=\"Inserted\"\> → After insert
+
+\<command event=\"Updating\"\> → Before update
+
+\<command event=\"Updated\"\> → After update
+
+\<command event=\"Deleting\"\> → Before delete
+
+\<command event=\"Deleted\"\> → After delete
+
+\<command event=\"Checking\"\> → Validation
+
+GRID EVENTS:
+
+\<command event=\"Loading\"\> → Grid load
+
+\<command event=\"Closing\"\> → Grid close
+
+\<command event=\"Scattering\"\> → Refresh display
+
+FILTER EVENTS:
+
+\<command event=\"Loading\"\> → Filter load
+
+\<command event=\"Closing\"\> → Filter close
+
+\<command event=\"Processing\"\> → Execute report
+
+\<command event=\"Checking\"\> → Validate params
+
+QUERY EVENTS:
+
+\<query event=\"Loading\"\> → Initial load
+
+\<query event=\"Finding\"\> → Search/filter
+
+TYPICAL PATTERNS:
+
+\<!\-- Get next number \--\>
+
+\<command event=\"Loading\"\>
+
+\<text\>\<\![CDATA\[
+
+select \'active\$Form\$(this);\' as message
+
+return
+
+\]\]\>\</text\>
+
+\</command\>
+
+\<!\-- Validation \--\>
+
+\<command event=\"Inserting\"\>
+
+\<text\>\<\![CDATA\[
+
+if exists(select 1 from dmvt where ma_vt = \@ma_vt) begin
+
+select \'ma_vt\' as field, N\'Mã đã tồn tại\' as message
+
+return
+
+end
+
+select \@stt_rec = dbo.FastBusiness\$GetIdentity(@@id)
+
+insert into dmvt values (@stt_rec, \@ma_vt, \@ten_vt)
+
+\]\]\>\</text\>
+
+\</command\>
+
+\<!\-- Execute report \--\>
+
+\<command event=\"Processing\"\>
+
+\<text\>\<\![CDATA\[
+
+exec rs_rptStockSummary
+
+\@from, \@to, \@ma_kho,
+
+@@language, @@userID, @@admin
+
+\]\]\>\</text\>
+
+\</command\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 9: RESPONSE & ACTION PATTERNS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+RESPONSE STRUCTURE:
+
+\<response\>
+
+\<action id=\"GetCustomer\"\>
+
+\<text\>\<\![CDATA\[
+
+select ma_kh, ten_kh, dia_chi, dien_thoai
+
+from dmkh where ma_kh = \@ma_kh
+
+return
+
+\]\]\>\</text\>
+
+\</action\>
+
+\<action id=\"UpdatePrice\"\>
+
+\<text\>\<\![CDATA\[
+
+update dmvt set gia = \@gia where ma_vt = \@ma_vt
+
+select \'\' as field, N\'Cập nhật thành công\' as message
+
+return
+
+\]\]\>\</text\>
+
+\</action\>
+
+\</response\>
+
+JAVASCRIPT HANDLER:
+
+function on\$Form\$ResponseComplete(sender, e) {
+
+var f = e.object;
+
+var context = e.type.Context;
+
+var result = e.type.Result;
+
+switch(context) {
+
+case \'GetCustomer\':
+
+if (result.length \> 0) {
+
+f.setItemValue(\'ten_kh\', result\[1\].Value);
+
+f.setItemValue(\'dia_chi\', result\[2\].Value);
+
+}
+
+break;
+
+case \'UpdatePrice\':
+
+\$message.show(result\[1\].Value);
+
+break;
+
+}
+
+}
+
+RETURN PATTERNS:
+
+\-- Success message
+
+select \'\' as field, N\'Lưu thành công!\' as message
+
+return
+
+\-- Field error
+
+select \'ma_vt\' as field, N\'Mã không tồn tại\' as message
+
+return
+
+\-- Execute script
+
+select \'\' as field, \'\' as message, \'functionName(this);\' as script
+
+return
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 10: VIEW PATTERNS (Layout)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+DIR VIEW:
+
+\<view id=\"Dir\" height=\"204\" anchor=\"6\" split=\"10\"\>
+
+\<item value=\"120, 30, 70, 35, 65, 0, 0, 37, 100, 100\"/\>
+
+\<!\-- Layout: 1=show, 0=merge, -=empty \--\>
+
+\<item value=\"110100000011011: \[ma_kh\].Label, \[ma_kh\],
+\[ten_kh%l\],
+
+\[stt_rec\], \[so_ct\].Label, \[so_ct\]\"/\>
+
+\<item value=\"110\-\-\-\-\-\--101-: \[ong_ba\].Label, \[ong_ba\],
+
+\[so_seri\].Label, \[so_seri\]\"/\>
+
+\<!\-- Grid detail \--\>
+
+\<item value=\"1: \[d91\]\"/\>
+
+\<!\-- Bottom section \--\>
+
+\<item value=\"11011\-\-\--11110-1: \[ma_thue\].Label, \[ma_thue\],
+
+\[t_tien_nt\].Label, \[t_tien_nt\]\"/\>
+
+\<categories\>
+
+\<category index=\"1\" columns=\"769\" anchor=\"1\"\>
+
+\<header v=\"Chi tiết\" e=\"Detail\"/\>
+
+\</category\>
+
+\<category index=\"9\" columns=\"120, 30, 70, 100, 230\"\>
+
+\<header v=\"Khác\" e=\"Other\"/\>
+
+\</category\>
+
+\<category index=\"-1\" columns=\"120, 30, 70, 100, 230\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</category\>
+
+\</categories\>
+
+\</view\>
+
+GRID VIEW:
+
+\<view id=\"Grid\"\>
+
+\<field name=\"ma_vt\"/\>
+
+\<field name=\"ten_vt%l\"/\>
+
+\<field name=\"dvt\"/\>
+
+\<field name=\"so_luong\"/\>
+
+\<field name=\"stt_rec\"/\>
+
+\</view\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 11: TOOLBAR PATTERNS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+STANDARD CATEGORY:
+
+\<toolbar\>
+
+\<button command=\"Insert\"\>\<title v=\"Toolbar.Insert\"
+e=\"Toolbar.Insert\"/\>\</button\>
+
+\<button command=\"Edit\"\>\<title v=\"Toolbar.Edit\"
+e=\"Toolbar.Edit\"/\>\</button\>
+
+\<button command=\"Delete\"\>\<title v=\"Toolbar.Delete\"
+e=\"Toolbar.Delete\"/\>\</button\>
+
+\<button command=\"Separate\"\>\<title v=\"-\" e=\"-\"/\>\</button\>
+
+\<button command=\"Refresh\"\>\<title v=\"Toolbar.Refresh\"
+e=\"Toolbar.Refresh\"/\>\</button\>
+
+\</toolbar\>
+
+VOUCHER:
+
+\<toolbar\>
+
+\<button command=\"Insert\"\>\<title v=\"Toolbar.Insert\"
+e=\"Toolbar.Insert\"/\>\</button\>
+
+\<button command=\"Grow\"\>\<title v=\"Toolbar.Grow\"
+e=\"Toolbar.Grow\"/\>\</button\>
+
+\<button command=\"Down\"\>\<title v=\"Toolbar.Down\"
+e=\"Toolbar.Down\"/\>\</button\>
+
+\<button command=\"Clone\"\>\<title v=\"Toolbar.Clone\"
+e=\"Toolbar.Clone\"/\>\</button\>
+
+\<button command=\"Remove\"\>\<title v=\"Toolbar.Remove\"
+e=\"Toolbar.Remove\"/\>\</button\>
+
+\</toolbar\>
+
+CUSTOM WITH SUBMENU:
+
+\<button command=\"Retrieve\"\>
+
+\<title v=\"Lấy số liệu\" e=\"Retrieve\"/\>
+
+\<menuItems\>
+
+\<menuItem commandArgument=\"10\"
+urlImage=\"../images/Menu/Order.png\"\>
+
+\<header v=\"Từ đơn hàng\" e=\"From Order\"/\>
+
+\</menuItem\>
+
+\<menuItem commandArgument=\"20\"\>
+
+\<header v=\"-\" e=\"-\"/\>
+
+\</menuItem\>
+
+\<menuItem commandArgument=\"30\"\>
+
+\<header v=\"Từ phiếu xuất\" e=\"From Issue\"/\>
+
+\</menuItem\>
+
+\</menuItems\>
+
+\</button\>
+
+HANDLER:
+
+function on\$GridDetail\$ExecuteCommand(sender, e) {
+
+var action = e.type.Action;
+
+var value = e.type.Value;
+
+var g = sender;
+
+var f = g.get_element().parentForm;
+
+switch(action) {
+
+case \'Retrieve\':
+
+if (f.\_action == \'View\') break;
+
+if (!f.validFields(\'ma_kh, ngay_lct\')) break;
+
+switch(value) {
+
+case \'10\': g.showForm(\'OrderFilter\'); break;
+
+case \'30\': g.showForm(\'IssueFilter\'); break;
+
+}
+
+break;
+
+}
+
+}
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 12: IMPORT EXCEL (COMPLETE)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+1\. GRID - Add buttons:
+
+\<toolbar\>
+
+\<button command=\"ImportData\"\>
+
+\<title v=\"Lấy dữ liệu từ tệp\...\" e=\"Import\"/\>
+
+\</button\>
+
+\<button command=\"Download\"\>
+
+\<title v=\"Tải tệp mẫu\...\" e=\"Download Template\"/\>
+
+\</button\>
+
+\</toolbar\>
+
+2\. GRID - JavaScript:
+
+function on\$Grid\$ExecuteCommand(sender, e) {
+
+var action = e.type.Action;
+
+var g = sender;
+
+switch(action) {
+
+case \'ImportData\':
+
+g.showForm(\'ItemImportForm\');
+
+break;
+
+case \'Download\':
+
+requestDownload(g, \'DownloadTemplate\');
+
+break;
+
+}
+
+}
+
+function on\$Grid\$ResponseComplete(sender, e) {
+
+var g = e.object;
+
+var context = e.type.Context;
+
+var result = e.type.Result;
+
+switch(context) {
+
+case \'DownloadTemplate\':
+
+g.\_key = result\[0\].Value;
+
+break;
+
+}
+
+}
+
+3\. GRID - Response:
+
+\<response\>
+
+\<action id=\"DownloadTemplate\"\>
+
+\<text\>\<\![CDATA\[
+
+select \@ticket as value
+
+return
+
+\]\]\>\</text\>
+
+\</action\>
+
+\</response\>
+
+4\. IMPORT FORM (ItemImportForm.xml):
+
+\<dir table=\"hreanh\" code=\"stt_rec\" order=\"ma_vt\"\>
+
+\<title v=\"Tải dữ liệu từ File\" e=\"Import\"/\>
+
+\<fields\>
+
+\<field name=\"ticket\" external=\"true\" hidden=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\<field name=\"imageurl\" external=\"true\" hidden=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\<field name=\"image\" external=\"true\" readOnly=\"true\"
+inactivate=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\<items style=\"Image\" imageSource=\"imageurl\"\>
+
+\<item value=\"width:600px;height:200px;\"/\>
+
+\</items\>
+
+\</field\>
+
+\<field name=\"upload\" external=\"true\" disabled=\"true\"
+inactivate=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\<items style=\"Upload\"\>
+
+\<item value=\"iframe\" name=\"uploadIFrame\" style=\"display:
+none;\"/\>
+
+\</items\>
+
+\</field\>
+
+\<field name=\"rkey\" external=\"true\" hidden=\"true\"
+readOnly=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\</fields\>
+
+\<commands\>
+
+\<command event=\"InitExternalFields\"\>
+
+\<text\>\<\![CDATA\[
+
+if \$\$action = \'Edit\' begin
+
+select \@rkey = lower(replace(newid(), \'-\', \'\'))
+
+select \@ticket = lower(replace(newid(), \'-\', \'\'))
+
+insert into \$\$appDatabaseName..ticket
+
+values (@ticket, \@rkey, @@userID, getdate())
+
+select \@imageurl = \'../AppHandler/Image.ashx?t=\' + \@ticket
+
+end
+
+\]\]\>\</text\>
+
+\</command\>
+
+\<command event=\"Inserting\"\>
+
+\<text\>\<\![CDATA\[
+
+declare \@fileName NVARCHAR(256)
+
+select \@fileName = filename
+
+from \$\$appDatabaseName..ticket
+
+where rkey = \@rkey
+
+if \@fileName is null or \@fileName = \'\' begin
+
+select \'\' as field, N\'Chưa upload file\' as message
+
+return
+
+end
+
+exec dbo.ImportItemFromExcel
+
+\@fileName, \@rkey, @@userID, @@admin
+
+\]\]\>\</text\>
+
+\</command\>
+
+\</commands\>
+
+\<script\>
+
+\<text\>\<\![CDATA\[
+
+function init\$Form(f) {
+
+var iframe = f.getItem(\'upload\').\_controlBehavior;
+
+iframe.add_uploaded(onUploaded);
+
+}
+
+function onUploaded(sender, e) {
+
+var f = sender.get_element().parentForm;
+
+var ticket = f.getItemValue(\'ticket\');
+
+var img = f.getItem(\'imageurl\');
+
+img.value = \'../AppHandler/Image.ashx?t=\' + ticket +
+
+\'&r=\' + Math.random();
+
+f.getItem(\'image\').\_controlBehavior.refresh();
+
+}
+
+\]\]\>\</text\>
+
+\</script\>
+
+\</dir\>
+
+5\. EXCEL TEMPLATE:
+
+Row 5 (Headers):
+
+Cell A5: ?ma_vt
+
+Cell B5: ?ten_vt
+
+Cell C5: ?dvt
+
+Row 6+: Data rows (startRow=\"6\")
+
+6\. SQL IMPORT:
+
+CREATE PROCEDURE ImportItemFromExcel
+
+\@fileName NVARCHAR(256),
+
+\@rkey VARCHAR(32),
+
+\@userID VARCHAR(32),
+
+\@admin BIT
+
+AS
+
+BEGIN
+
+insert into dmvt (ma_vt, ten_vt, dvt)
+
+select ma_vt, ten_vt, dvt
+
+from #ImportData
+
+where ma_vt not in (select ma_vt from dmvt)
+
+END
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 13: ENTITY DECLARATIONS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+FILTER:
+
+\<!DOCTYPE dir \[
+
+\<!ENTITY XMLWhenFilterLoading SYSTEM
+\"..\\Include\\XML\\WhenFilterLoading.xml\"\>
+
+\<!ENTITY XMLWhenFilterClosing SYSTEM
+\"..\\Include\\XML\\WhenFilterClosing.xml\"\>
+
+\<!ENTITY ScriptFilterInit SYSTEM
+\"..\\Include\\Javascript\\FilterInit.txt\"\>
+
+\<!ENTITY TableDetail \"d81\"\>
+
+\<!ENTITY VoucherCode \"HDA\"\>
+
+\]\>
+
+DIR:
+
+\<!DOCTYPE dir \[
+
+\<!ENTITY XMLWhenDirLoading SYSTEM
+\"..\\Include\\XML\\WhenDirLoading.xml\"\>
+
+\<!ENTITY XMLWhenDirClosing SYSTEM
+\"..\\Include\\XML\\WhenDirClosing.xml\"\>
+
+\<!ENTITY CommandCheckLockedDate SYSTEM
+\"..\\Include\\Command\\CheckLockedDate.txt\"\>
+
+\]\>
+
+GRID VIEW:
+
+\<!DOCTYPE grid \[
+
+\<!ENTITY XMLWhenReportLoading SYSTEM
+\"..\\Include\\XML\\WhenReportLoading.xml\"\>
+
+\<!ENTITY XMLWhenReportClosing SYSTEM
+\"..\\Include\\XML\\WhenReportClosing.xml\"\>
+
+\<!ENTITY XMLStandardVoucherToolbar SYSTEM
+\"..\\Include\\XML\\StandardVoucherToolbar.xml\"\>
+
+\<!ENTITY JavascriptReportInit SYSTEM
+\"..\\Include\\Javascript\\ReportInit.txt\"\>
+
+\]\>
+
+GRID DETAIL:
+
+\<!DOCTYPE grid \[
+
+\<!ENTITY XMLUserDefinedFields SYSTEM
+\"..\\Include\\XML\\UserDefinedFields.txt\"\>
+
+\<!ENTITY ScriptCheckGridAction SYSTEM
+\"..\\Include\\Javascript\\CheckGridAction.txt\"\>
+
+\]\>
+
+USAGE:
+
+\<commands\>
+
+&XMLWhenFilterLoading;
+
+\<command event=\"Processing\"\>
+
+\<text\>\<\![CDATA\[
+
+exec rs_rptStockSummary \@from, \@to, @@language
+
+\]\]\>\</text\>
+
+\</command\>
+
+\</commands\>
+
+\<script\>
+
+\<text\>
+
+&ScriptFilterInit;
+
+\<\![CDATA\[
+
+function active\$Form\$(f) {
+
+// Custom code
+
+}
+
+\]\]\>
+
+\</text\>
+
+\</script\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 14: REPORT PATTERNS (PDF & EXCEL)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+REPORT XML:
+
+\<!DOCTYPE report \[
+
+\<!ENTITY b SYSTEM \".\\Include\\BaseCurrency.xml\"\>
+
+\<!ENTITY f SYSTEM \".\\Include\\ForeignCurrency.xml\"\>
+
+\<!ENTITY p \"../images/pdf.gif\"\>
+
+\<!ENTITY e \"../images/excel.gif\"\>
+
+\]\>
+
+\<report xmlns=\"urn:schemas-fast-com:data-report\"\>
+
+\<forms\>
+
+\<!\-- PDF \--\>
+
+\<form id=\"010\"
+
+reportFile=\"rptStockSummary_01\"
+
+commandArgument=\"Pdf\"
+
+urlImage=\"&p;\"\>
+
+\<header v=\"Báo cáo tồn kho\" e=\"Stock Report\"/\>
+
+\<download\>
+
+\<header v=\"Báo cáo tồn kho\" e=\"Stock Report\"/\>
+
+\</download\>
+
+\<fields\>&b;\</fields\>
+
+\</form\>
+
+\<!\-- Excel \--\>
+
+\<form id=\"110\"
+
+reportFile=\"\"
+
+templateFile=\"rptStockSummary_01\"
+
+commandArgument=\"Excel\"
+
+urlImage=\"&e;\"
+
+rowFilter=\"\[2\$sysprint = 1\]\"\>
+
+\<header v=\"Excel\" e=\"Excel\"/\>
+
+\</form\>
+
+\</forms\>
+
+\</report\>
+
+EXCEL TEMPLATE SYNTAX:
+
+Variables from XML:
+
+?title → From \<fields\>
+
+?company_name → From Entity.lic
+
+?from_date → From filter parameter
+
+Variables from SQL:
+
+!1.ngay_ct → Table 1, field ngay_ct
+
+!2.ma_vt → Table 2, field ma_vt
+
+!2.so_luong → Table 2, field so_luong
+
+Expressions:
+
+#?h_from + !1.date_from + ?h_to + !1.date_to
+
+Formulas:
+
+=SUM(\$E\$10:E10)
+
+=SUMIF(\$A\$10:A10, \"\>0\", \$E\$10:E10)
+
+Conditional Format (in comment):
+
+#b:systotal = 0 → Bold if systotal = 0
+
+#bi:systotal = 0 → Bold+Italic
+
+#u:amount \< 0 → Underline if negative
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 15: PIVOT REPORT
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+PIVOT XML:
+
+\<grid type=\"Report\" valid=\"systotal = 1\"\>
+
+\<pivot rowField=\"ma_vt\"
+
+columnField=\"ma_kho\"
+
+dataFields=\"so_luong, tien\"
+
+indexTable=\"2\"
+
+indexColumn=\"1\"
+
+indexHeader=\"2\"
+
+indexView=\"4\"/\>
+
+\<fields\>
+
+\<field name=\"ma_vt\"/\>
+
+\<field name=\"ten_vt%l\"/\>
+
+\<field name=\"dvt\"/\>
+
+\<!\-- Pivot columns inserted here \--\>
+
+\<field name=\"systotal\"/\>
+
+\</fields\>
+
+\<views\>
+
+\<view id=\"Grid\"\>
+
+\<field name=\"ma_vt\"/\>
+
+\<field name=\"ten_vt%l\"/\>
+
+\<field name=\"dvt\"/\>
+
+\<field name=\"systotal\"/\>
+
+\</view\>
+
+\</views\>
+
+\</grid\>
+
+SQL FOR PIVOT:
+
+CREATE PROCEDURE rs_PivotStock
+
+AS
+
+BEGIN
+
+\-- Table 1: Main data
+
+select ma_vt, ten_vt, dvt,
+
+so_luong, tien,
+
+ma_kho, systotal
+
+into #report
+
+from stock_data
+
+\-- Table 2: Pivot definition
+
+create table #pivot (
+
+id INT IDENTITY(1,1),
+
+name VARCHAR(64),
+
+header NVARCHAR(128)
+
+)
+
+\-- Insert columns
+
+insert into #pivot (header)
+
+select distinct ma_kho
+
+from #report
+
+order by ma_kho
+
+\-- Generate field names
+
+update #pivot
+
+set name = \'so_luong + ltrim(str(id))
+
+\-- Add total
+
+insert into #pivot (name, header)
+
+values (\'so_luong\', N\'Tổng cộng\')
+
+\-- Return pivot def (Table 2)
+
+select \* from #pivot order by id
+
+\-- Return main data (Table 1)
+
+select \* from #report order by ma_vt, ma_kho
+
+END
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 16: FLOW (Document Inheritance)
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+1\. Main Voucher Detail - Add button:
+
+\<toolbar\>
+
+\<button command=\"Retrieve\"\>
+
+\<title v=\"Lấy số liệu\" e=\"Retrieve\"/\>
+
+\<menuItems\>
+
+\<menuItem commandArgument=\"10\"
+urlImage=\"../images/Menu/Order.png\"\>
+
+\<header v=\"Từ đơn hàng\" e=\"From Order\"/\>
+
+\</menuItem\>
+
+\</menuItems\>
+
+\</button\>
+
+\</toolbar\>
+
+2\. Main Voucher Detail - Handle:
+
+function on\$GridVoucherDetail\$ExecuteCommand(sender, e) {
+
+var action = e.type.Action;
+
+var g = sender;
+
+var f = g.get_element().parentForm;
+
+switch(action) {
+
+case \'Retrieve\':
+
+if (f.\_action == \'View\') break;
+
+if (!f.validFields(\'ma_kh, ngay_lct\')) break;
+
+if (e.type.Value == \'10\') {
+
+g.showForm(\'OrderFilter\');
+
+}
+
+break;
+
+}
+
+}
+
+3\. OrderFilter.xml:
+
+\<!DOCTYPE dir \[
+
+\<!ENTITY Identity \"Order\"\>
+
+\<!ENTITY XMLFlowFilterFields SYSTEM
+\"..\\Include\\XML\\FlowFilterFields.txt\"\>
+
+\<!ENTITY XMLFlowFilterViews SYSTEM
+\"..\\Include\\XML\\FlowFilterViews.txt\"\>
+
+\<!ENTITY XMLFlowFilterCommand SYSTEM
+\"..\\Include\\XML\\FlowFilterCommand.txt\"\>
+
+\<!ENTITY ScriptFlowFilterFunction SYSTEM
+\"..\\Include\\Javascript\\FlowFilterFunction.txt\"\>
+
+\]\>
+
+\<dir table=\"m64\$000000\" code=\"stt_rec\" order=\"ngay_ct, so_ct\"\>
+
+\<title v=\"Chọn đơn hàng\" e=\"Select Order\"/\>
+
+\<fields\>
+
+&XMLFlowFilterFields;
+
+\</fields\>
+
+\<views\>
+
+&XMLFlowFilterViews;
+
+\</views\>
+
+\<commands\>
+
+&XMLFlowFilterCommand;
+
+\<command event=\"Inserting\"\>
+
+\<text\>\<\![CDATA\[
+
+declare \@fields NVARCHAR(64)
+
+declare \@keyMaster NVARCHAR(4000)
+
+declare \@keyFlow NVARCHAR(4000)
+
+select \@keyMaster = \'%#20 + rtrim(@ma_kh) + \'#%\'
+
+select \@fields = \'ma_nt + char(255) + status\'
+
+select \@keyFlow = \'status in (\'\'1\'\', \'\'3\'\')\'
+
+exec FastBusiness\$App\$Voucher\$FlowBeforeProcess
+
+\'SO\', \'m64, \'i64, null, \'ngay_ct\',
+
+\@ngay_ct1, \@ngay_ct2,
+
+\@fields, \@keyMaster, \@keyFlow,
+
+\@user, @@admin, @@userID
+
+\]\]\>\</text\>
+
+\</command\>
+
+\</commands\>
+
+\<script\>
+
+\<text\>&ScriptFlowFilterFunction;\</text\>
+
+\</script\>
+
+\</dir\>
+
+4\. OrderForm.xml:
+
+\<!DOCTYPE dir \[
+
+\<!ENTITY Identity \"Order\"\>
+
+\<!ENTITY XMLFlowFormFields SYSTEM
+\"..\\Include\\XML\\FlowFormFields.txt\"\>
+
+\<!ENTITY XMLFlowFormViews SYSTEM
+\"..\\Include\\XML\\FlowFormViews.txt\"\>
+
+\<!ENTITY XMLFlowFormCommand SYSTEM
+\"..\\Include\\XML\\FlowFormCommand.txt\"\>
+
+\<!ENTITY ScriptFlowFormFunction SYSTEM
+\"..\\Include\\Javascript\\FlowFormFunction.txt\"\>
+
+\<!ENTITY DetailTable \"d64\"\>
+
+\]\>
+
+\<dir table=\"m64\$000000\" code=\"stt_rec\" order=\"ngay_ct, so_ct\"\>
+
+\<title v=\"Đơn hàng\" e=\"Order\"/\>
+
+\<fields\>
+
+&XMLFlowFormFields;
+
+\</fields\>
+
+\<views\>
+
+&XMLFlowFormViews;
+
+\</views\>
+
+\<commands\>
+
+&XMLFlowFormCommand;
+
+\</commands\>
+
+\<script\>
+
+\<text\>
+
+&ScriptFlowFormFunction;
+
+\<\![CDATA\[
+
+function insert\$Order\$Retrieve\$Data(f) {
+
+var g = f.grid; // Order detail
+
+var z = f.grid.get_element().parentForm.grid; // Invoice detail
+
+for (var r = 1; r \<= g.\_rowCount; r++) {
+
+if (g.\_getItemValue(r, g.\_\$t)) { // If checked
+
+z.\_appendRow(null, true);
+
+var row = z.\_rowCount;
+
+insert\$Retrieve\$Items(g, r, z, row,
+
+\'ma_vt, ten_vt, so_luong, gia, tien\',
+
+\'stt_rec, stt_rec0, so_ct, line_nbr\',
+
+\'stt_rec_dh, stt_rec0dh, dh_so, dh_ln\'
+
+);
+
+}
+
+}
+
+z.executeAggregate(\[z.\$a.t_so_luong, z.\$a.t_tien\]);
+
+}
+
+\]\]\>
+
+\</text\>
+
+\</script\>
+
+\</dir\>
+
+5\. Main Detail - Add script:
+
+\<script\>
+
+\<text\>
+
+&ScriptInsertRetrieveItems;
+
+\</text\>
+
+\</script\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 17: HYPERLINK & DRILL-DOWN
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+LINK TO VOUCHER:
+
+\<field name=\"so_ct\"
+
+width=\"100\"
+
+hyperlinkFormatString=\"\~/AppHandler/Voucher.ashx Query: {Name:
+\'\[ma_ct\]\', Value: \'\[stt_rec\]\'}, Script:
+\'beforeDrillDown(this);\'\"\>
+
+\<header v=\"Số CT\" e=\"Number\"/\>
+
+\</field\>
+
+function beforeDrillDown(g) {
+
+// Optional validation
+
+var row = g.\_activeRow;
+
+var status = g.\_getItemValue(row, g.\_getColumnOrder(\'status\'));
+
+// g.\_args.cancelEvent = (status != \'2\');
+
+}
+
+LINK TO DETAIL REPORT:
+
+\<field name=\"ma_vt\"
+
+width=\"100\"
+
+hyperlinkFormatString=\"\~/AppHandler/View.ashx Query: {Page:
+\'query_detail\', Controller: \'rptStock\', Name: \'\[ma_vt\]\', Value:
+\'\[ma_vt\]\' + this.\_queryFilterString}, Script:
+\'beforeDrillDownWithCondition(this);\'\"\>
+
+\<header v=\"Mã vật tư\" e=\"Item\"/\>
+
+\</field\>
+
+function beforeDrillDownWithCondition(g) {
+
+g.\_args.cancelEvent = !(
+
+g.\_getItemValue(g.\_activeRow, g.\_getColumnOrder(\'systotal\')) == 1
+
+);
+
+}
+
+DETAIL REPORT (QueryDetail.xml):
+
+\<!DOCTYPE grid \[
+
+\<!ENTITY QueryString \"
+
+declare \@c char(1), \@d char(1)
+
+select \@c = char(253), \@d = char(252)
+
+select \* into #t
+
+from dbo.FastBusiness\$Function\$System\$Split(@@queryString, \@c)
+
+declare \@item varchar(128), \@dFrom date, \@dTo date
+
+select \@item = replace(data, \@d, \'\'\'\') from #t where id = 1
+
+select \@dFrom = data from #t where id = 2
+
+select \@dTo = data from #t where id = 3
+
+drop table #t
+
+\"\>
+
+\]\>
+
+\<grid type=\"Report\"\>
+
+\<queries\>
+
+\<query event=\"Finding\"\>
+
+\<text\>
+
+&QueryString;
+
+\<\![CDATA\[
+
+declare \@whereClause nvarchar(4000)
+
+select \@whereClause = \'ma_vt = \'\'\' + replace(@item, \'\'\'\',
+\'\'\'\'\'\') + \'\'\'\'
+
+exec FastBusiness\$Report\$StockDetail
+
+@@refresh, @@pageIndex, @@pageCount,
+
+@@lastPage, @@lastCount, @@firstItem, @@lastItem,
+
+@@textExternal, null, \@whereClause,
+
+\@dFrom, \@dTo, null, \'1\', @@admin, @@userID
+
+\]\]\>
+
+\</text\>
+
+\</query\>
+
+\</queries\>
+
+\</grid\>
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 18: CONFIG FILES
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+FOLDER STRUCTURE:
+
+Dir\\Config\\FormName.xml
+
+Grid\\Config\\GridName.xml
+
+Filter\\Config\\FilterName.xml
+
+GRID CONFIG (Grid\\Config\\SVDetail.xml):
+
+\<?xml version=\"1.0\" encoding=\"utf-8\"?\>
+
+\<config hiddenFields=\"ma_vi_tri, ma_lo, dh_so, dh_ln\"
+
+disableCommands=\"Retrieve, Separate\"
+
+xmlns=\"urn:schemas-fast-com:data-config\"/\>
+
+DIR CONFIG (Dir\\Config\\Customer.xml):
+
+\<?xml version=\"1.0\" encoding=\"utf-8\"?\>
+
+\<form hiddenFields=\"t_tien_cn, ngay_gh\"
+
+removeRows=\"8, 12\"
+
+removeFields=\"nh_kh9, ten_nh_kh9%l\"
+
+xmlns=\"urn:schemas-fast-com:data-form\"/\>
+
+NOTES:
+
+\- hiddenFields: Hide but keep in DOM
+
+\- removeFields: Completely remove
+
+\- removeRows: Remove entire rows (0-based)
+
+\- disableCommands: Hide toolbar buttons
+
+\- When removeRows, must also removeFields
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 19: BARCODE & IMAGE UPLOAD
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+BARCODE:
+
+1\. Enable in Inserted event:
+
+\<command event=\"Inserted\"\>
+
+\<text\>\<\![CDATA\[
+
+declare \@printBarcode VARCHAR(1)
+
+select \@printBarcode = val
+
+from options where name = \'m_print_barcode\'
+
+if \@printBarcode = \'1\' begin
+
+select \'\' as field, \'\' as message,
+
+\'showPrintBarcodeForm(this, \'\'\' + ltrim(@stt_rec) + \'\'\');\' as
+script
+
+end
+
+\]\]\>\</text\>
+
+\</command\>
+
+2\. Barcode field:
+
+\<field name=\"barcode\" external=\"true\" width=\"150\"\>
+
+\<header v=\"Mã vạch\" e=\"Barcode\"/\>
+
+\<items style=\"Barcode\" barcodeType=\"Code128\"/\>
+
+\</field\>
+
+IMAGE UPLOAD:
+
+1\. Table hreanh:
+
+CREATE TABLE hreanh (
+
+stt_rec CHAR(13) PRIMARY KEY,
+
+rkey VARCHAR(32),
+
+imagedata IMAGE
+
+)
+
+2\. Fields:
+
+\<field name=\"ticket\" external=\"true\" hidden=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\<field name=\"imageurl\" external=\"true\" hidden=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+\<field name=\"image\" external=\"true\" readOnly=\"true\"
+inactivate=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\<items style=\"Image\" imageSource=\"imageurl\"\>
+
+\<item value=\"width:600px;height:400px;\"/\>
+
+\</items\>
+
+\</field\>
+
+\<field name=\"upload\" external=\"true\" disabled=\"true\"
+inactivate=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\<items style=\"Upload\"\>
+
+\<item value=\"iframe\" name=\"uploadIFrame\" style=\"display:
+none;\"/\>
+
+\</items\>
+
+\</field\>
+
+\<field name=\"rkey\" external=\"true\" hidden=\"true\"
+readOnly=\"true\"\>
+
+\<header v=\"\" e=\"\"/\>
+
+\</field\>
+
+3\. Initialize:
+
+\<command event=\"InitExternalFields\"\>
+
+\<text\>\<\![CDATA\[
+
+if \$action = \'Edit\' begin
+
+select \@ticket = lower(replace(newid(), \'-\', \'\'))
+
+select \@rkey = lower(replace(newid(), \'-\', \'\'))
+
+insert into \$appDatabaseName..ticket
+
+values (@ticket, \@rkey, @@userID, getdate())
+
+select \@imageurl = \'../AppHandler/Image.ashx?t=\' + \@ticket
+
+end
+
+\]\]\>\</text\>
+
+\</command\>
+
+4\. JavaScript:
+
+function init\$Form(f) {
+
+var iframe = f.getItem(\'upload\').\_controlBehavior;
+
+iframe.add_uploaded(onImageUploaded);
+
+}
+
+function onImageUploaded(sender, e) {
+
+var f = sender.get_element().parentForm;
+
+var ticket = f.getItemValue(\'ticket\');
+
+var img = f.getItem(\'imageurl\');
+
+img.value = \'../AppHandler/Image.ashx?t=\' + ticket + \'&r=\' +
+Math.random();
+
+f.getItem(\'image\').\_controlBehavior.refresh();
+
+}
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 20: COMMON MISTAKES & BEST PRACTICES
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+COMMON MISTAKES:
+
+❌ WRONG: result\[0\].ma_kh
+
+✅ CORRECT: result\[0\].Value
+
+❌ WRONG: select \* from d91\$202501
+
+✅ CORRECT: select \* from @@prime\$partition\$current
+
+❌ WRONG: var ty_gia = g.getItemValue(\'ty_gia\');
+
+✅ CORRECT:
+
+var f = g.get_element().parentForm;
+
+var ty_gia = f.getItemValue(\'ty_gia\');
+
+❌ WRONG: set \@where = \'ma_kh = \'\'\' + \@ma_kh + \'\'\'\'
+
+✅ CORRECT: set \@where = \'ma_kh = \'\'\' + replace(@ma_kh, \'\'\'\',
+\'\'\'\'\'\') + \'\'\'\'
+
+❌ WRONG: localStorage.setItem(\'key\', \'value\');
+
+✅ CORRECT: var data = {}; // Use memory only
+
+❌ WRONG: select \'Không có quyền\' as message
+
+✅ CORRECT: select N\'Không có quyền\' as message
+
+❌ WRONG: f.getItem(\'field\').value = \'x\';
+
+✅ CORRECT:
+
+if (!f.getItem(\'field\').field.Hidden) {
+
+f.setItemValue(\'field\', \'x\');
+
+}
+
+❌ WRONG: g.validExpression(o, \[g.\$a.tien\]);
+
+✅ CORRECT: g.validExpression(o, \[g.\$a.tien\], \[g.\$a.t_tien\]);
+
+❌ WRONG: Cell A5: ma_vt
+
+✅ CORRECT: Cell A5: ?ma_vt
+
+BEST PRACTICES:
+
+1\. PARTITION:
+
+\- Always use placeholders
+
+\- Cross-month: DELETE old + INSERT new
+
+\- Never hardcode month/year
+
+2\. SQL RESULTS:
+
+\- Access by index only
+
+\- Document column order
+
+\- Check result.length first
+
+3\. GRID DETAIL:
+
+\- Always get parentForm
+
+\- Define g.\$a for calculations
+
+\- Include g.\$h for parent fields
+
+\- Use \[\$field\] for parent variables
+
+4\. VALIDATION:
+
+\- Field error: select \'field\' as field, N\'message\' as message
+
+\- General: select \'\' as field, N\'message\' as message
+
+\- Script: select \'\' as field, \'\' as message, \'script\' as script
+
+5\. SECURITY:
+
+\- Always replace quotes: replace(@param, \'\'\'\', \'\'\'\'\'\')
+
+\- Validate before exec
+
+\- Use sp_executesql with params
+
+\- Put important conditions first
+
+6\. PERFORMANCE:
+
+\- Use indexed fields
+
+\- Avoid SELECT \*
+
+\- Use temp tables for complex logic
+
+\- Consider pagination
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 21: SYSTEM VARIABLES & FUNCTIONS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+SQL SYSTEM VARIABLES:
+
+@@userID → Current user ID
+
+@@admin → Is admin (1/0)
+
+@@language → Language (\'v\'/\'e\')
+
+@@id → Form/grid ID
+
+@@master → Master table (m91\$202501)
+
+@@prime → Detail table base (d91)
+
+@@prime\$partition\$current → d91\$202501
+
+@@prime\$partition\$previous → d91\$202412
+
+@@partition\$current → 202501
+
+@@partition\$previous → 202412
+
+@@inquiry\$partition\$current → i91\$202501
+
+@@pageIndex → Page index (0-based)
+
+@@pageCount → Total pages
+
+@@textList → Field list
+
+@@textExternal → External fields
+
+@@textOrderBy → ORDER BY clause
+
+@@queryString → Query parameters
+
+@@refresh → Refresh flag
+
+@@appDatabaseName → App DB name
+
+FORM VARIABLES:
+
+\$action → \'New\'/\'Edit\'/\'View\'
+
+\$field.Value → Field value
+
+\$field.OldValue → Old value
+
+\$field.NewValue → New value
+
+\$action → Action in SQL
+
+\$appDatabaseName → App DB in SQL
+
+COMMON FUNCTIONS:
+
+\-- Get identity
+
+select \@stt_rec = dbo.FastBusiness\$GetIdentity(@@id)
+
+\-- Split string
+
+select \* from dbo.FastBusiness\$Function\$System\$Split(@string,
+\@delim)
+
+\-- Check key length
+
+select \@key = dbo.FastBusiness\$Function\$System\$GetCheckKey(@key,
+3000)
+
+\-- Partition execute
+
+exec FastBusiness\$Partition\$Execute
+
+\@template, \@join, \@field, \@from, \@to, \@user, \@admin
+
+\-- Voucher loading
+
+exec FastBusiness\$App\$Voucher\$Loading
+
+@@id, @@master, @@prime, @@partition,
+
+@@pageIndex, @@pageCount, \'stt_rec\',
+
+@@textList, @@textExternal, @@textOrderBy,
+
+@@admin, @@userID
+
+\-- Flow process
+
+exec FastBusiness\$App\$Voucher\$FlowBeforeProcess
+
+\@code, \@master, \@inquiry, \@join, \@field,
+
+\@from, \@to, \@fields, \@keyMaster, \@keyFlow,
+
+\@user, \@admin, \@userID
+
+JAVASCRIPT OBJECTS:
+
+\$message.show(\'Text\')
+
+\$message.confirm(\'Text\', callback)
+
+\$func.trim(\'text\')
+
+\$func.formatDate(date)
+
+\$func.formatNumber(number)
+
+\$cookie.set(\'name\', \'value\')
+
+\$cookie.get(\'name\')
+
+await window.fs.readFile(filename)
+
+await window.fs.readFile(filename, {encoding: \'utf8\'})
+
+CALCULATION SYNTAX:
+
+g.\$a = {
+
+tien: \'\[tien\]:=\[so_luong\]\*\[gia\]\',
+
+gia_vnd: \'\[gia_vnd\]:=\[gia_nt\]\*\[\$ty_gia\]\', // \$ = parent
+
+tien_cond: \'\[tien\]:=\[so_luong\]\*(\[loai\]=1?\[gia1\]:\[gia2\])\',
+
+t_tien: \[\'t_tien\', \'tien\'\] // Aggregate
+
+};
+
+FORMAT STRINGS:
+
+\@datetimeFormat → dd/MM/yyyy
+
+\@upperCaseFormat → UPPERCASE
+
+\@quantityViewFormat → #,##0.###
+
+\@unitPriceViewFormat → #,##0.####
+
+\@baseCurrencyAmountViewFormat → #,##0.##
+
+\@foreignCurrencyAmountViewFormat → #,##0.##
+
+\@percentViewFormat → #0.##%
+
+\@exchangeRateViewFormat → #,##0.####
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 22: TROUBLESHOOTING GUIDE
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+PROBLEM: Field not updating
+
+SOLUTION:
+
+\- Check readOnly=\"true\"
+
+\- Check categoryIndex
+
+\- Use f.setItemValue() for dates/numbers
+
+\- Check if hidden: !f.getItem(\'field\').field.Hidden
+
+PROBLEM: Lookup not working
+
+SOLUTION:
+
+\- Ensure companion field exists with %l suffix
+
+\- Companion must be external=\"true\" readOnly=\"true\"
+
+\- Check controller name
+
+\- Verify reference field
+
+\- Check key condition
+
+PROBLEM: Grid calculation fails
+
+SOLUTION:
+
+\- Define g.\$a in load\$GridName\$
+
+\- Call g.validExpression with calc and aggregate
+
+\- Use \[\$parent_field\] for Grid Detail
+
+\- Include g.\$h for parent fields
+
+\- Check expression syntax
+
+PROBLEM: Partition error
+
+SOLUTION:
+
+\- Never hardcode d91\$202501
+
+\- Use @@prime\$partition\$current
+
+\- Cross-month: DELETE old + INSERT new
+
+PROBLEM: ResponseComplete not firing
+
+SOLUTION:
+
+\- Check action id matches context
+
+\- Verify SQL returns data
+
+\- Check for SQL errors
+
+\- Ensure function name correct
+
+PROBLEM: Cannot access parent
+
+SOLUTION:
+
+\- Use: var f = g.get_element().parentForm
+
+\- Only in Grid Detail (type=\"Detail\")
+
+\- Not in Grid View
+
+PROBLEM: SQL result undefined
+
+SOLUTION:
+
+\- Access by index: result\[0\].Value
+
+\- Check result.length \> 0
+
+\- Verify SQL returns data
+
+\- Check column order
+
+PROBLEM: Form not saving
+
+SOLUTION:
+
+\- Check validation in Inserting/Updating
+
+\- Check required fields (allowNulls=\"false\")
+
+\- Look for error message
+
+\- Verify field/table match
+
+\- Check \@stt_rec generation
+
+PROBLEM: Excel import fails
+
+SOLUTION:
+
+\- Use ? prefix: ?ma_vt
+
+\- Check startRow matches data
+
+\- Verify column names match
+
+\- Check ticket generation
+
+\- Ensure hreanh table exists
+
+PROBLEM: Report no data
+
+SOLUTION:
+
+\- Check date range
+
+\- Verify partition tables have data
+
+\- Check WHERE conditions
+
+\- Check stored procedure returns result
+
+PROBLEM: Button not showing
+
+SOLUTION:
+
+\- Check toolbar definition
+
+\- Verify command name
+
+\- Check Config file for disable
+
+\- Check ENTITY includes
+
+\- Look for JavaScript errors
+
+DEBUGGING TIPS:
+
+SQL:
+
+\- print \'@var = \' + \@var
+
+\- select \* from #temp
+
+\- Check @@error, @@rowcount
+
+JavaScript:
+
+\- console.log()
+
+\- debugger; statement
+
+\- Check browser console
+
+\- alert() for quick checks
+
+XML:
+
+\- Check closing tags
+
+\- Verify ENTITY declarations
+
+\- Check CDATA sections
+
+\- Escape special characters
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+SECTION 23: AI AUTOCOMPLETE RECOMMENDATIONS
+
+═══════════════════════════════════════════════════════════════════════════
+
+\--\>
+
+\<!\--
+
+FOR AI EXTENSION DEVELOPERS:
+
+1\. FILE TYPE DETECTION:
+
+Priority: Filter → Grid Detail → Grid View → Dir
+
+Check: DOCTYPE, type attribute, event names
+
+2\. LANGUAGE DETECTION:
+
+SQL: declare, select, \@var, @@var, in \<command\>/\<action\>/\<query\>
+
+JS: function, var, f., g., in \<script\>/\<clientScript\>
+
+XML: Outside CDATA
+
+3\. CONTEXT-AWARE SUGGESTIONS:
+
+In \<command event=\"Inserting\"\>:
+
+\- Suggest validation, GetIdentity, partition placeholders
+
+\- Warn about hardcoded tables
+
+In \<script\> for DIR:
+
+\- Suggest init\$Form, on\$Form\$ResponseComplete
+
+\- Autocomplete f.getItemValue, f.setItemValue
+
+In \<script\> for GRID DETAIL:
+
+\- Suggest load\$GridName\$, onChange\$GridName\$
+
+\- Autocomplete g.get_element().parentForm first
+
+\- Warn about accessing form without parentForm
+
+In \<response\>\<action\>:
+
+\- Suggest return patterns
+
+\- Autocomplete select with column order
+
+4\. SMART SNIPPETS:
+
+\- Complete field with all attributes
+
+\- Ask if lookup (add companion auto)
+
+\- Show relevant events for file type
+
+\- Provide templates with patterns
+
+5\. VALIDATION:
+
+\- Lookup without companion → Warn
+
+\- Hardcoded partition → Error
+
+\- result\[x\].field_name → Error
+
+\- Grid Detail without parentForm → Warn
+
+\- String concat without replace() → Warn
+
+\- Missing N prefix → Warn
+
+\- categoryIndex mismatch → Error
+
+6\. INTELLIGENT COMPLETION:
+
+SQL: Suggest partition placeholders
+
+JS: Detect form vs grid, suggest f vs g
+
+Auto-escape quotes
+
+Suggest result\[index\].Value
+
+7\. REFACTORING:
+
+\- Convert hardcoded to placeholders
+
+\- Add missing companion fields
+
+\- Fix result property to index
+
+\- Add missing external=\"true\"
+
+\- Standardize naming
+
+8\. CRITICAL RULES:
+
+\- Partition strategy is MANDATORY
+
+\- SQL result by index is NON-NEGOTIABLE
+
+\- Grid Detail MUST use parentForm
+
+\- Quote escaping is REQUIRED
+
+\- Follow patterns exactly
+
+\--\>
+
+\<!\--
+
+═══════════════════════════════════════════════════════════════════════════
+
+END OF QUICK REFERENCE
+
+═══════════════════════════════════════════════════════════════════════════
+
+Coverage:
+
+✓ File type detection (4 types)
+
+✓ Language detection (SQL/JS/XML)
+
+✓ Partition strategy
+
+✓ SQL result access
+
+✓ Field definitions
+
+✓ Form & Grid API
+
+✓ Command events
+
+✓ Response patterns
+
+✓ View layouts
+
+✓ Toolbar
+
+✓ Import Excel (complete)
+
+✓ Entity declarations
+
+✓ Reports (PDF/Excel/Pivot)
+
+✓ Flow (inheritance)
+
+✓ Hyperlink & drill-down
+
+✓ Config files
+
+✓ Barcode & image upload
+
+✓ Common mistakes
+
+✓ System variables
+
+✓ Troubleshooting
+
+✓ AI recommendations
+
+Version: 3.0 Complete
+
+\--\>
