@@ -1,0 +1,163 @@
+# FastBusiness MCP Server - Cursor Rules
+
+## Auto-Actions
+
+### On File Open (*.xml)
+1. Call `detect_file_type` tool
+2. Show file type in status bar
+3. Enable context-aware completions
+
+### On Type: d##$######
+1. Highlight as ERROR immediately
+2. Offer Quick Fix: "Replace with @@prime$partition$current"
+3. Auto-fix on accept
+
+### On Type: result[#].word (where word != "Value")
+1. Highlight as ERROR
+2. Offer Quick Fix with column mapping
+3. Show hover: "Use result[#].Value"
+
+### On Type: <field name="..." lookup
+1. Auto-suggest companion field
+2. Insert companion after field
+3. Mark as related fields
+
+### In Grid Detail Script
+1. Detect form field access (f.getItemValue)
+2. Check for parentForm declaration
+3. Warn if missing, offer Quick Fix
+
+## Code Actions
+
+### "Validate FastBusiness XML"
+→ Call `validate_xml_structure` on current file
+
+### "Fix all partition issues"
+→ Call `fix_partition` on selected SQL
+
+### "Fix all result access issues"
+→ Call `fix_result_access` on selected JavaScript
+
+### "Generate field definition"
+→ Show wizard, call `generate_field`
+
+### "Search field definitions"
+→ Call `search_fields` with current selection
+
+## Diagnostics
+
+### Error Level
+- Hardcoded partition (d##$YYYYMM)
+- Wrong result access (result[#].property)
+- Lookup without companion
+- Grid Detail without parentForm
+
+### Warning Level
+- Missing N prefix for Vietnamese
+- Potential SQL injection
+- Missing validation
+
+### Info Level
+- Suggest better patterns
+- Optimization opportunities
+
+## Hover Information
+
+### On @@partition$current
+Show: "Resolves to current period (e.g., 202501)"
+
+### On result[#]
+Show: "Column mapping from SQL query if available"
+
+### On field name
+Show: Definition from field registry
+
+## Auto-Completions
+
+### In SQL (CDATA under <command>)
+Trigger: "@@"
+Suggest:
+- @@prime$partition$current
+- @@prime$partition$previous
+- @@master
+- @@userID
+- @@language
+
+### In JavaScript result access
+Trigger: "result["
+Auto-complete: "result[0].Value"
+Add comment: "// column_name"
+
+### In Field Definitions
+Trigger: "<field name="
+Suggest from field registry
+
+## Quick Fixes
+
+### For "d91$202501"
+- Replace with @@prime$partition$current
+- Replace with @@prime$partition$previous
+
+### For "result[0].ma_kh"
+- Replace with result[0].Value (with mapping)
+
+### For Lookup Without Companion
+- Generate companion field
+
+### For Grid Detail Without parentForm
+- Insert: var f = g.get_element().parentForm;
+
+## Snippets
+
+### Partition Insert
+```sql
+insert into @@prime$partition$current
+select * from @d91
+```
+
+### Result Handler
+```javascript
+function on$Form$ResponseComplete(sender, e) {
+  var f = e.object;
+  var context = e.type.Context;
+  var result = e.type.Result;
+
+  switch(context) {
+    case 'ActionName':
+      var value = result[0].Value;
+      break;
+  }
+}
+```
+
+### Grid Detail Init
+```javascript
+function load$GridDetail$(g) {
+  var f = g.get_element().parentForm;
+
+  g.$a = {
+    tien: '[tien]:=[so_luong]*[gia]',
+    t_tien: ['t_tien', 'tien']
+  };
+
+  g.$h = ['ngay_ct', 'stt_rec'];
+}
+```
+
+## Format on Save
+
+1. Validate partition usage
+2. Validate result access
+3. Check lookup companions
+4. Update field registry
+
+## Settings
+
+```json
+{
+  "fastbusiness.autoFix": true,
+  "fastbusiness.validateOnSave": true,
+  "fastbusiness.strictMode": true,
+  "fastbusiness.showColumnMapping": true
+}
+```

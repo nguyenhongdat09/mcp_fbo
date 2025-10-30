@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sample DIR XML for testing -->
+<dir table="m91$000000" code="stt_rec" type="Voucher">
+  <title v="Phiếu nhập kho" e="Purchase Receipt"/>
+
+  <fields>
+    <field name="stt_rec" isPrimaryKey="true" hidden="true">
+      <header v="" e=""/>
+    </field>
+
+    <field name="ngay_ct" type="DateTime" allowNulls="false">
+      <header v="Ngày CT" e="Date"/>
+    </field>
+
+    <field name="so_ct" allowNulls="false">
+      <header v="Số CT" e="Number"/>
+    </field>
+
+    <!-- Lookup field with companion -->
+    <field name="ma_kh">
+      <header v="Mã khách hàng" e="Customer Code"/>
+      <items style="AutoComplete"
+             controller="Customer"
+             reference="ten_kh%l"/>
+    </field>
+
+    <field name="ten_kh%l" external="true" readOnly="true">
+      <header v="" e=""/>
+    </field>
+
+    <!-- Grid detail reference -->
+    <field name="d91" external="true" rows="144">
+      <header v="" e=""/>
+      <items style="Grid" controller="PRDetail" row="1">
+        <item value="ForeignKey">
+          <text v="String: stt_rec, stt_rec"/>
+        </item>
+      </items>
+    </field>
+  </fields>
+
+  <commands>
+    <command event="Inserting">
+      <text><![CDATA[
+-- Validation
+if exists(select 1 from @@master where so_ct = @so_ct) begin
+  select 'so_ct' as field, N'Số chứng từ đã tồn tại' as message
+  return
+end
+
+-- Get identity
+select @stt_rec = dbo.FastBusiness$GetIdentity(@@id)
+
+-- Insert master
+insert into @@master (stt_rec, ngay_ct, so_ct, ma_kh)
+values (@stt_rec, @ngay_ct, @so_ct, @ma_kh)
+
+-- Insert detail
+insert into @@prime$partition$current
+select * from @d91
+      ]]></text>
+    </command>
+  </commands>
+
+  <script>
+    <text><![CDATA[
+function init$Form$(f) {
+  f.add_onResponseComplete(on$Form$ResponseComplete);
+}
+
+function on$Form$ResponseComplete(sender, e) {
+  var f = e.object;
+  var context = e.type.Context;
+  var result = e.type.Result;
+
+  switch(context) {
+    case 'GetCustomer':
+      if (result.length > 0) {
+        var maKH = result[0].Value;
+        var tenKH = result[1].Value;
+        f.setItemValue('ten_kh%l', tenKH);
+      }
+      break;
+  }
+}
+    ]]></text>
+  </script>
+</dir>
