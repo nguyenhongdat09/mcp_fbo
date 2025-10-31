@@ -30,7 +30,7 @@ class FieldCache:
         "code": ["ma_bp", "ma_dvcs", "ma_kho"],
 
         # Generic name fields
-        "name": ["ten_kh", "ten_vt", "ten_bp"],
+        "name": ["ten_kh", "ten_vt", "ten_bp", "ten_nh"],
 
         # Description fields
         "description": ["dien_giai", "ghi_chu"],
