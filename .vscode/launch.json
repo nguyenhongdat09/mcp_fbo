@@ -1,0 +1,66 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug MCP Server",
+      "type": "python",
+      "request": "launch",
+      "module": "fastbusiness_mcp.server",
+      "console": "integratedTerminal",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    },
+    {
+      "name": "Test Partition Validator",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_partition.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test Result Access",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_result_access.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test File Detector",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_file_detector.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test All MCP Tools",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_mcp_client.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Initialize Database",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/init_db.py",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "PyTest Current File",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v", "-s"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "PyTest All",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["tests/unit/", "-v"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
