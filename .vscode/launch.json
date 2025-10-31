@@ -68,6 +68,13 @@
       "request": "launch",
       "program": "${workspaceFolder}/tests/manual/test_entity_parsing.py",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Test Network XML File",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_network_file.py",
+      "console": "integratedTerminal"
     }
   ]
 }
