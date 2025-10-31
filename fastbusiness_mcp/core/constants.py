@@ -131,7 +131,7 @@ LOOKUP_STYLES: Final[list[str]] = [
     "AutoComplete",
     "DropDownList",
     "Grid",
-    "Image",
-    "Upload",
-    "Barcode",
+    "CheckBox",
+    "Numeric",
+    "Lookup",
 ]
