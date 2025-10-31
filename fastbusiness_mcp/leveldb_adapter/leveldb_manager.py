@@ -1,7 +1,18 @@
 """LevelDB Manager for field definitions"""
 
-import plyvel
-from typing import Optional, Dict, List, Iterator, Tuple
+try:
+    import plyvel
+    PLYVEL_AVAILABLE = True
+except ImportError:
+    PLYVEL_AVAILABLE = False
+    import warnings
+    warnings.warn(
+        "plyvel is not installed. LevelDB features will be disabled. "
+        "Install with: pip install plyvel-wheels",
+        ImportWarning
+    )
+
+from typing import Optional, Dict, List, Iterator, Tuple, Any
 from pathlib import Path
 import json
 import logging
@@ -21,12 +32,18 @@ class LevelDBManager:
             custom_paths: Custom paths for databases. Format: {"DIR": "path/to/dir", ...}
             use_vscode_extension: Use VS Code extension database if True
         """
+        if not PLYVEL_AVAILABLE:
+            logger.warning("LevelDB not available - plyvel is not installed")
+            self.paths = {}
+            self.dbs: Dict[str, Any] = {}
+            return
+
         if custom_paths:
             self.paths = custom_paths
         else:
             self.paths = LevelDBConfig.get_db_paths(use_vscode_extension)
 
-        self.dbs: Dict[str, plyvel.DB] = {}
+        self.dbs: Dict[str, Any] = {}
         self._connect_all()
 
     def _connect_all(self):
@@ -58,6 +75,10 @@ class LevelDBManager:
         Returns:
             Field definition as dict, or None if not found
         """
+        if not PLYVEL_AVAILABLE:
+            logger.warning("LevelDB not available - plyvel is not installed")
+            return None
+
         if db_type not in self.dbs:
             logger.warning(f"Database type {db_type} not available")
             return None
@@ -101,6 +122,9 @@ class LevelDBManager:
         Returns:
             List of matching field definitions with field names
         """
+        if not PLYVEL_AVAILABLE:
+            return []
+
         if db_type not in self.dbs:
             return []
 
@@ -151,6 +175,9 @@ class LevelDBManager:
         Returns:
             List of all field definitions
         """
+        if not PLYVEL_AVAILABLE:
+            return []
+
         if db_type not in self.dbs:
             return []
 
@@ -178,6 +205,9 @@ class LevelDBManager:
 
     def count_fields(self, db_type: str) -> int:
         """Count total fields in database"""
+        if not PLYVEL_AVAILABLE:
+            return 0
+
         if db_type not in self.dbs:
             return 0
 
