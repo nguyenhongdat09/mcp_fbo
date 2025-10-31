@@ -61,6 +61,13 @@
       "module": "pytest",
       "args": ["tests/unit/", "-v"],
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Test Entity Parsing",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/manual/test_entity_parsing.py",
+      "console": "integratedTerminal"
     }
   ]
 }
