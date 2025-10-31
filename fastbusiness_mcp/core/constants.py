@@ -7,10 +7,11 @@ from typing import Final
 class FileType(str, Enum):
     """FastBusiness XML file types."""
 
-    FILTER = "filter"  # Report filter with XMLWhenFilterLoading
-    DIR = "dir"  # Form (Voucher/Category)
-    GRID_VIEW = "grid_view"  # Grid with queries and toolbar
-    GRID_DETAIL = "grid_detail"  # Detail grid embedded in Dir
+    DIR = "dir"  # Form (Voucher/Category) - Located in App_Data/Controllers/Dir/
+    FILTER_VOUCHER = "filter_voucher"  # Filter with operation attribute - Located in App_Data/Controllers/Filter/
+    FILTER_NORMAL = "filter_normal"  # Filter without operation attribute - Located in App_Data/Controllers/Filter/
+    GRID_VIEW = "grid_view"  # Grid with allowSorting/allowFilter - Located in App_Data/Controllers/Grid/
+    GRID_INPUT = "grid_input"  # Grid without allowSorting/allowFilter - Located in App_Data/Controllers/Grid/
     UNKNOWN = "unknown"
 
 
