@@ -21,6 +21,7 @@ from .generators.script_generator import ScriptGenerator
 from .generators.command_generator import CommandGenerator
 from .fixers.partition_fixer import PartitionFixer
 from .fixers.result_access_fixer import ResultAccessFixer
+from .tools.generate_field_from_db import GenerateFieldFromDBTool
 from .utils.logger import setup_logger
 from .utils.file_utils import read_file
 
@@ -58,6 +59,9 @@ class FastBusinessMCPServer:
         # Initialize fixers
         self.partition_fixer = PartitionFixer()
         self.result_fixer = ResultAccessFixer()
+
+        # Initialize LevelDB tool
+        self.field_from_db_tool = GenerateFieldFromDBTool(use_vscode_extension=True)
 
         # Register handlers
         self._register_resources()
@@ -268,7 +272,7 @@ Column mapping = SELECT column order (0-based index)
                 ),
                 Tool(
                     name="generate_field",
-                    description="Generate field definition with optional lookup",
+                    description="Generate field definition with optional lookup (manual)",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -292,6 +296,33 @@ Column mapping = SELECT column order (0-based index)
                             },
                         },
                         "required": ["name"],
+                    },
+                ),
+                Tool(
+                    name="generate_field_from_db",
+                    description="⭐ Generate field from LevelDB with smart template matching (PRIORITY - try this first!)",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "field_name": {
+                                "type": "string",
+                                "description": "Field name (e.g., 'sl_du_kien', 'ma_vtat', 'tien_nt')"
+                            },
+                            "context_type": {
+                                "type": "string",
+                                "enum": ["DIR", "FILTER_VOUCHER", "FILTER_NORMAL", "GRID_VIEW", "GRID_INPUT"],
+                                "description": "Where the field will be used"
+                            },
+                            "display_name_vi": {
+                                "type": "string",
+                                "description": "Vietnamese display name (optional, updates template)"
+                            },
+                            "display_name_en": {
+                                "type": "string",
+                                "description": "English display name (optional, updates template)"
+                            }
+                        },
+                        "required": ["field_name", "context_type"]
                     },
                 ),
                 Tool(
@@ -471,6 +502,42 @@ Fixed Code:
                         field_xml += f"\n\n<!-- Companion field (required for lookup) -->\n{companion}"
 
                     return [TextContent(type="text", text=field_xml)]
+
+                elif name == "generate_field_from_db":
+                    import json
+                    result = await self.field_from_db_tool.execute(arguments)
+
+                    if result["success"]:
+                        output = f"""✅ {result['message']}
+
+Source: {result['source']}
+Field Name: {result['field_name']}
+"""
+                        if result.get('template_used'):
+                            output += f"Template Used: {result['template_used']}\n"
+
+                        if result.get('lookup_type'):
+                            output += f"Lookup Type: {result['lookup_type']}\n"
+
+                        output += f"\nGenerated XML:\n{result['xml']}"
+
+                        if result.get('companion_xml'):
+                            output += f"\n\nCompanion Field:\n{result['companion_xml']}"
+
+                        return [TextContent(type="text", text=output)]
+                    else:
+                        output = f"""❌ {result['message']}
+
+Field: {result['field_name']}
+Source: {result['source']}
+"""
+                        if result.get('suggestions'):
+                            output += f"\nSimilar fields found:\n"
+                            for field in result['suggestions'].get('similar_fields', []):
+                                output += f"  - {field}\n"
+                            output += f"\n{result['suggestions'].get('action', '')}"
+
+                        return [TextContent(type="text", text=output)]
 
                 elif name == "generate_command":
                     event = arguments["event"]
