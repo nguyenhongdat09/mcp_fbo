@@ -1,16 +1,28 @@
 """LevelDB Manager for field definitions"""
 
+# Try to import database backend (plyvel or rocksdb)
+DB_BACKEND = None
+PLYVEL_AVAILABLE = False
+ROCKSDB_AVAILABLE = False
+
 try:
     import plyvel
     PLYVEL_AVAILABLE = True
+    DB_BACKEND = 'plyvel'
 except ImportError:
-    PLYVEL_AVAILABLE = False
-    import warnings
-    warnings.warn(
-        "plyvel is not installed. LevelDB features will be disabled. "
-        "Install with: pip install plyvel-wheels",
-        ImportWarning
-    )
+    try:
+        import rocksdb
+        ROCKSDB_AVAILABLE = True
+        DB_BACKEND = 'rocksdb'
+    except ImportError:
+        import warnings
+        warnings.warn(
+            "Neither plyvel nor rocksdb is installed. LevelDB features will be disabled.\n"
+            "Install one of:\n"
+            "  - plyvel: pip install plyvel-wheels (recommended for Linux/Mac)\n"
+            "  - rocksdb: pip install python-rocksdb (works on Windows Python 3.13)",
+            ImportWarning
+        )
 
 from typing import Optional, Dict, List, Iterator, Tuple, Any
 from pathlib import Path
@@ -32,11 +44,15 @@ class LevelDBManager:
             custom_paths: Custom paths for databases. Format: {"DIR": "path/to/dir", ...}
             use_vscode_extension: Use VS Code extension database if True
         """
-        if not PLYVEL_AVAILABLE:
-            logger.warning("LevelDB not available - plyvel is not installed")
+        if not DB_BACKEND:
+            logger.warning("LevelDB not available - neither plyvel nor rocksdb is installed")
             self.paths = {}
             self.dbs: Dict[str, Any] = {}
+            self.backend = None
             return
+
+        self.backend = DB_BACKEND
+        logger.info(f"Using {self.backend} as database backend")
 
         if custom_paths:
             self.paths = custom_paths
@@ -52,13 +68,25 @@ class LevelDBManager:
             try:
                 db_path = Path(path)
                 if db_path.exists():
-                    # Open existing database
-                    self.dbs[db_type] = plyvel.DB(
-                        str(db_path),
-                        create_if_missing=False,
-                        compression='snappy'  # Enable compression
-                    )
-                    logger.info(f"Connected to {db_type} LevelDB at {path}")
+                    # Open existing database based on backend
+                    if self.backend == 'plyvel':
+                        self.dbs[db_type] = plyvel.DB(
+                            str(db_path),
+                            create_if_missing=False,
+                            compression='snappy'
+                        )
+                    elif self.backend == 'rocksdb':
+                        # RocksDB can read LevelDB databases
+                        opts = rocksdb.Options()
+                        opts.create_if_missing = False
+                        opts.max_open_files = 300000
+                        opts.write_buffer_size = 67108864
+                        opts.max_write_buffer_number = 3
+                        opts.target_file_size_base = 67108864
+
+                        self.dbs[db_type] = rocksdb.DB(str(db_path), opts, read_only=True)
+
+                    logger.info(f"Connected to {db_type} LevelDB at {path} using {self.backend}")
                 else:
                     logger.warning(f"LevelDB not found at {path}")
             except Exception as e:
@@ -75,8 +103,8 @@ class LevelDBManager:
         Returns:
             Field definition as dict, or None if not found
         """
-        if not PLYVEL_AVAILABLE:
-            logger.warning("LevelDB not available - plyvel is not installed")
+        if not DB_BACKEND:
+            logger.warning("LevelDB not available - no database backend installed")
             return None
 
         if db_type not in self.dbs:
@@ -122,7 +150,7 @@ class LevelDBManager:
         Returns:
             List of matching field definitions with field names
         """
-        if not PLYVEL_AVAILABLE:
+        if not DB_BACKEND:
             return []
 
         if db_type not in self.dbs:
@@ -175,7 +203,7 @@ class LevelDBManager:
         Returns:
             List of all field definitions
         """
-        if not PLYVEL_AVAILABLE:
+        if not DB_BACKEND:
             return []
 
         if db_type not in self.dbs:
@@ -205,7 +233,7 @@ class LevelDBManager:
 
     def count_fields(self, db_type: str) -> int:
         """Count total fields in database"""
-        if not PLYVEL_AVAILABLE:
+        if not DB_BACKEND:
             return 0
 
         if db_type not in self.dbs:

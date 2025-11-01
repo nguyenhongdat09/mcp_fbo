@@ -7,34 +7,41 @@ import asyncio
 async def quick_test():
     print("\n🔍 QUICK TEST - LevelDB Tool\n")
 
-    # Step 1: Check plyvel
-    print("Step 1: Checking plyvel package...")
+    # Step 1: Check database backend
+    print("Step 1: Checking database backend...")
+    backend = None
     try:
         import plyvel
-        print("  ✅ plyvel installed\n")
+        backend = "plyvel"
+        print("  ✅ plyvel installed (LevelDB native)\n")
     except ImportError:
-        print("  ❌ plyvel NOT installed")
-        print("  ⚠️  You cannot use LevelDB features without plyvel\n")
-        print("Solutions:")
-        print("  1. Install Python 3.11 instead of 3.13")
-        print("  2. pip install plyvel (requires LevelDB dev headers)")
-        print("  3. Use the tool in MCP server (if configured properly)\n")
-        return
+        try:
+            import rocksdb
+            backend = "rocksdb"
+            print("  ✅ python-rocksdb installed (RocksDB - can read LevelDB)\n")
+        except ImportError:
+            print("  ❌ No database backend installed")
+            print("  ⚠️  You cannot use LevelDB features without a backend\n")
+            print("Solutions:")
+            print("  1. pip install python-rocksdb  (works on Windows Python 3.13)")
+            print("  2. pip install plyvel-wheels   (for Linux/Mac or Python 3.11)")
+            print("  3. See requirements-leveldb.txt for details\n")
+            return
 
     # Step 2: Check LevelDB Manager
     print("Step 2: Checking LevelDB Manager...")
     try:
         from fastbusiness_mcp.leveldb_adapter.leveldb_manager import (
             LevelDBManager,
-            PLYVEL_AVAILABLE,
+            DB_BACKEND,
         )
 
-        if not PLYVEL_AVAILABLE:
-            print("  ❌ PLYVEL_AVAILABLE = False")
+        if not DB_BACKEND:
+            print("  ❌ DB_BACKEND = None")
             print("  ⚠️  LevelDB features disabled\n")
             return
 
-        print("  ✅ LevelDB Manager ready\n")
+        print(f"  ✅ LevelDB Manager ready (using {DB_BACKEND})\n")
     except Exception as e:
         print(f"  ❌ Error: {e}\n")
         return

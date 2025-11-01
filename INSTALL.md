@@ -69,14 +69,24 @@ python -c "import mcp; import lxml; import pydantic; import plyvel; print('✅ A
 
 ## 🔧 Cài Đặt LevelDB Support
 
+**LƯU Ý**: Server hỗ trợ 2 backends: **plyvel** (LevelDB native) hoặc **python-rocksdb** (RocksDB - tương thích với LevelDB). Chỉ cần cài 1 trong 2.
+
 ### Windows
 
-**Option A: Sử dụng pre-built wheel (Dễ nhất)**
+**Option A: RocksDB (KHUYẾN NGHỊ cho Windows Python 3.13)**
+```bash
+pip install python-rocksdb
+```
+✅ Hoạt động tốt trên Windows Python 3.13
+✅ Không cần build tools
+✅ Đọc được LevelDB databases
+
+**Option B: plyvel (cho Python 3.11 hoặc thấp hơn)**
 ```bash
 pip install plyvel-wheels
 ```
 
-**Option B: Build từ source (Nếu Option A không work)**
+**Option C: Build từ source (Chỉ nếu Option A & B không work)**
 1. Cài Visual Studio Build Tools:
    - Download: https://visualstudio.microsoft.com/downloads/
    - Chọn "Desktop development with C++"
@@ -88,6 +98,7 @@ pip install plyvel-wheels
 
 ### Linux (Ubuntu/Debian)
 
+**Option A: plyvel (Khuyến nghị)**
 ```bash
 # Cài LevelDB development files
 sudo apt-get update
@@ -97,14 +108,25 @@ sudo apt-get install libleveldb-dev
 pip install plyvel
 ```
 
+**Option B: RocksDB**
+```bash
+pip install python-rocksdb
+```
+
 ### macOS
 
+**Option A: plyvel (Khuyến nghị)**
 ```bash
 # Cài LevelDB qua Homebrew
 brew install leveldb
 
 # Cài plyvel
 pip install plyvel
+```
+
+**Option B: RocksDB**
+```bash
+pip install python-rocksdb
 ```
 
 ## 🗄️ Setup Database

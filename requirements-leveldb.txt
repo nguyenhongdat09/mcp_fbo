@@ -1,0 +1,15 @@
+# LevelDB/RocksDB backend requirements
+# Install ONE of these packages to enable LevelDB features
+
+# Option 1: plyvel (recommended for Linux/Mac, or Windows with Python 3.11)
+# Requires: LevelDB C++ library installed on system
+# Install: pip install plyvel-wheels
+# plyvel>=1.5.0
+
+# Option 2: python-rocksdb (works on Windows Python 3.13)
+# RocksDB can read LevelDB databases
+# Install: pip install python-rocksdb
+python-rocksdb>=0.7.0
+
+# Note: Only ONE of these is needed. The code will automatically use whichever is available.
+# If neither is installed, LevelDB features will be disabled (but other features still work).

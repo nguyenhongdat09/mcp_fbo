@@ -7,25 +7,39 @@ from pathlib import Path
 
 
 async def test_leveldb_availability():
-    """Test if LevelDB is available"""
+    """Test if LevelDB backend is available"""
     print("=" * 80)
-    print("TEST 1: Checking LevelDB availability")
+    print("TEST 1: Checking LevelDB backend availability")
     print("=" * 80)
 
+    backend = None
     try:
         import plyvel
+        backend = "plyvel"
         print("✅ plyvel is installed")
         print(f"   Version: {plyvel.__version__ if hasattr(plyvel, '__version__') else 'unknown'}")
         return True
-    except ImportError as e:
-        print("❌ plyvel is NOT installed")
-        print(f"   Error: {e}")
-        print("\n⚠️  LevelDB features will be DISABLED")
-        print("\nTo enable LevelDB features:")
-        print("  Option 1: Install Python 3.11 (has pre-built plyvel wheels)")
-        print("  Option 2: Install LevelDB dev headers and build tools on Windows")
-        print("  Option 3: Use WSL/Linux environment")
-        return False
+    except ImportError:
+        pass
+
+    try:
+        import rocksdb
+        backend = "rocksdb"
+        print("✅ python-rocksdb is installed")
+        version = rocksdb.__version__ if hasattr(rocksdb, '__version__') else 'unknown'
+        print(f"   Version: {version}")
+        print("   Note: RocksDB can read LevelDB databases")
+        return True
+    except ImportError:
+        pass
+
+    print("❌ No database backend installed")
+    print("\n⚠️  LevelDB features will be DISABLED")
+    print("\nTo enable LevelDB features, install ONE of:")
+    print("  Option 1: pip install python-rocksdb  (works on Windows Python 3.13)")
+    print("  Option 2: pip install plyvel-wheels   (for Linux/Mac or Python 3.11)")
+    print("  Option 3: See requirements-leveldb.txt for details")
+    return False
 
 
 async def test_leveldb_manager():
@@ -35,16 +49,16 @@ async def test_leveldb_manager():
     print("=" * 80)
 
     try:
-        from fastbusiness_mcp.leveldb_adapter.leveldb_manager import LevelDBManager, PLYVEL_AVAILABLE
+        from fastbusiness_mcp.leveldb_adapter.leveldb_manager import LevelDBManager, DB_BACKEND
 
-        print(f"PLYVEL_AVAILABLE flag: {PLYVEL_AVAILABLE}")
+        print(f"Database backend: {DB_BACKEND}")
 
-        if not PLYVEL_AVAILABLE:
+        if not DB_BACKEND:
             print("⚠️  LevelDB Manager will run in DISABLED mode")
             return False
 
         manager = LevelDBManager(use_vscode_extension=True)
-        print(f"✅ LevelDB Manager initialized")
+        print(f"✅ LevelDB Manager initialized (using {DB_BACKEND})")
         print(f"   Config paths checked:")
 
         # Check paths
@@ -191,15 +205,15 @@ async def main():
     print("FASTBUSINESS MCP - LEVELDB TOOL TEST SUITE")
     print("*" * 80)
 
-    # Test 1: Check plyvel
-    has_plyvel = await test_leveldb_availability()
+    # Test 1: Check database backend
+    has_backend = await test_leveldb_availability()
 
-    if not has_plyvel:
+    if not has_backend:
         print("\n" + "=" * 80)
-        print("⚠️  CANNOT CONTINUE - plyvel not installed")
+        print("⚠️  CANNOT CONTINUE - no database backend installed")
         print("=" * 80)
-        print("\nLevelDB tool requires plyvel package.")
-        print("Please install it first or use alternative Python version.")
+        print("\nLevelDB tool requires plyvel or python-rocksdb package.")
+        print("Please install one of them first.")
         sys.exit(1)
 
     # Test 2: Check LevelDB Manager
