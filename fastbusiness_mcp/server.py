@@ -7,8 +7,6 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Resource, Tool, TextContent
 
-from .database.db_manager import DatabaseManager
-from .database.field_repository import FieldRepository
 from .analyzers.file_type_detector import FileTypeDetector
 from .analyzers.language_detector import LanguageDetector
 from .analyzers.sql_parser import SQLParser
@@ -35,10 +33,6 @@ class FastBusinessMCPServer:
         """Initialize MCP server."""
         self.config = self._load_config(config_path)
         self.server = Server("fastbusiness-xml-context")
-
-        # Initialize components
-        self.db_manager = DatabaseManager(self.config["database"]["path"])
-        self.field_repo = None  # Will be initialized after DB connection
 
         # Initialize analyzers
         self.file_detector = FileTypeDetector()
@@ -77,7 +71,6 @@ class FastBusinessMCPServer:
         except Exception as e:
             logger.warning(f"Failed to load config: {e}, using defaults")
             return {
-                "database": {"path": "data/fields.db"},
                 "data": {
                     "quick_reference": "data/quick_reference.txt",
                     "xml_summary": "data/xml_meaning_summary.txt",
@@ -361,17 +354,6 @@ Column mapping = SELECT column order (0-based index)
                         "required": ["script_type"],
                     },
                 ),
-                Tool(
-                    name="search_fields",
-                    description="Search field definitions in database",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "query": {"type": "string", "description": "Search query"}
-                        },
-                        "required": ["query"],
-                    },
-                ),
             ]
 
         @self.server.call_tool()
@@ -576,22 +558,6 @@ Source: {result['source']}
 
                     return [TextContent(type="text", text=js)]
 
-                elif name == "search_fields":
-                    if self.field_repo is None:
-                        return [TextContent(type="text", text="Database not initialized")]
-
-                    fields = await self.field_repo.search_fields(arguments["query"])
-                    if not fields:
-                        return [TextContent(type="text", text="No fields found")]
-
-                    results = []
-                    for field in fields[:10]:  # Limit to 10
-                        results.append(
-                            f"- {field.name} ({field.type}): {field.header_vi or field.header_en}"
-                        )
-
-                    return [TextContent(type="text", text="\n".join(results))]
-
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -601,11 +567,6 @@ Source: {result['source']}
 
     async def run(self) -> None:
         """Run the MCP server."""
-        # Initialize database
-        await self.db_manager.connect()
-        await self.db_manager.initialize_schema()
-        self.field_repo = FieldRepository(self.db_manager)
-
         logger.info("Starting FastBusiness MCP Server...")
 
         # Run server
