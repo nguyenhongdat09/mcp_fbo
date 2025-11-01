@@ -32,7 +32,38 @@ This guide instructs AI assistants (Claude, Copilot, etc.) on how to work with F
 - Fallback to `generate_field` if not in database
 - Auto-detect dataFormatString (see rules below)
 
-#### Step 2: **ALWAYS Ask About SQL** ⭐ NEW
+#### Step 2: Add ONLY Direct-Related Fields to View Layout ⭐ CRITICAL
+
+**RULE:** When user asks to add field `ma_bp`, add ONLY:
+1. ✅ The requested field: `ma_bp`
+2. ✅ Direct-related companion fields: `ten_bp%l` (lookup display)
+3. ❌ NOT other fields like `dien_giai`, `ma_gd`, etc.
+
+**Example:**
+
+```
+User: "Thêm trường ma_bp"
+
+✅ CORRECT - Only add ma_bp and its companion ten_bp%l:
+<item value="1101000----: [ma_bp].Label, [ma_bp], [ten_bp%l]"/>
+
+❌ WRONG - Don't add unrelated fields:
+<item value="1101000----: [ma_bp].Label, [ma_bp], [ten_bp%l]"/>
+<item value="1100000000: [dien_giai]"/>  <!-- ❌ WRONG - Not requested! -->
+<item value="1101000000: [ma_gd]"/>      <!-- ❌ WRONG - Not requested! -->
+```
+
+**What counts as "direct-related":**
+- Display fields with `%l` suffix (from `reference="field%l"`)
+- Currency pair fields (e.g., `_nt` for foreign currency)
+- Unit/Description fields directly connected to the field
+
+**What does NOT:**
+- Other independent fields (`dien_giai`, `ma_gd`, etc.)
+- Fields not mentioned in user's request
+- Fields appearing elsewhere in view layout
+
+#### Step 3: **ALWAYS Ask About SQL** ⭐
 
 After successfully generating XML field, **ALWAYS** ask user:
 

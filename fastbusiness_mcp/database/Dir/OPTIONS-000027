@@ -39,7 +39,7 @@
   allow_mmap_writes=false
   two_write_queues=false
   use_direct_io_for_flush_and_compaction=false
-  create_if_missing=true
+  create_if_missing=false
   error_if_exists=false
   create_missing_column_families=false
   new_table_reader_for_compaction_inputs=false
@@ -68,7 +68,7 @@
   manifest_preallocation_size=4194304
   write_thread_slow_yield_usec=3
   unordered_write=false
-  wal_dir=e\:\\.vscode\\extensions\\nguyen-hong-dat.fbo-autocomplete-0.0.40\\src\\Database\\Filter
+  wal_dir=e\:\\.vscode\\extensions\\nguyen-hong-dat.fbo-autocomplete-0.0.40\\src\\Database\\Dir
   WAL_size_limit_MB=0
   persist_stats_to_disk=false
   allow_concurrent_memtable_write=true
