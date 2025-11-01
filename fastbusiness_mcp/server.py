@@ -9,6 +9,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Resource, Tool, TextContent
 
 from .tools.generate_field_from_lmdb import GenerateFieldFromLMDBTool
+from .tools.generate_sql_for_fields import GenerateSQLForFieldsTool
 from .utils.logger import setup_logger
 from .utils.file_utils import read_file
 
@@ -23,8 +24,11 @@ class FastBusinessMCPServer:
         self.config = self._load_config(config_path)
         self.server = Server("fastbusiness-field-generator")
 
-        # Initialize LMDB field tool only
+        # Initialize LMDB field tool
         self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path="data/fields_lmdb")
+
+        # Initialize SQL generation tool
+        self.sql_gen_tool = GenerateSQLForFieldsTool()
 
         # Register handlers
         self._register_resources()
@@ -178,6 +182,76 @@ The tool will:
                         "properties": {},
                     },
                 ),
+                Tool(
+                    name="generate_sql_for_fields",
+                    description="""⭐ Generate SQL commands for adding fields to database tables
+
+Generates `fsd_addfields` SQL commands with automatic SQL type detection and partitioned table support.
+
+CRITICAL RULES:
+- If XML table has $ (e.g., d91$000000) → Preserve $ in SQL: exec fsd_addfields 'd91$', ...
+- If XML table has NO $ (e.g., dmvt) → Don't add $: exec fsd_addfields 'dmvt', ...
+
+SQL TYPE AUTO-DETECTION:
+- ma_* → varchar(33)
+- ten_*, ghi_chu → nvarchar(256)
+- ngay_* → smalldatetime
+- tien*, *_nt → numeric(19,4)
+- so_luong, *_sl → numeric(19,4)
+- thang, nam → int
+- status → tinyint
+- *%l → nvarchar(256)
+
+EXAMPLES:
+1. Partitioned table:
+   field_names=['ma_bo_phan', 'ten_bo_phan%l']
+   tables=['d91$000000']
+   →
+   exec fsd_addfields 'd91$', 'ma_bo_phan', 'varchar(33)'
+   exec fsd_addfields 'd91$', 'ten_bo_phan%l', 'nvarchar(256)'
+
+2. Non-partitioned table:
+   field_names=['ma_bo_phan']
+   tables=['dmvt']
+   →
+   exec fsd_addfields 'dmvt', 'ma_bo_phan', 'varchar(33)'
+
+3. Multiple tables:
+   field_names=['so_luong', 'tien_nt']
+   tables=['d91$000000', 'm91$000000']
+   →
+   exec fsd_addfields 'd91$', 'so_luong', 'numeric(19,4)'
+   exec fsd_addfields 'd91$', 'tien_nt', 'numeric(19,4)'
+   exec fsd_addfields 'm91$', 'so_luong', 'numeric(19,4)'
+   exec fsd_addfields 'm91$', 'tien_nt', 'numeric(19,4)'
+
+The tool will:
+1. Auto-detect SQL type from field name pattern
+2. Preserve $ suffix if table is partitioned
+3. Strip lookup suffixes (t, lk) from field names
+4. Optionally generate master table creation for lookup fields
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "field_names": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of field names to add (e.g., ['ma_kh', 'ten_kh%l', 'so_luong'])",
+                            },
+                            "tables": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of table names (e.g., ['d91$000000', 'm91$000000'] or ['dmvt'])",
+                            },
+                            "create_master_table": {
+                                "type": "boolean",
+                                "description": "Generate master table creation for lookup fields (default: false)",
+                            },
+                        },
+                        "required": ["field_names", "tables"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -274,6 +348,37 @@ Database Path: {result['database_path']}
 Total: {stats['total']:,} fields"""
                     else:
                         response = "❌ Failed to get database statistics"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "generate_sql_for_fields":
+                    result = await self.sql_gen_tool.execute(arguments)
+
+                    if result['success']:
+                        # Format success response
+                        field_list = ', '.join(result['field_names'])
+                        table_list = ', '.join(result['tables'])
+
+                        response = f"""✅ SQL generated for fields: {field_list}
+
+📋 Target tables: {table_list}
+📊 Commands generated: {result['command_count']}
+
+SQL Script:
+```sql
+{result['sql_script']}
+```
+
+⚠️  IMPORTANT:
+1. Copy và chạy SQL trong SQL Server Management Studio
+2. Chạy SQL trước khi deploy XML file lên server
+3. Kiểm tra partition suffix ($) trong table names"""
+
+                        if result.get('master_tables'):
+                            response += f"\n\n🗂️  Master tables: {', '.join(result['master_tables'])}"
+
+                    else:
+                        response = f"❌ {result['error']}"
 
                     return [TextContent(type="text", text=response)]
 
