@@ -19,6 +19,7 @@ from .generators.script_generator import ScriptGenerator
 from .generators.command_generator import CommandGenerator
 from .fixers.partition_fixer import PartitionFixer
 from .fixers.result_access_fixer import ResultAccessFixer
+from .tools.generate_field_from_lmdb import GenerateFieldFromLMDBTool
 from .utils.logger import setup_logger
 from .utils.file_utils import read_file
 
@@ -52,6 +53,9 @@ class FastBusinessMCPServer:
         # Initialize fixers
         self.partition_fixer = PartitionFixer()
         self.result_fixer = ResultAccessFixer()
+
+        # Initialize LMDB field tool
+        self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path="data/fields_lmdb")
 
         # Register handlers
         self._register_resources()
@@ -323,6 +327,62 @@ Column mapping = SELECT column order (0-based index)
                         "required": ["script_type"],
                     },
                 ),
+                Tool(
+                    name="generate_field_from_lmdb",
+                    description="⭐ Generate field from LMDB database with smart pattern matching - USE THIS FIRST before manual field generation! Supports autocomplete/lookup types and template fallback.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "field_name": {
+                                "type": "string",
+                                "description": "Field name (e.g., 'ma_kh', 'sl_nhap_hang', 'ngay_lap')",
+                            },
+                            "context_type": {
+                                "type": "string",
+                                "description": "Context type: DIR, FILTER_VOUCHER, FILTER_NORMAL, GRID_VIEW, GRID_INPUT (default: DIR)",
+                            },
+                            "lookup_type": {
+                                "type": "string",
+                                "description": "Lookup type: 'default' (ma_kh), 'autocomplete' (ma_khat), 'lookup' (ma_khlk)",
+                            },
+                            "show_similar": {
+                                "type": "boolean",
+                                "description": "Show similar fields if not found (default: true)",
+                            },
+                        },
+                        "required": ["field_name"],
+                    },
+                ),
+                Tool(
+                    name="search_lmdb_fields",
+                    description="Search for fields in LMDB database by pattern",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "pattern": {
+                                "type": "string",
+                                "description": "Search pattern (substring match)",
+                            },
+                            "context_type": {
+                                "type": "string",
+                                "description": "Context type: DIR, FILTER_VOUCHER, FILTER_NORMAL, GRID_VIEW, GRID_INPUT",
+                            },
+                            "limit": {
+                                "type": "number",
+                                "description": "Maximum results (default: 20)",
+                            },
+                        },
+                        "required": ["pattern", "context_type"],
+                    },
+                ),
+                Tool(
+                    name="lmdb_database_stats",
+                    description="Get statistics about the LMDB field database",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -490,6 +550,73 @@ Fixed Code:
                         js = "// Script template\n"
 
                     return [TextContent(type="text", text=js)]
+
+                elif name == "generate_field_from_lmdb":
+                    result = await self.lmdb_field_tool.execute(arguments)
+
+                    if result['success']:
+                        # Format success response
+                        response = f"""✅ Field generated from {result['source']}
+
+Field Name: {result['field_name']}
+Header: {result['header']}
+
+XML Definition:
+{result['xml']}"""
+                    else:
+                        # Format error response
+                        response = f"❌ {result['error']}"
+                        if 'similar_fields' in result:
+                            similar = '\n'.join([f"  - {f['field_name']}: {f['header']}" for f in result['similar_fields'][:5]])
+                            response += f"\n\n💡 Similar fields found:\n{similar}"
+                        if 'suggestion' in result:
+                            response += f"\n\n{result['suggestion']}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "search_lmdb_fields":
+                    pattern = arguments["pattern"]
+                    context_type = arguments["context_type"]
+                    limit = arguments.get("limit", 20)
+
+                    result = self.lmdb_field_tool.search_fields(context_type, pattern, limit)
+
+                    if result['success']:
+                        if result['count'] == 0:
+                            response = f"No fields found matching '{pattern}' in {context_type}"
+                        else:
+                            fields_list = '\n'.join([
+                                f"  {i+1}. {f['field_name']:30} | {f['header']:40} | {f['type']}"
+                                for i, f in enumerate(result['results'])
+                            ])
+                            response = f"""Found {result['count']} fields matching '{pattern}' in {context_type}:
+
+{fields_list}"""
+                    else:
+                        response = f"❌ Search failed: {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "lmdb_database_stats":
+                    result = self.lmdb_field_tool.get_database_stats()
+
+                    if result['success']:
+                        stats = result['statistics']
+                        stats_text = '\n'.join([
+                            f"  {context:20} : {count:,} fields"
+                            for context, count in stats.items() if context != 'total' and count > 0
+                        ])
+                        response = f"""📊 LMDB Field Database Statistics
+
+Database Path: {result['database_path']}
+
+{stats_text}
+
+Total: {stats['total']:,} fields"""
+                    else:
+                        response = "❌ Failed to get database statistics"
+
+                    return [TextContent(type="text", text=response)]
 
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
