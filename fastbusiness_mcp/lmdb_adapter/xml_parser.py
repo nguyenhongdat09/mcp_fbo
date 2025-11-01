@@ -57,8 +57,14 @@ class FastBusinessXMLParser:
             return {}
 
         try:
-            # Parse XML file
-            tree = etree.parse(str(xml_path))
+            # Parse XML file with XInclude disabled to avoid external file errors
+            parser = etree.XMLParser(
+                load_dtd=False,
+                no_network=True,
+                resolve_entities=False,
+                remove_blank_text=True
+            )
+            tree = etree.parse(str(xml_path), parser)
             root = tree.getroot()
 
             # Extract fields by context type
