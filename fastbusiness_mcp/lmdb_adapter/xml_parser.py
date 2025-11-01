@@ -2,6 +2,10 @@
 
 This module parses FastBusiness XML files to extract field definitions
 for storage in LMDB database - using PURE REGEX, NO XML libraries.
+
+Simple logic:
+1. Extract ALL <field> tags using regex (don't care about sections)
+2. Classify by folder path + attribute checks
 """
 
 import logging
@@ -35,11 +39,6 @@ class FastBusinessXMLParser:
 
         Returns:
             Dict mapping context_type → list of field definitions
-            {
-                'DIR': [{'field_name': 'ma_kh', 'definition': {...}}, ...],
-                'FILTER_VOUCHER': [...],
-                ...
-            }
         """
         xml_path = Path(xml_path)
         if not xml_path.exists():
@@ -52,24 +51,32 @@ class FastBusinessXMLParser:
             with open(xml_path, 'r', encoding='utf-8') as f:
                 xml_content = f.read()
 
-            # Clean XML (remove DOCTYPE, ENTITY, XInclude)
+            # Clean XML (remove DOCTYPE, ENTITY, XInclude, Comments)
             xml_content = self._clean_xml(xml_content)
 
-            # Extract fields by context type
-            results = {}
-            total_fields = 0
+            # Determine context type by folder path
+            context_type = self._determine_context_type(str(xml_path), xml_content)
 
-            for context_type in self.CONTEXT_TYPES:
-                fields = self._extract_fields_regex(xml_content, context_type)
-                if fields:
-                    results[context_type] = fields
-                    total_fields += len(fields)
-                    logger.info(f"  {context_type}: {len(fields)} fields")
+            if context_type == 'UNKNOWN':
+                logger.warning(f"Cannot determine context type for {xml_path.name}")
+                return {}
+
+            # Extract ALL <field> tags using regex (simple!)
+            fields = self._extract_all_field_tags(xml_content)
+
+            if not fields:
+                logger.info(f"✓ Parsed {xml_path.name}: 0 fields")
+                return {}
+
+            # Return results
+            results = {context_type: fields}
 
             self.stats['files_parsed'] += 1
-            self.stats['fields_extracted'] += total_fields
+            self.stats['fields_extracted'] += len(fields)
 
-            logger.info(f"✓ Parsed {xml_path.name}: {total_fields} fields")
+            logger.info(f"✓ Parsed {xml_path.name}: {len(fields)} fields")
+            logger.info(f"  {context_type}: {len(fields)} fields")
+
             return results
 
         except Exception as e:
@@ -104,116 +111,102 @@ class FastBusinessXMLParser:
 
         return cleaned
 
-    def _extract_fields_regex(self, xml_content: str, context_type: str) -> List[Dict]:
+    def _determine_context_type(self, file_path: str, xml_content: str) -> str:
         """
-        Extract field definitions from specific context type using REGEX
+        Determine context type by folder path + content attributes
+
+        Args:
+            file_path: Full file path
+            xml_content: XML content
+
+        Returns:
+            Context type string
+        """
+        # Normalize path
+        normalized_path = file_path.replace('/', '\\')
+
+        # Extract folder name from path
+        if '\\Dir\\' in normalized_path or '\\dir\\' in normalized_path:
+            return 'DIR'
+
+        elif '\\Filter\\' in normalized_path or '\\filter\\' in normalized_path:
+            # Check if any field has 'operation' attribute
+            has_operation = bool(re.search(r'<field[^>]*\boperation\s*=', xml_content, re.IGNORECASE))
+            return 'FILTER_VOUCHER' if has_operation else 'FILTER_NORMAL'
+
+        elif '\\Grid\\' in normalized_path or '\\grid\\' in normalized_path:
+            # Check if any field has 'allowSorting' or 'allowFilter'
+            has_sorting = bool(re.search(r'<field[^>]*\ballowSorting\s*=', xml_content, re.IGNORECASE))
+            has_filter = bool(re.search(r'<field[^>]*\ballowFilter\s*=', xml_content, re.IGNORECASE))
+            return 'GRID_VIEW' if (has_sorting or has_filter) else 'GRID_INPUT'
+
+        return 'UNKNOWN'
+
+    def _extract_all_field_tags(self, xml_content: str) -> List[Dict]:
+        """
+        Extract ALL <field> tags from entire XML content using regex
+
+        Simple approach: Find all <field ...>...</field> tags, extract attributes
 
         Args:
             xml_content: Cleaned XML content
-            context_type: Context type (DIR, FILTER_VOUCHER, etc.)
 
         Returns:
             List of field definitions
         """
         fields = []
 
-        # Define regex patterns for each context type
-        if context_type == 'DIR':
-            # Find <DIR>...</DIR> section
-            dir_match = re.search(r'<DIR\b[^>]*>(.*?)</DIR>', xml_content, re.DOTALL | re.IGNORECASE)
-            if dir_match:
-                section_content = dir_match.group(1)
-                fields = self._extract_field_elements(section_content)
+        # Pattern to match field tags: <field ...>...</field> or <field ... />
+        # Use non-greedy match to avoid matching across multiple fields
+        field_pattern = r'<field\b([^>]*?)>(.*?)</field>|<field\b([^>]*?)/>'
 
-        elif context_type == 'FILTER_VOUCHER':
-            # Find <FILTER type="VOUCHER">...</FILTER> section
-            filter_match = re.search(r'<FILTER\s+type\s*=\s*["\']VOUCHER["\'][^>]*>(.*?)</FILTER>', xml_content, re.DOTALL | re.IGNORECASE)
-            if filter_match:
-                section_content = filter_match.group(1)
-                fields = self._extract_field_elements(section_content)
-
-        elif context_type == 'FILTER_NORMAL':
-            # Find <FILTER type="NORMAL">...</FILTER> section
-            filter_match = re.search(r'<FILTER\s+type\s*=\s*["\']NORMAL["\'][^>]*>(.*?)</FILTER>', xml_content, re.DOTALL | re.IGNORECASE)
-            if filter_match:
-                section_content = filter_match.group(1)
-                fields = self._extract_field_elements(section_content)
-
-        elif context_type == 'GRID_VIEW' or context_type == 'GRID_INPUT':
-            # Grid files have structure: <grid><fields><field name="...">
-            # Find <fields>...</fields> section inside <grid>
-            fields_match = re.search(r'<fields\b[^>]*>(.*?)</fields>', xml_content, re.DOTALL | re.IGNORECASE)
-            if fields_match:
-                section_content = fields_match.group(1)
-                fields = self._extract_field_elements(section_content)
-
-        return fields
-
-    def _extract_field_elements(self, section_content: str) -> List[Dict]:
-        """
-        Extract individual field elements from a section
-
-        Args:
-            section_content: Content of a section (DIR, FILTER, GRID, etc.)
-
-        Returns:
-            List of field definitions
-        """
-        fields = []
-
-        # Pattern to match field tags (self-closing or with closing tag)
-        # Matches: <field .../>  or  <field ...>...</field>
-        # Also matches variations: <Field>, <FIELD>, <column>, <item>
-        field_patterns = [
-            r'<field\b([^>]*?)/>',  # Self-closing <field ... />
-            r'<field\b([^>]*?)>(.*?)</field>',  # With closing tag <field>...</field>
-            r'<column\b([^>]*?)/>',  # Alternative: <column />
-            r'<column\b([^>]*?)>(.*?)</column>',  # <column>...</column>
-            r'<item\b([^>]*?)/>',  # Alternative: <item />
-            r'<item\b([^>]*?)>(.*?)</item>',  # <item>...</item>
-        ]
-
-        for pattern in field_patterns:
-            for match in re.finditer(pattern, section_content, re.DOTALL | re.IGNORECASE):
+        for match in re.finditer(field_pattern, xml_content, re.DOTALL | re.IGNORECASE):
+            # Group 1 & 2 = <field ...>...</field>
+            # Group 3 = <field ... />
+            if match.group(1):  # Non-self-closing tag
                 attributes_str = match.group(1)
-
-                # Extract attributes from the attributes string
-                attributes = self._extract_attributes(attributes_str)
-
-                # Get field name from 'field' or 'name' attribute
-                field_name = attributes.get('field') or attributes.get('name')
-
-                if not field_name:
-                    continue  # Skip if no field name
-
-                # Get the full tag content (for XML storage)
+                field_content = match.group(2)
+                full_tag = match.group(0)
+            else:  # Self-closing tag
+                attributes_str = match.group(3)
+                field_content = ""
                 full_tag = match.group(0)
 
-                # Build field definition
-                definition = {
-                    'field_name': field_name,
-                    'attributes': attributes,
-                    'xml': full_tag
-                }
+            # Extract attributes
+            attributes = self._extract_attributes(attributes_str)
 
-                # Extract common attributes to top level
-                if 'header' in attributes:
-                    definition['header'] = attributes['header']
-                else:
-                    # Try to extract header from child <header v="..."> tag (Grid format)
-                    header_match = re.search(r'<header\b[^>]*\bv\s*=\s*["\']([^"\']*)["\']', full_tag, re.IGNORECASE)
-                    if header_match:
-                        definition['header'] = header_match.group(1)
+            # Get field name from 'name' or 'field' attribute
+            field_name = attributes.get('name') or attributes.get('field')
 
-                if 'type' in attributes:
-                    definition['type'] = attributes['type']
-                if 'width' in attributes:
-                    definition['width'] = attributes['width']
+            if not field_name:
+                continue  # Skip if no field name
 
-                fields.append({
-                    'field_name': field_name,
-                    'definition': definition
-                })
+            # Build field definition
+            definition = {
+                'field_name': field_name,
+                'attributes': attributes,
+                'xml': full_tag
+            }
+
+            # Extract header (from attribute or child tag)
+            if 'header' in attributes:
+                definition['header'] = attributes['header']
+            else:
+                # Try to extract from <header v="..."> child tag (Grid format)
+                header_match = re.search(r'<header[^>]*\bv\s*=\s*["\']([^"\']*)["\']', field_content, re.IGNORECASE)
+                if header_match:
+                    definition['header'] = header_match.group(1)
+
+            # Extract other common attributes
+            if 'type' in attributes:
+                definition['type'] = attributes['type']
+            if 'width' in attributes:
+                definition['width'] = attributes['width']
+
+            fields.append({
+                'field_name': field_name,
+                'definition': definition
+            })
 
         return fields
 
@@ -222,10 +215,10 @@ class FastBusinessXMLParser:
         Extract all attributes from an attributes string
 
         Args:
-            attributes_str: String containing attributes (e.g., 'field="ma_kh" header="Mã KH"')
+            attributes_str: String containing attributes
 
         Returns:
-            Dictionary of attribute name -> value
+            Dictionary of attribute name → value
         """
         attributes = {}
 
@@ -249,11 +242,6 @@ class FastBusinessXMLParser:
 
         Returns:
             Dict mapping context_type → list of ALL field definitions from all files
-            {
-                'DIR': [field1, field2, ...],
-                'FILTER_VOUCHER': [...],
-                ...
-            }
         """
         dir_path = Path(dir_path)
         if not dir_path.exists():
