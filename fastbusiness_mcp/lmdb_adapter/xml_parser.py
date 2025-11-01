@@ -175,17 +175,26 @@ class FastBusinessXMLParser:
             # Extract attributes
             attributes = self._extract_attributes(attributes_str)
 
-            # Get field name from 'name' or 'field' attribute
-            field_name = attributes.get('name') or attributes.get('field')
+            # Get base field name from 'name' or 'field' attribute
+            base_field_name = attributes.get('name') or attributes.get('field')
 
-            if not field_name:
+            if not base_field_name:
                 continue  # Skip if no field name
+
+            # Detect lookup type from <items style="...">
+            lookup_suffix = self._detect_lookup_suffix(field_content)
+
+            # Add suffix to field name based on lookup type
+            field_name = base_field_name + lookup_suffix
+
+            # Clean XML: remove unwanted attributes and tags
+            cleaned_xml = self._clean_field_xml(full_tag)
 
             # Build field definition
             definition = {
                 'field_name': field_name,
                 'attributes': attributes,
-                'xml': full_tag
+                'xml': cleaned_xml
             }
 
             # Extract header (from attribute or child tag)
@@ -209,6 +218,62 @@ class FastBusinessXMLParser:
             })
 
         return fields
+
+    def _detect_lookup_suffix(self, field_content: str) -> str:
+        """
+        Detect lookup type from <items style="..."> tag and return appropriate suffix
+
+        Args:
+            field_content: Content inside <field>...</field>
+
+        Returns:
+            Suffix string: 't' for AutoComplete, 'lk' for Lookup, '' for others
+        """
+        # Check for <items style="AutoComplete">
+        if re.search(r'<items[^>]*\bstyle\s*=\s*["\']AutoComplete["\']', field_content, re.IGNORECASE):
+            return 't'
+
+        # Check for <items style="Lookup">
+        if re.search(r'<items[^>]*\bstyle\s*=\s*["\']Lookup["\']', field_content, re.IGNORECASE):
+            return 'lk'
+
+        # No lookup or other style
+        return ''
+
+    def _clean_field_xml(self, xml_str: str) -> str:
+        """
+        Clean field XML by removing unwanted attributes and tags
+
+        Removes:
+        - Attributes: allowNulls, isPrimaryKey, hidden, categoryIndex, allowContain, onDemand, aliasName, operation
+        - Tags: <clientScript>, <query>
+
+        Args:
+            xml_str: Original field XML string
+
+        Returns:
+            Cleaned XML string
+        """
+        cleaned = xml_str
+
+        # Remove unwanted attributes
+        unwanted_attrs = [
+            'allowNulls', 'isPrimaryKey', 'hidden', 'categoryIndex',
+            'allowContain', 'onDemand', 'aliasName', 'operation'
+        ]
+
+        for attr in unwanted_attrs:
+            # Pattern: attr="value" or attr='value'
+            pattern = rf'\s+{attr}\s*=\s*["\'][^"\']*["\']'
+            cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+
+        # Remove <clientScript>...</clientScript> tags
+        cleaned = re.sub(r'<clientScript\b[^>]*>.*?</clientScript>\s*', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+        # Remove <query>...</query> tags
+        cleaned = re.sub(r'<query\b[^>]*>.*?</query>\s*', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+        return cleaned
 
     def _extract_attributes(self, attributes_str: str) -> Dict[str, str]:
         """
