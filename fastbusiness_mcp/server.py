@@ -329,21 +329,51 @@ Column mapping = SELECT column order (0-based index)
                 ),
                 Tool(
                     name="generate_field_from_lmdb",
-                    description="⭐ Generate field from LMDB database with smart pattern matching - USE THIS FIRST before manual field generation! Supports autocomplete/lookup types and template fallback.",
+                    description="""⭐ Generate field from LMDB database - USE THIS when user asks to add fields!
+
+AUTOMATIC CONTEXT DETECTION:
+- Provide xml_content (current file) and tool will auto-detect context type
+- Or manually specify context_type if known
+
+LOOKUP TYPE PARSING (from Vietnamese):
+- "thêm trường X" / "add field X" → lookup_type='default'
+- "thêm trường X dạng lookup" / "dạng chọn lookup" → lookup_type='autocomplete' (default for lookup)
+- "thêm trường X lookup chọn nhiều" / "chọn nhiều" → lookup_type='lookup'
+- "thêm trường X autocomplete" → lookup_type='autocomplete'
+
+EXAMPLES:
+User: "Thêm trường mã khách hàng dạng lookup"
+→ field_name='ma_kh', lookup_type='autocomplete', xml_content='<current file>'
+
+User: "Thêm trường mã kh dạng lookup chọn nhiều"
+→ field_name='ma_kh', lookup_type='lookup', xml_content='<current file>'
+
+User: "Thêm số lượng"
+→ field_name='so_luong', lookup_type='default', xml_content='<current file>'
+
+The tool will:
+1. Auto-detect context from xml_content (DIR/FILTER_VOUCHER/FILTER_NORMAL/GRID_VIEW/GRID_INPUT)
+2. Query LMDB for field with lookup suffix
+3. Return field XML ready to insert
+""",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "field_name": {
                                 "type": "string",
-                                "description": "Field name (e.g., 'ma_kh', 'sl_nhap_hang', 'ngay_lap')",
+                                "description": "Field name without suffix (e.g., 'ma_kh', 'so_luong', 'ngay_ct')",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "Current XML file content for auto-detecting context type (recommended)",
                             },
                             "context_type": {
                                 "type": "string",
-                                "description": "Context type: DIR, FILTER_VOUCHER, FILTER_NORMAL, GRID_VIEW, GRID_INPUT (default: DIR)",
+                                "description": "Manual context type if xml_content not provided: DIR, FILTER_VOUCHER, FILTER_NORMAL, GRID_VIEW, GRID_INPUT",
                             },
                             "lookup_type": {
                                 "type": "string",
-                                "description": "Lookup type: 'default' (ma_kh), 'autocomplete' (ma_khat), 'lookup' (ma_khlk)",
+                                "description": "Lookup type: 'default' (no lookup), 'autocomplete' (single select), 'lookup' (multi-select)",
                             },
                             "show_similar": {
                                 "type": "boolean",
@@ -552,6 +582,23 @@ Fixed Code:
                     return [TextContent(type="text", text=js)]
 
                 elif name == "generate_field_from_lmdb":
+                    # Auto-detect context type from xml_content if provided
+                    if 'xml_content' in arguments and arguments['xml_content']:
+                        xml_content = arguments['xml_content']
+                        detected_context = self._detect_context_type_from_xml(xml_content)
+
+                        # Override context_type with detected value
+                        if detected_context != 'UNKNOWN':
+                            arguments['context_type'] = detected_context
+                            logger.info(f"Auto-detected context type: {detected_context}")
+                        else:
+                            # Fallback to DIR if detection fails
+                            arguments['context_type'] = arguments.get('context_type', 'DIR')
+                            logger.warning(f"Cannot detect context, using: {arguments['context_type']}")
+
+                    # Remove xml_content from arguments (not needed by execute)
+                    arguments.pop('xml_content', None)
+
                     result = await self.lmdb_field_tool.execute(arguments)
 
                     if result['success']:
@@ -560,6 +607,7 @@ Fixed Code:
 
 Field Name: {result['field_name']}
 Header: {result['header']}
+Context: {arguments.get('context_type', 'N/A')}
 
 XML Definition:
 {result['xml']}"""
@@ -624,6 +672,37 @@ Total: {stats['total']:,} fields"""
             except Exception as e:
                 logger.error(f"Tool execution error: {e}")
                 return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    def _detect_context_type_from_xml(self, xml_content: str) -> str:
+        """
+        Detect context type from XML content using regex
+
+        Args:
+            xml_content: XML file content
+
+        Returns:
+            Context type: DIR, FILTER_VOUCHER, FILTER_NORMAL, GRID_VIEW, GRID_INPUT, or UNKNOWN
+        """
+        import re
+
+        # Check for Dir (has <dir> tag)
+        if re.search(r'<dir\b', xml_content, re.IGNORECASE):
+            # Check if it's a filter (has XMLWhenFilterLoading)
+            if 'XMLWhenFilterLoading' in xml_content:
+                # Check if any field has 'operation' attribute
+                has_operation = bool(re.search(r'<field[^>]*\boperation\s*=', xml_content, re.IGNORECASE))
+                return 'FILTER_VOUCHER' if has_operation else 'FILTER_NORMAL'
+            else:
+                return 'DIR'
+
+        # Check for Grid (has <grid> tag)
+        elif re.search(r'<grid\b', xml_content, re.IGNORECASE):
+            # Check if any field has 'allowSorting' or 'allowFilter'
+            has_sorting = bool(re.search(r'<field[^>]*\ballowSorting\s*=', xml_content, re.IGNORECASE))
+            has_filter = bool(re.search(r'<field[^>]*\ballowFilter\s*=', xml_content, re.IGNORECASE))
+            return 'GRID_VIEW' if (has_sorting or has_filter) else 'GRID_INPUT'
+
+        return 'UNKNOWN'
 
     async def run(self) -> None:
         """Run the MCP server."""
