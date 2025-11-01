@@ -1,13 +1,12 @@
 """Tool: Generate field from LevelDB with intelligent fallback"""
 
 from typing import Dict, Any, Optional
-from ..core.base_tool import BaseTool
 from ..leveldb_adapter.leveldb_manager import LevelDBManager
 from ..leveldb_adapter.field_cache import FieldCache
 from ..leveldb_adapter.config import LevelDBConfig
 
 
-class GenerateFieldFromDBTool(BaseTool):
+class GenerateFieldFromDBTool:
     """Generate field definition from LevelDB database"""
 
     def __init__(self, use_vscode_extension: bool = True):
