@@ -1,9 +1,10 @@
 """LevelDB Manager for field definitions"""
 
-# Try to import database backend (plyvel or rocksdb)
+# Try to import database backend (plyvel, rocksdb, or JSON fallback)
 DB_BACKEND = None
 PLYVEL_AVAILABLE = False
 ROCKSDB_AVAILABLE = False
+JSON_FALLBACK = False
 
 try:
     import plyvel
@@ -15,12 +16,18 @@ except ImportError:
         ROCKSDB_AVAILABLE = True
         DB_BACKEND = 'rocksdb'
     except ImportError:
+        # Use JSON fallback
+        JSON_FALLBACK = True
+        DB_BACKEND = 'json'
         import warnings
         warnings.warn(
-            "Neither plyvel nor rocksdb is installed. LevelDB features will be disabled.\n"
-            "Install one of:\n"
-            "  - plyvel: pip install plyvel-wheels (recommended for Linux/Mac)\n"
-            "  - rocksdb: pip install python-rocksdb (works on Windows Python 3.13)",
+            "Neither plyvel nor rocksdb is installed. Using JSON fallback mode.\n"
+            "For better performance, install one of:\n"
+            "  - plyvel: pip install plyvel-wheels (for Linux/Mac or Python 3.11)\n"
+            "  - rocksdb: pip install python-rocksdb (for Windows)\n"
+            "\n"
+            "JSON fallback requires exported JSON files in database/json_exports/\n"
+            "See tools/export_leveldb_to_json.py to create exports.",
             ImportWarning
         )
 
@@ -30,6 +37,10 @@ import json
 import logging
 from ..core.exceptions import DatabaseError
 from .config import LevelDBConfig
+
+# Import JSON adapter for fallback mode
+if JSON_FALLBACK:
+    from .json_adapter import JSONAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +56,7 @@ class LevelDBManager:
             use_vscode_extension: Use VS Code extension database if True
         """
         if not DB_BACKEND:
-            logger.warning("LevelDB not available - neither plyvel nor rocksdb is installed")
+            logger.warning("No database backend available")
             self.paths = {}
             self.dbs: Dict[str, Any] = {}
             self.backend = None
@@ -57,7 +68,12 @@ class LevelDBManager:
         if custom_paths:
             self.paths = custom_paths
         else:
-            self.paths = LevelDBConfig.get_db_paths(use_vscode_extension)
+            # For JSON backend, use JSON export paths
+            if self.backend == 'json':
+                self.paths = LevelDBConfig.get_json_paths()
+                logger.info("Using JSON export files as data source")
+            else:
+                self.paths = LevelDBConfig.get_db_paths(use_vscode_extension)
 
         self.dbs: Dict[str, Any] = {}
         self._connect_all()
@@ -66,31 +82,41 @@ class LevelDBManager:
         """Connect to all LevelDB databases"""
         for db_type, path in self.paths.items():
             try:
-                db_path = Path(path)
-                if db_path.exists():
-                    # Open existing database based on backend
-                    if self.backend == 'plyvel':
-                        self.dbs[db_type] = plyvel.DB(
-                            str(db_path),
-                            create_if_missing=False,
-                            compression='snappy'
-                        )
-                    elif self.backend == 'rocksdb':
-                        # RocksDB can read LevelDB databases
-                        opts = rocksdb.Options()
-                        opts.create_if_missing = False
-                        opts.max_open_files = 300000
-                        opts.write_buffer_size = 67108864
-                        opts.max_write_buffer_number = 3
-                        opts.target_file_size_base = 67108864
-
-                        self.dbs[db_type] = rocksdb.DB(str(db_path), opts, read_only=True)
-
-                    logger.info(f"Connected to {db_type} LevelDB at {path} using {self.backend}")
+                if self.backend == 'json':
+                    # Use JSON adapter - path is JSON file
+                    json_path = Path(path)
+                    if json_path.exists():
+                        self.dbs[db_type] = JSONAdapter(str(json_path))
+                        logger.info(f"Connected to {db_type} JSON export at {path}")
+                    else:
+                        logger.warning(f"JSON export not found at {path}")
                 else:
-                    logger.warning(f"LevelDB not found at {path}")
+                    # Use LevelDB/RocksDB - path is directory
+                    db_path = Path(path)
+                    if db_path.exists():
+                        # Open existing database based on backend
+                        if self.backend == 'plyvel':
+                            self.dbs[db_type] = plyvel.DB(
+                                str(db_path),
+                                create_if_missing=False,
+                                compression='snappy'
+                            )
+                        elif self.backend == 'rocksdb':
+                            # RocksDB can read LevelDB databases
+                            opts = rocksdb.Options()
+                            opts.create_if_missing = False
+                            opts.max_open_files = 300000
+                            opts.write_buffer_size = 67108864
+                            opts.max_write_buffer_number = 3
+                            opts.target_file_size_base = 67108864
+
+                            self.dbs[db_type] = rocksdb.DB(str(db_path), opts, read_only=True)
+
+                        logger.info(f"Connected to {db_type} LevelDB at {path} using {self.backend}")
+                    else:
+                        logger.warning(f"LevelDB not found at {path}")
             except Exception as e:
-                logger.error(f"Error connecting to {db_type} LevelDB: {e}")
+                logger.error(f"Error connecting to {db_type} database: {e}")
 
     def get_field(self, field_name: str, db_type: str) -> Optional[Dict]:
         """

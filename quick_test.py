@@ -20,13 +20,11 @@ async def quick_test():
             backend = "rocksdb"
             print("  ✅ python-rocksdb installed (RocksDB - can read LevelDB)\n")
         except ImportError:
-            print("  ❌ No database backend installed")
-            print("  ⚠️  You cannot use LevelDB features without a backend\n")
-            print("Solutions:")
-            print("  1. pip install python-rocksdb  (works on Windows Python 3.13)")
-            print("  2. pip install plyvel-wheels   (for Linux/Mac or Python 3.11)")
-            print("  3. See requirements-leveldb.txt for details\n")
-            return
+            backend = "json"
+            print("  ⚠️  No LevelDB backend installed")
+            print("  ✅ Using JSON fallback mode\n")
+            print("  Note: JSON fallback requires exported JSON files.")
+            print("  See tools/README.md for export instructions\n")
 
     # Step 2: Check LevelDB Manager
     print("Step 2: Checking LevelDB Manager...")
@@ -53,10 +51,17 @@ async def quick_test():
         from pathlib import Path
 
         config = LevelDBConfig()
-        paths = config.get_db_paths()
+
+        # Check appropriate paths based on backend
+        if backend == "json":
+            paths = config.get_json_paths()
+            print("  Looking for JSON export files...")
+        else:
+            paths = config.get_db_paths()
+            print("  Looking for LevelDB directories...")
 
         found_db = False
-        for path in paths:
+        for db_type, path in paths.items():
             exists = Path(path).exists()
             if exists:
                 print(f"  ✅ Found: {path}")
@@ -65,8 +70,14 @@ async def quick_test():
                 print(f"  ❌ Not found: {path}")
 
         if not found_db:
-            print("\n  ⚠️  No LevelDB database found!")
-            print("  Please configure database path in config.yaml or environment variable\n")
+            if backend == "json":
+                print("\n  ⚠️  No JSON export files found!")
+                print("  Please export LevelDB to JSON first.")
+                print("  Run: python tools/export_leveldb_to_json.py --vscode")
+                print("  See tools/README.md for detailed instructions\n")
+            else:
+                print("\n  ⚠️  No LevelDB database found!")
+                print("  Please configure database path in config.yaml or environment variable\n")
             return
 
         print()
