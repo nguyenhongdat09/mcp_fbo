@@ -200,14 +200,19 @@ class FileTypeDetector:
         if not re.search(r'<dir\b', xml_content, re.IGNORECASE):
             return False
 
-        # Check for type="Voucher" or type="Category" or no type attribute
-        has_voucher = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Voucher["\']', xml_content, re.IGNORECASE))
-        has_category = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Category["\']', xml_content, re.IGNORECASE))
+        # If it has <dir> tag and NOT a filter (XMLWhenFilterLoading), then it's a DIR form
+        # Filters have type="Report" + XMLWhenFilterLoading
+        has_filter_entity = "XMLWhenFilterLoading" in xml_content
 
-        # If it's a dir without type="Report", it's likely a form
-        has_report = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Report["\']', xml_content, re.IGNORECASE))
+        # If no filter entity, it's definitely a DIR form
+        if not has_filter_entity:
+            return True
 
-        return has_voucher or has_category or (not has_report)
+        # If has filter entity, check if type="Report"
+        # If NOT type="Report", still a DIR form (edge case)
+        has_report = bool(re.search(r'<dir\b[^>]*\btype\s*=\s*["\']Report["\']', xml_content, re.IGNORECASE))
+
+        return not has_report
 
     def _build_dir_context(self, xml_content: str) -> FileContext:
         """Build context for DIR form XML using REGEX."""
