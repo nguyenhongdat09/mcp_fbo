@@ -1,0 +1,23 @@
+{
+  "name": "leveldb-export-tools",
+  "version": "1.0.0",
+  "description": "Export LevelDB to JSON using Node.js",
+  "main": "export_leveldb_nodejs.js",
+  "scripts": {
+    "export": "node export_leveldb_nodejs.js",
+    "test": "echo \"Run: npm run export\" && exit 0"
+  },
+  "keywords": [
+    "leveldb",
+    "export",
+    "json"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "level": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
