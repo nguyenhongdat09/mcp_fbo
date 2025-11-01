@@ -17,15 +17,22 @@ const fs = require('fs');
 const path = require('path');
 
 // Try to load level package
-let Level;
+let ClassicLevel;
 try {
-    Level = require('level');
+    // Try classic-level first (better for reading existing LevelDB)
+    try {
+        ClassicLevel = require('classic-level').ClassicLevel;
+    } catch (e1) {
+        // Fallback to level package
+        const level = require('level');
+        ClassicLevel = level.Level || level;
+    }
 } catch (e) {
-    console.error('\n❌ ERROR: "level" package not installed\n');
-    console.error('Please install it first:');
+    console.error('\n❌ ERROR: "level" or "classic-level" package not installed\n');
+    console.error('Please install one of them:');
+    console.error('  npm install classic-level  (recommended)\n');
+    console.error('  OR\n');
     console.error('  npm install level\n');
-    console.error('Or install globally:');
-    console.error('  npm install -g level\n');
     process.exit(1);
 }
 
@@ -48,7 +55,7 @@ async function exportDatabase(dbPath, outputPath, dbType) {
     try {
         // Open LevelDB
         console.log('\nOpening database...');
-        const db = new Level(dbPath, {
+        const db = new ClassicLevel(dbPath, {
             valueEncoding: 'utf8',
             createIfMissing: false
         });
