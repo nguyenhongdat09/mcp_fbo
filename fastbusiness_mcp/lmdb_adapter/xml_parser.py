@@ -139,18 +139,12 @@ class FastBusinessXMLParser:
                 section_content = filter_match.group(1)
                 fields = self._extract_field_elements(section_content)
 
-        elif context_type == 'GRID_VIEW':
-            # Find <GRID_VIEW>...</GRID_VIEW> section
-            grid_match = re.search(r'<GRID_VIEW\b[^>]*>(.*?)</GRID_VIEW>', xml_content, re.DOTALL | re.IGNORECASE)
-            if grid_match:
-                section_content = grid_match.group(1)
-                fields = self._extract_field_elements(section_content)
-
-        elif context_type == 'GRID_INPUT':
-            # Find <GRID_INPUT>...</GRID_INPUT> section
-            grid_match = re.search(r'<GRID_INPUT\b[^>]*>(.*?)</GRID_INPUT>', xml_content, re.DOTALL | re.IGNORECASE)
-            if grid_match:
-                section_content = grid_match.group(1)
+        elif context_type == 'GRID_VIEW' or context_type == 'GRID_INPUT':
+            # Grid files have structure: <grid><fields><field name="...">
+            # Find <fields>...</fields> section inside <grid>
+            fields_match = re.search(r'<fields\b[^>]*>(.*?)</fields>', xml_content, re.DOTALL | re.IGNORECASE)
+            if fields_match:
+                section_content = fields_match.group(1)
                 fields = self._extract_field_elements(section_content)
 
         return fields
@@ -205,6 +199,12 @@ class FastBusinessXMLParser:
                 # Extract common attributes to top level
                 if 'header' in attributes:
                     definition['header'] = attributes['header']
+                else:
+                    # Try to extract header from child <header v="..."> tag (Grid format)
+                    header_match = re.search(r'<header\b[^>]*\bv\s*=\s*["\']([^"\']*)["\']', full_tag, re.IGNORECASE)
+                    if header_match:
+                        definition['header'] = header_match.group(1)
+
                 if 'type' in attributes:
                     definition['type'] = attributes['type']
                 if 'width' in attributes:
