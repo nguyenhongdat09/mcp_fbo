@@ -1,48 +1,26 @@
 """LevelDB Manager for field definitions"""
 
-# Try to import database backend (plyvel, rocksdb, or JSON fallback)
-DB_BACKEND = None
-PLYVEL_AVAILABLE = False
-ROCKSDB_AVAILABLE = False
-JSON_FALLBACK = False
-
 try:
     import plyvel
     PLYVEL_AVAILABLE = True
-    DB_BACKEND = 'plyvel'
 except ImportError:
-    try:
-        import rocksdb
-        ROCKSDB_AVAILABLE = True
-        DB_BACKEND = 'rocksdb'
-    except ImportError:
-        # Use JSON fallback
-        JSON_FALLBACK = True
-        DB_BACKEND = 'json'
-        import warnings
-        warnings.warn(
-            "Neither plyvel nor rocksdb is installed. Using JSON fallback mode.\n"
-            "For better performance, install one of:\n"
-            "  - plyvel: pip install plyvel-wheels (for Linux/Mac or Python 3.11)\n"
-            "  - rocksdb: pip install python-rocksdb (for Windows)\n"
-            "\n"
-            "JSON fallback requires exported JSON files in database/json_exports/\n"
-            "See tools/export_leveldb_to_json.py to create exports.",
-            ImportWarning
-        )
+    PLYVEL_AVAILABLE = False
+    import warnings
+    warnings.warn(
+        "plyvel is not installed. LevelDB features will be disabled. "
+        "Install with: pip install plyvel",
+        ImportWarning
+    )
 
-from typing import Optional, Dict, List, Iterator, Tuple, Any
+from typing import Optional, Dict, List
 from pathlib import Path
 import json
 import logging
 from ..core.exceptions import DatabaseError
 from .config import LevelDBConfig
 
-# Import JSON adapter for fallback mode
-if JSON_FALLBACK:
-    from .json_adapter import JSONAdapter
-
 logger = logging.getLogger(__name__)
+
 
 class LevelDBManager:
     """Manager for LevelDB database connections"""
@@ -55,68 +33,36 @@ class LevelDBManager:
             custom_paths: Custom paths for databases. Format: {"DIR": "path/to/dir", ...}
             use_vscode_extension: Use VS Code extension database if True
         """
-        if not DB_BACKEND:
-            logger.warning("No database backend available")
+        if not PLYVEL_AVAILABLE:
+            logger.warning("LevelDB not available - plyvel is not installed")
             self.paths = {}
-            self.dbs: Dict[str, Any] = {}
-            self.backend = None
+            self.dbs = {}
             return
-
-        self.backend = DB_BACKEND
-        logger.info(f"Using {self.backend} as database backend")
 
         if custom_paths:
             self.paths = custom_paths
         else:
-            # For JSON backend, use JSON export paths
-            if self.backend == 'json':
-                self.paths = LevelDBConfig.get_json_paths()
-                logger.info("Using JSON export files as data source")
-            else:
-                self.paths = LevelDBConfig.get_db_paths(use_vscode_extension)
+            self.paths = LevelDBConfig.get_db_paths(use_vscode_extension)
 
-        self.dbs: Dict[str, Any] = {}
+        self.dbs = {}
         self._connect_all()
 
     def _connect_all(self):
         """Connect to all LevelDB databases"""
         for db_type, path in self.paths.items():
             try:
-                if self.backend == 'json':
-                    # Use JSON adapter - path is JSON file
-                    json_path = Path(path)
-                    if json_path.exists():
-                        self.dbs[db_type] = JSONAdapter(str(json_path))
-                        logger.info(f"Connected to {db_type} JSON export at {path}")
-                    else:
-                        logger.warning(f"JSON export not found at {path}")
+                db_path = Path(path)
+                if db_path.exists():
+                    self.dbs[db_type] = plyvel.DB(
+                        str(db_path),
+                        create_if_missing=False,
+                        compression='snappy'
+                    )
+                    logger.info(f"Connected to {db_type} LevelDB at {path}")
                 else:
-                    # Use LevelDB/RocksDB - path is directory
-                    db_path = Path(path)
-                    if db_path.exists():
-                        # Open existing database based on backend
-                        if self.backend == 'plyvel':
-                            self.dbs[db_type] = plyvel.DB(
-                                str(db_path),
-                                create_if_missing=False,
-                                compression='snappy'
-                            )
-                        elif self.backend == 'rocksdb':
-                            # RocksDB can read LevelDB databases
-                            opts = rocksdb.Options()
-                            opts.create_if_missing = False
-                            opts.max_open_files = 300000
-                            opts.write_buffer_size = 67108864
-                            opts.max_write_buffer_number = 3
-                            opts.target_file_size_base = 67108864
-
-                            self.dbs[db_type] = rocksdb.DB(str(db_path), opts, read_only=True)
-
-                        logger.info(f"Connected to {db_type} LevelDB at {path} using {self.backend}")
-                    else:
-                        logger.warning(f"LevelDB not found at {path}")
+                    logger.warning(f"LevelDB not found at {path}")
             except Exception as e:
-                logger.error(f"Error connecting to {db_type} database: {e}")
+                logger.error(f"Error connecting to {db_type} LevelDB: {e}")
 
     def get_field(self, field_name: str, db_type: str) -> Optional[Dict]:
         """
@@ -129,8 +75,8 @@ class LevelDBManager:
         Returns:
             Field definition as dict, or None if not found
         """
-        if not DB_BACKEND:
-            logger.warning("LevelDB not available - no database backend installed")
+        if not PLYVEL_AVAILABLE:
+            logger.warning("LevelDB not available - plyvel is not installed")
             return None
 
         if db_type not in self.dbs:
@@ -143,7 +89,6 @@ class LevelDBManager:
             value = db.get(key_bytes)
 
             if value:
-                # Decode and parse JSON
                 json_str = value.decode('utf-8')
                 return json.loads(json_str)
 
@@ -176,7 +121,7 @@ class LevelDBManager:
         Returns:
             List of matching field definitions with field names
         """
-        if not DB_BACKEND:
+        if not PLYVEL_AVAILABLE:
             return []
 
         if db_type not in self.dbs:
@@ -188,11 +133,9 @@ class LevelDBManager:
         try:
             db = self.dbs[db_type]
 
-            # Iterate through all keys
             for key, value in db.iterator():
                 key_str = key.decode('utf-8')
 
-                # Check match
                 if exact_match:
                     if key_str.lower() == pattern_lower:
                         field_data = json.loads(value.decode('utf-8'))
@@ -200,7 +143,7 @@ class LevelDBManager:
                             'field_name': key_str,
                             'definition': field_data
                         })
-                        break  # Exact match found
+                        break
                 else:
                     if pattern_lower in key_str.lower():
                         field_data = json.loads(value.decode('utf-8'))
@@ -229,7 +172,7 @@ class LevelDBManager:
         Returns:
             List of all field definitions
         """
-        if not DB_BACKEND:
+        if not PLYVEL_AVAILABLE:
             return []
 
         if db_type not in self.dbs:
@@ -259,7 +202,7 @@ class LevelDBManager:
 
     def count_fields(self, db_type: str) -> int:
         """Count total fields in database"""
-        if not DB_BACKEND:
+        if not PLYVEL_AVAILABLE:
             return 0
 
         if db_type not in self.dbs:
