@@ -1,27 +1,25 @@
-"""File type detection for FastBusiness XML files with folder pattern detection."""
+"""File type detection for FastBusiness XML files using REGEX ONLY."""
 
 import re
 from typing import Optional, List
-from lxml import etree
 
 from ..core.constants import FileType
 from ..core.models import FileContext, EventType
-from ..utils.xml_utils import parse_xml_safe, get_attribute
 
 
 class FileTypeDetector:
-    """Detects FastBusiness XML file types with priority-based detection."""
+    """Detects FastBusiness XML file types using REGEX ONLY - NO XML libraries."""
 
     def detect(self, xml_content: str, file_path: Optional[str] = None) -> FileContext:
         """
-        Detect file type and extract context.
+        Detect file type and extract context using REGEX.
 
         Detection priority:
         1. Check folder path pattern (if provided): ...App_Data\\Controllers\\[Dir|Filter|Grid]\\
-        2. Then check content for sub-types:
+        2. Then check content for sub-types using regex:
            - Filter folder → Check for 'operation' attribute (FILTER_VOUCHER vs FILTER_NORMAL)
            - Grid folder → Check for 'allowSorting'/'allowFilter' (GRID_VIEW vs GRID_INPUT)
-        3. Fallback to content-based detection (old logic)
+        3. Fallback to content-based detection
 
         Args:
             xml_content: XML file content
@@ -30,32 +28,21 @@ class FileTypeDetector:
         Returns:
             File context information
         """
-        root = parse_xml_safe(xml_content)
-
-        if root is None:
-            return FileContext(file_type=FileType.UNKNOWN)
-
         # Priority 1: Detect by folder structure pattern
         if file_path:
-            context = self._detect_by_path(file_path, root, xml_content)
+            context = self._detect_by_path(file_path, xml_content)
             if context.file_type != FileType.UNKNOWN:
                 return context
 
-        # Fallback: Content-based detection (old logic)
-        return self._detect_by_content(root, xml_content)
+        # Fallback: Content-based detection
+        return self._detect_by_content(xml_content)
 
-    def _detect_by_path(
-        self,
-        file_path: str,
-        root: etree._Element,
-        xml_content: str
-    ) -> FileContext:
+    def _detect_by_path(self, file_path: str, xml_content: str) -> FileContext:
         """
-        Detect by folder structure pattern: ...App_Data\\Controllers\\[Dir|Filter|Grid]\\
+        Detect by folder structure pattern using REGEX
 
         Args:
             file_path: File path (Windows or Unix style)
-            root: Parsed XML root
             xml_content: Raw XML content
 
         Returns:
@@ -79,185 +66,182 @@ class FileTypeDetector:
 
         # DIR folder - 100% certain
         if folder_name == "Dir":
-            return self._build_dir_context(root)
+            return self._build_dir_context(xml_content)
 
         # FILTER folder - Check sub-type
         elif folder_name == "Filter":
-            return self._detect_filter_subtype(root, xml_content)
+            return self._detect_filter_subtype(xml_content)
 
         # GRID folder - Check sub-type
         elif folder_name == "Grid":
-            return self._detect_grid_subtype(root)
+            return self._detect_grid_subtype(xml_content)
 
         return FileContext(file_type=FileType.UNKNOWN)
 
-    def _detect_filter_subtype(
-        self,
-        root: etree._Element,
-        xml_content: str
-    ) -> FileContext:
+    def _detect_filter_subtype(self, xml_content: str) -> FileContext:
         """
-        Detect FILTER_VOUCHER vs FILTER_NORMAL
+        Detect FILTER_VOUCHER vs FILTER_NORMAL using REGEX
 
         Rules:
         - Has field with 'operation' attribute → FILTER_VOUCHER
         - No field with 'operation' attribute → FILTER_NORMAL
         """
-        try:
-            # Check if any field has "operation" attribute
-            has_operation = len(root.xpath("//field[@operation]")) > 0
+        # Check if any field has "operation" attribute
+        has_operation = bool(re.search(r'<field[^>]+operation\s*=', xml_content, re.IGNORECASE))
 
-            if has_operation:
-                context = FileContext(file_type=FileType.FILTER_VOUCHER)
-            else:
-                context = FileContext(file_type=FileType.FILTER_NORMAL)
+        if has_operation:
+            context = FileContext(file_type=FileType.FILTER_VOUCHER)
+        else:
+            context = FileContext(file_type=FileType.FILTER_NORMAL)
 
-            # Extract events
-            for command in root.findall(".//command"):
-                event = get_attribute(command, "event")
-                if event and hasattr(EventType, event.upper()):
-                    context.events.append(EventType(event))
+        # Extract events from <command event="...">
+        event_matches = re.finditer(r'<command[^>]+event\s*=\s*["\'](\w+)["\']', xml_content, re.IGNORECASE)
+        for match in event_matches:
+            event = match.group(1)
+            if hasattr(EventType, event.upper()):
+                context.events.append(EventType(event))
 
-            # Check partition
-            context.has_partition = self._check_partition(root)
+        # Check partition
+        context.has_partition = self._check_partition_regex(xml_content)
 
-            return context
+        return context
 
-        except Exception:
-            # Fallback to regex
-            if re.search(r'<field[^>]+operation\s*=', xml_content):
-                return FileContext(file_type=FileType.FILTER_VOUCHER)
-            else:
-                return FileContext(file_type=FileType.FILTER_NORMAL)
-
-    def _detect_grid_subtype(self, root: etree._Element) -> FileContext:
+    def _detect_grid_subtype(self, xml_content: str) -> FileContext:
         """
-        Detect GRID_VIEW vs GRID_INPUT
+        Detect GRID_VIEW vs GRID_INPUT using REGEX
 
         Rules:
         - Has field with 'allowSorting' or 'allowFilter' → GRID_VIEW
         - No field with these attributes → GRID_INPUT
         """
-        try:
-            # Check if any field has "allowSorting" or "allowFilter"
-            has_sorting_or_filter = (
-                len(root.xpath("//field[@allowSorting]")) > 0 or
-                len(root.xpath("//field[@allowFilter]")) > 0
-            )
+        # Check if any field has "allowSorting" or "allowFilter"
+        has_sorting = bool(re.search(r'<field[^>]+allowSorting\s*=', xml_content, re.IGNORECASE))
+        has_filter = bool(re.search(r'<field[^>]+allowFilter\s*=', xml_content, re.IGNORECASE))
 
-            if has_sorting_or_filter:
-                context = FileContext(file_type=FileType.GRID_VIEW)
+        if has_sorting or has_filter:
+            context = FileContext(file_type=FileType.GRID_VIEW)
 
-                # Extract table name
-                context.table_name = get_attribute(root, "table")
+            # Extract table name from <grid table="...">
+            table_match = re.search(r'<grid[^>]+table\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+            if table_match:
+                context.table_name = table_match.group(1)
 
-                # Check partition
-                context.has_partition = self._check_partition(root)
+            # Check partition
+            context.has_partition = self._check_partition_regex(xml_content)
 
-                # Extract events from queries
-                for query in root.findall(".//query"):
-                    event = get_attribute(query, "event")
-                    if event and hasattr(EventType, event.upper()):
-                        context.events.append(EventType(event))
+            # Extract events from <query event="...">
+            event_matches = re.finditer(r'<query[^>]+event\s*=\s*["\'](\w+)["\']', xml_content, re.IGNORECASE)
+            for match in event_matches:
+                event = match.group(1)
+                if hasattr(EventType, event.upper()):
+                    context.events.append(EventType(event))
+        else:
+            context = FileContext(file_type=FileType.GRID_INPUT)
 
-            else:
-                context = FileContext(file_type=FileType.GRID_INPUT)
-                context.controller_name = get_attribute(root, "name")
+            # Extract controller name from <grid name="...">
+            name_match = re.search(r'<grid[^>]+name\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+            if name_match:
+                context.controller_name = name_match.group(1)
 
-            return context
+        return context
 
-        except Exception:
-            # Fallback: default to GRID_INPUT
-            return FileContext(file_type=FileType.GRID_INPUT)
-
-    def _detect_by_content(
-        self,
-        root: etree._Element,
-        xml_content: str
-    ) -> FileContext:
+    def _detect_by_content(self, xml_content: str) -> FileContext:
         """
-        Fallback content-based detection (when path is not available)
+        Fallback content-based detection using REGEX
 
-        Detection priority (from old logic):
-        1. Check <dir type="Report"> + <!ENTITY XMLWhenFilterLoading> → FILTER
+        Detection priority:
+        1. Check <dir type="Report"> + XMLWhenFilterLoading → FILTER
         2. Check <grid type="Detail"> without <toolbar> → GRID INPUT
         3. Check <grid> + <queries> + <toolbar> → GRID VIEW
         4. Check <dir type="Voucher|Category"> → DIR FORM
         """
-
         # Check for FILTER XML
-        if self._is_filter_content(xml_content, root):
-            return self._detect_filter_subtype(root, xml_content)
+        if self._is_filter_content_regex(xml_content):
+            return self._detect_filter_subtype(xml_content)
 
         # Check for GRID VIEW or GRID INPUT
-        if root.tag == "grid":
+        if re.search(r'<grid\b', xml_content, re.IGNORECASE):
             # Check for Grid View (has queries and toolbar)
-            has_queries = root.find(".//queries") is not None
-            has_toolbar = root.find(".//toolbar") is not None
+            has_queries = bool(re.search(r'<queries\b', xml_content, re.IGNORECASE))
+            has_toolbar = bool(re.search(r'<toolbar\b', xml_content, re.IGNORECASE))
 
             if has_queries and has_toolbar:
-                return self._detect_grid_subtype(root)
+                return self._detect_grid_subtype(xml_content)
             else:
                 # Grid Input (type="Detail" without toolbar)
                 context = FileContext(file_type=FileType.GRID_INPUT)
-                context.controller_name = get_attribute(root, "name")
+
+                # Extract controller name
+                name_match = re.search(r'<grid[^>]+name\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+                if name_match:
+                    context.controller_name = name_match.group(1)
+
                 return context
 
         # Check for DIR FORM XML
-        if self._is_dir_form_content(root):
-            return self._build_dir_context(root)
+        if self._is_dir_form_content_regex(xml_content):
+            return self._build_dir_context(xml_content)
 
         return FileContext(file_type=FileType.UNKNOWN)
 
-    def _is_filter_content(self, xml_content: str, root: etree._Element) -> bool:
-        """Check if file is a filter XML by content."""
-        # Check for dir type="Report"
-        if root.tag == "dir" and get_attribute(root, "type") == "Report":
-            # Check for XMLWhenFilterLoading entity
-            if "XMLWhenFilterLoading" in xml_content:
-                return True
+    def _is_filter_content_regex(self, xml_content: str) -> bool:
+        """Check if file is a filter XML by content using REGEX."""
+        # Check for <dir type="Report">
+        has_report_dir = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Report["\']', xml_content, re.IGNORECASE))
 
-        return False
+        # Check for XMLWhenFilterLoading entity
+        has_filter_entity = "XMLWhenFilterLoading" in xml_content
 
-    def _is_dir_form_content(self, root: etree._Element) -> bool:
-        """Check if file is a DIR form XML by content."""
-        if root.tag == "dir":
-            dir_type = get_attribute(root, "type")
-            return dir_type in ["Voucher", "Category", ""]
+        return has_report_dir and has_filter_entity
 
-        return False
+    def _is_dir_form_content_regex(self, xml_content: str) -> bool:
+        """Check if file is a DIR form XML by content using REGEX."""
+        # Check for <dir> tag
+        if not re.search(r'<dir\b', xml_content, re.IGNORECASE):
+            return False
 
-    def _build_dir_context(self, root: etree._Element) -> FileContext:
-        """Build context for DIR form XML."""
+        # Check for type="Voucher" or type="Category" or no type attribute
+        has_voucher = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Voucher["\']', xml_content, re.IGNORECASE))
+        has_category = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Category["\']', xml_content, re.IGNORECASE))
+
+        # If it's a dir without type="Report", it's likely a form
+        has_report = bool(re.search(r'<dir[^>]+type\s*=\s*["\']Report["\']', xml_content, re.IGNORECASE))
+
+        return has_voucher or has_category or (not has_report)
+
+    def _build_dir_context(self, xml_content: str) -> FileContext:
+        """Build context for DIR form XML using REGEX."""
         context = FileContext(file_type=FileType.DIR)
 
-        # Extract table name
-        context.table_name = get_attribute(root, "table")
+        # Extract table name from <dir table="...">
+        table_match = re.search(r'<dir[^>]+table\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+        if table_match:
+            context.table_name = table_match.group(1)
 
         # Check partition
-        context.has_partition = self._check_partition(root)
+        context.has_partition = self._check_partition_regex(xml_content)
 
-        # Extract partition field
-        partition_elem = root.find(".//partition")
-        if partition_elem is not None:
-            context.partition_field = get_attribute(partition_elem, "field")
+        # Extract partition field from <partition field="...">
+        partition_match = re.search(r'<partition[^>]+field\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+        if partition_match:
+            context.partition_field = partition_match.group(1)
 
-        # Extract events
-        for command in root.findall(".//command"):
-            event = get_attribute(command, "event")
-            if event and hasattr(EventType, event.upper()):
+        # Extract events from <command event="...">
+        event_matches = re.finditer(r'<command[^>]+event\s*=\s*["\'](\w+)["\']', xml_content, re.IGNORECASE)
+        for match in event_matches:
+            event = match.group(1)
+            if hasattr(EventType, event.upper()):
                 context.events.append(EventType(event))
 
         return context
 
-    def _check_partition(self, root: etree._Element) -> bool:
-        """Check if file uses partition strategy."""
-        # Check for partition element
-        if root.find(".//partition") is not None:
+    def _check_partition_regex(self, xml_content: str) -> bool:
+        """Check if file uses partition strategy using REGEX."""
+        # Check for <partition> element
+        if re.search(r'<partition\b', xml_content, re.IGNORECASE):
             return True
 
-        # Check for partition placeholders in text
-        xml_str = etree.tostring(root, encoding="unicode")
+        # Check for partition placeholders
         partition_patterns = ["@@partition", "@@prime$partition", "@@master"]
 
-        return any(pattern in xml_str for pattern in partition_patterns)
+        return any(pattern in xml_content for pattern in partition_patterns)

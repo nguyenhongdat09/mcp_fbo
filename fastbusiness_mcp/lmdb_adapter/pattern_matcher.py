@@ -2,12 +2,13 @@
 
 This module provides intelligent field name pattern detection and template-based
 field generation with automatic substitution of field names and headers.
+
+Uses REGEX ONLY - NO XML libraries.
 """
 
 import re
 import logging
 from typing import Dict, Optional, Tuple, List
-from lxml import etree
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ class FieldPatternMatcher:
     def _substitute_in_xml(self, xml_str: str, old_field: str, new_field: str,
                           old_header: str, new_header: str) -> str:
         """
-        Substitute field name and header in XML string
+        Substitute field name and header in XML string using REGEX
 
         Args:
             xml_str: XML string
@@ -238,30 +239,29 @@ class FieldPatternMatcher:
         Returns:
             XML string with substitutions
         """
-        try:
-            # Parse XML
-            root = etree.fromstring(xml_str.encode('utf-8'))
+        result = xml_str
 
-            # Substitute field attribute
-            if old_field and root.get('field') == old_field:
-                root.set('field', new_field)
+        # Substitute field attribute (handles both single and double quotes)
+        if old_field:
+            # Pattern: field="old_field" or field='old_field'
+            result = re.sub(
+                rf'field\s*=\s*["\']({re.escape(old_field)})["\']',
+                f'field="{new_field}"',
+                result,
+                flags=re.IGNORECASE
+            )
 
-            # Substitute header attribute
-            if old_header and root.get('header') == old_header:
-                root.set('header', new_header)
+        # Substitute header attribute (handles both single and double quotes)
+        if old_header:
+            # Pattern: header="old_header" or header='old_header'
+            result = re.sub(
+                rf'header\s*=\s*["\']({re.escape(old_header)})["\']',
+                f'header="{new_header}"',
+                result,
+                flags=re.IGNORECASE
+            )
 
-            # Return serialized XML
-            return etree.tostring(root, encoding='unicode', pretty_print=True)
-
-        except Exception as e:
-            logger.error(f"Error substituting in XML: {e}")
-            # Fallback to simple string replacement
-            result = xml_str
-            if old_field:
-                result = result.replace(f'field="{old_field}"', f'field="{new_field}"')
-            if old_header:
-                result = result.replace(f'header="{old_header}"', f'header="{new_header}"')
-            return result
+        return result
 
     def search_similar_fields(self, context_type: str, field_name: str,
                              limit: int = 10) -> List[Dict]:

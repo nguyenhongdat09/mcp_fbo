@@ -1,31 +1,22 @@
-"""FastBusiness XML Parser for Field Definitions
+"""FastBusiness XML Parser for Field Definitions using REGEX ONLY
 
 This module parses FastBusiness XML files to extract field definitions
-for storage in LMDB database.
+for storage in LMDB database - using PURE REGEX, NO XML libraries.
 """
 
 import logging
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
-from lxml import etree
 
 logger = logging.getLogger(__name__)
 
 
 class FastBusinessXMLParser:
-    """Parser for FastBusiness XML files to extract field definitions"""
+    """Parser for FastBusiness XML files to extract field definitions using REGEX"""
 
     # Context types to extract from XML
     CONTEXT_TYPES = ['DIR', 'FILTER_VOUCHER', 'FILTER_NORMAL', 'GRID_VIEW', 'GRID_INPUT']
-
-    # XPath patterns for finding fields in different contexts
-    FIELD_XPATHS = {
-        'DIR': './/DIR//field',
-        'FILTER_VOUCHER': './/FILTER[@type="VOUCHER"]//field',
-        'FILTER_NORMAL': './/FILTER[@type="NORMAL"]//field',
-        'GRID_VIEW': './/GRID_VIEW//field',
-        'GRID_INPUT': './/GRID_INPUT//field',
-    }
 
     def __init__(self):
         """Initialize XML parser"""
@@ -37,7 +28,7 @@ class FastBusinessXMLParser:
 
     def parse_file(self, xml_path: str) -> Dict[str, List[Dict]]:
         """
-        Parse XML file and extract field definitions
+        Parse XML file and extract field definitions using REGEX
 
         Args:
             xml_path: Path to XML file
@@ -57,22 +48,19 @@ class FastBusinessXMLParser:
             return {}
 
         try:
-            # Parse XML file with XInclude disabled to avoid external file errors
-            parser = etree.XMLParser(
-                load_dtd=False,
-                no_network=True,
-                resolve_entities=False,
-                remove_blank_text=True
-            )
-            tree = etree.parse(str(xml_path), parser)
-            root = tree.getroot()
+            # Read file content
+            with open(xml_path, 'r', encoding='utf-8') as f:
+                xml_content = f.read()
+
+            # Clean XML (remove DOCTYPE, ENTITY, XInclude)
+            xml_content = self._clean_xml(xml_content)
 
             # Extract fields by context type
             results = {}
             total_fields = 0
 
             for context_type in self.CONTEXT_TYPES:
-                fields = self._extract_fields(root, context_type)
+                fields = self._extract_fields_regex(xml_content, context_type)
                 if fields:
                     results[context_type] = fields
                     total_fields += len(fields)
@@ -84,126 +72,172 @@ class FastBusinessXMLParser:
             logger.info(f"✓ Parsed {xml_path.name}: {total_fields} fields")
             return results
 
-        except etree.XMLSyntaxError as e:
-            logger.error(f"XML syntax error in {xml_path}: {e}")
-            self.stats['errors'] += 1
-            return {}
         except Exception as e:
             logger.error(f"Error parsing {xml_path}: {e}")
             self.stats['errors'] += 1
             return {}
 
-    def _extract_fields(self, root: etree.Element, context_type: str) -> List[Dict]:
+    def _clean_xml(self, xml_content: str) -> str:
         """
-        Extract field definitions from specific context type
+        Clean XML content by removing problematic parts
 
         Args:
-            root: XML root element
+            xml_content: Raw XML content
+
+        Returns:
+            Cleaned XML content
+        """
+        # Remove XML declaration
+        cleaned = re.sub(r'<\?xml[^>]*\?>', '', xml_content)
+
+        # Remove DOCTYPE with all its content (including ENTITY declarations)
+        cleaned = re.sub(r'<!DOCTYPE[^>]*(?:\[.*?\])?>', '', cleaned, flags=re.DOTALL)
+
+        # Remove ENTITY declarations
+        cleaned = re.sub(r'<!ENTITY\s+\w+\s+.*?>', '', cleaned, flags=re.DOTALL)
+
+        # Remove XInclude tags (these cause errors)
+        cleaned = re.sub(r'<xi:include[^>]*/?>', '', cleaned, flags=re.IGNORECASE)
+
+        # Remove comments
+        cleaned = re.sub(r'<!--.*?-->', '', cleaned, flags=re.DOTALL)
+
+        return cleaned
+
+    def _extract_fields_regex(self, xml_content: str, context_type: str) -> List[Dict]:
+        """
+        Extract field definitions from specific context type using REGEX
+
+        Args:
+            xml_content: Cleaned XML content
             context_type: Context type (DIR, FILTER_VOUCHER, etc.)
 
         Returns:
             List of field definitions
         """
-        xpath = self.FIELD_XPATHS.get(context_type)
-        if not xpath:
-            return []
-
         fields = []
-        field_elements = root.xpath(xpath)
 
-        for field_elem in field_elements:
-            field_def = self._parse_field_element(field_elem)
-            if field_def:
-                fields.append(field_def)
+        # Define regex patterns for each context type
+        if context_type == 'DIR':
+            # Find <DIR>...</DIR> section
+            dir_match = re.search(r'<DIR\b[^>]*>(.*?)</DIR>', xml_content, re.DOTALL | re.IGNORECASE)
+            if dir_match:
+                section_content = dir_match.group(1)
+                fields = self._extract_field_elements(section_content)
+
+        elif context_type == 'FILTER_VOUCHER':
+            # Find <FILTER type="VOUCHER">...</FILTER> section
+            filter_match = re.search(r'<FILTER\s+type\s*=\s*["\']VOUCHER["\'][^>]*>(.*?)</FILTER>', xml_content, re.DOTALL | re.IGNORECASE)
+            if filter_match:
+                section_content = filter_match.group(1)
+                fields = self._extract_field_elements(section_content)
+
+        elif context_type == 'FILTER_NORMAL':
+            # Find <FILTER type="NORMAL">...</FILTER> section
+            filter_match = re.search(r'<FILTER\s+type\s*=\s*["\']NORMAL["\'][^>]*>(.*?)</FILTER>', xml_content, re.DOTALL | re.IGNORECASE)
+            if filter_match:
+                section_content = filter_match.group(1)
+                fields = self._extract_field_elements(section_content)
+
+        elif context_type == 'GRID_VIEW':
+            # Find <GRID_VIEW>...</GRID_VIEW> section
+            grid_match = re.search(r'<GRID_VIEW\b[^>]*>(.*?)</GRID_VIEW>', xml_content, re.DOTALL | re.IGNORECASE)
+            if grid_match:
+                section_content = grid_match.group(1)
+                fields = self._extract_field_elements(section_content)
+
+        elif context_type == 'GRID_INPUT':
+            # Find <GRID_INPUT>...</GRID_INPUT> section
+            grid_match = re.search(r'<GRID_INPUT\b[^>]*>(.*?)</GRID_INPUT>', xml_content, re.DOTALL | re.IGNORECASE)
+            if grid_match:
+                section_content = grid_match.group(1)
+                fields = self._extract_field_elements(section_content)
 
         return fields
 
-    def _parse_field_element(self, elem: etree.Element) -> Optional[Dict]:
+    def _extract_field_elements(self, section_content: str) -> List[Dict]:
         """
-        Parse a single field element into a field definition
+        Extract individual field elements from a section
 
         Args:
-            elem: Field XML element
+            section_content: Content of a section (DIR, FILTER, GRID, etc.)
 
         Returns:
-            Field definition dict with 'field_name' and 'definition' keys
+            List of field definitions
         """
-        # Get field name from 'field' attribute
-        field_name = elem.get('field')
-        if not field_name:
-            logger.warning(f"Field element missing 'field' attribute: {etree.tostring(elem, encoding='unicode')[:100]}")
-            return None
+        fields = []
 
-        # Extract all attributes
-        attributes = dict(elem.attrib)
+        # Pattern to match field tags (self-closing or with closing tag)
+        # Matches: <field .../>  or  <field ...>...</field>
+        # Also matches variations: <Field>, <FIELD>, <column>, <item>
+        field_patterns = [
+            r'<field\b([^>]*?)/>',  # Self-closing <field ... />
+            r'<field\b([^>]*?)>(.*?)</field>',  # With closing tag <field>...</field>
+            r'<column\b([^>]*?)/>',  # Alternative: <column />
+            r'<column\b([^>]*?)>(.*?)</column>',  # <column>...</column>
+            r'<item\b([^>]*?)/>',  # Alternative: <item />
+            r'<item\b([^>]*?)>(.*?)</item>',  # <item>...</item>
+        ]
 
-        # Extract child elements
-        children = {}
-        for child in elem:
-            tag = child.tag
-            # Handle multiple children with same tag
-            if tag in children:
-                if not isinstance(children[tag], list):
-                    children[tag] = [children[tag]]
-                children[tag].append(self._element_to_dict(child))
-            else:
-                children[tag] = self._element_to_dict(child)
+        for pattern in field_patterns:
+            for match in re.finditer(pattern, section_content, re.DOTALL | re.IGNORECASE):
+                attributes_str = match.group(1)
 
-        # Build field definition
-        definition = {
-            'field_name': field_name,
-            'attributes': attributes,
-            'children': children if children else None,
-            'xml': etree.tostring(elem, encoding='unicode', pretty_print=True)
-        }
+                # Extract attributes from the attributes string
+                attributes = self._extract_attributes(attributes_str)
 
-        # Extract common attributes to top level for easier access
-        if 'header' in attributes:
-            definition['header'] = attributes['header']
-        if 'type' in attributes:
-            definition['type'] = attributes['type']
-        if 'width' in attributes:
-            definition['width'] = attributes['width']
+                # Get field name from 'field' or 'name' attribute
+                field_name = attributes.get('field') or attributes.get('name')
 
-        return {
-            'field_name': field_name,
-            'definition': definition
-        }
+                if not field_name:
+                    continue  # Skip if no field name
 
-    def _element_to_dict(self, elem: etree.Element) -> Dict:
+                # Get the full tag content (for XML storage)
+                full_tag = match.group(0)
+
+                # Build field definition
+                definition = {
+                    'field_name': field_name,
+                    'attributes': attributes,
+                    'xml': full_tag
+                }
+
+                # Extract common attributes to top level
+                if 'header' in attributes:
+                    definition['header'] = attributes['header']
+                if 'type' in attributes:
+                    definition['type'] = attributes['type']
+                if 'width' in attributes:
+                    definition['width'] = attributes['width']
+
+                fields.append({
+                    'field_name': field_name,
+                    'definition': definition
+                })
+
+        return fields
+
+    def _extract_attributes(self, attributes_str: str) -> Dict[str, str]:
         """
-        Convert XML element to dictionary
+        Extract all attributes from an attributes string
 
         Args:
-            elem: XML element
+            attributes_str: String containing attributes (e.g., 'field="ma_kh" header="Mã KH"')
 
         Returns:
-            Dictionary representation
+            Dictionary of attribute name -> value
         """
-        result = {}
+        attributes = {}
 
-        # Add attributes
-        if elem.attrib:
-            result['@attributes'] = dict(elem.attrib)
+        # Pattern: name="value" or name='value'
+        pattern = r'(\w+)\s*=\s*["\']([^"\']*)["\']'
 
-        # Add text content
-        if elem.text and elem.text.strip():
-            result['@text'] = elem.text.strip()
+        for match in re.finditer(pattern, attributes_str):
+            attr_name = match.group(1)
+            attr_value = match.group(2)
+            attributes[attr_name] = attr_value
 
-        # Add children
-        for child in elem:
-            tag = child.tag
-            child_dict = self._element_to_dict(child)
-
-            if tag in result:
-                # Multiple children with same tag → make it a list
-                if not isinstance(result[tag], list):
-                    result[tag] = [result[tag]]
-                result[tag].append(child_dict)
-            else:
-                result[tag] = child_dict
-
-        return result
+        return attributes
 
     def parse_directory(self, dir_path: str, pattern: str = "*.xml") -> Dict[str, List[Dict]]:
         """

@@ -1,12 +1,10 @@
-"""XML parsing and manipulation utilities with robust entity handling."""
+"""XML parsing and manipulation utilities using REGEX only (NO XML libraries)."""
 
 import re
-from typing import Optional, Union
-from lxml import etree
-import xml.etree.ElementTree as ET
+from typing import Optional, Dict, List, Tuple
 
 
-def extract_cdata_content(xml_content: str) -> list[tuple[str, str, int]]:
+def extract_cdata_content(xml_content: str) -> List[Tuple[str, str, int]]:
     """
     Extract CDATA sections from XML content.
 
@@ -59,73 +57,6 @@ def extract_cdata_content(xml_content: str) -> list[tuple[str, str, int]]:
                 cdata_content.append(line)
 
     return cdata_blocks
-
-
-def parse_xml_safe(xml_content: str, remove_entities: bool = True) -> Optional[etree._Element]:
-    """
-    Safely parse XML content with multiple fallback strategies.
-
-    This handles FastBusiness XML files with many ENTITY declarations.
-
-    Args:
-        xml_content: XML string
-        remove_entities: Whether to remove ENTITY declarations before parsing
-
-    Returns:
-        Parsed XML element or None if parsing fails
-    """
-    # Strategy 1: Try with entity removal (fastest for FastBusiness files)
-    if remove_entities:
-        try:
-            cleaned_xml = remove_entity_declarations(xml_content)
-            parser = etree.XMLParser(
-                recover=True,
-                remove_blank_text=True,
-                resolve_entities=False,
-                no_network=True
-            )
-            root = etree.fromstring(cleaned_xml.encode("utf-8"), parser)
-            return root
-        except Exception:
-            pass
-
-    # Strategy 2: Try lxml with recovery mode
-    try:
-        parser = etree.XMLParser(
-            recover=True,
-            remove_blank_text=True,
-            resolve_entities=False,
-            no_network=True,
-            load_dtd=False,
-            dtd_validation=False
-        )
-        root = etree.fromstring(xml_content.encode("utf-8"), parser)
-        return root
-    except Exception:
-        pass
-
-    # Strategy 3: Try built-in ElementTree (more lenient)
-    try:
-        # Remove DOCTYPE and ENTITY for ElementTree
-        cleaned = remove_doctype_and_entities(xml_content)
-        root = ET.fromstring(cleaned)
-        # Convert to lxml element for compatibility
-        return etree.fromstring(ET.tostring(root, encoding="unicode").encode("utf-8"))
-    except Exception:
-        pass
-
-    # Strategy 4: Parse only the main element without DOCTYPE
-    try:
-        # Extract main element (skip DOCTYPE)
-        main_element = extract_main_element(xml_content)
-        if main_element:
-            parser = etree.XMLParser(recover=True, resolve_entities=False)
-            root = etree.fromstring(main_element.encode("utf-8"), parser)
-            return root
-    except Exception:
-        pass
-
-    return None
 
 
 def remove_entity_declarations(xml_content: str) -> str:
@@ -182,94 +113,14 @@ def extract_main_element(xml_content: str) -> Optional[str]:
         Main element XML or None
     """
     # Find the main element start (dir, grid, report, etc.)
-    match = re.search(r'<(dir|grid|report|form)\b[^>]*>.*?</\1>', xml_content, re.DOTALL)
+    match = re.search(r'<(dir|grid|report|form)\b[^>]*>.*?</\1>', xml_content, re.DOTALL | re.IGNORECASE)
     if match:
         return match.group(0)
 
     return None
 
 
-def parse_xml_tolerant(xml_content: str) -> Optional[etree._Element]:
-    """
-    Parse XML with maximum tolerance for FastBusiness files.
-
-    This is specifically designed for FastBusiness XML with:
-    - Multiple ENTITY declarations
-    - SYSTEM references
-    - Complex DOCTYPE
-    - Nested structures
-
-    Args:
-        xml_content: XML string
-
-    Returns:
-        Parsed XML element or None
-    """
-    # First, try to extract entity mappings for later reference
-    entities = extract_entity_mappings(xml_content)
-
-    # Clean and parse
-    cleaned = remove_entity_declarations(xml_content)
-
-    # Try parsing with various strategies
-    for strategy in [
-        # Strategy 1: lxml with full recovery
-        lambda: _parse_lxml_full_recovery(cleaned),
-        # Strategy 2: lxml without DOCTYPE
-        lambda: _parse_lxml_no_doctype(xml_content),
-        # Strategy 3: Standard library
-        lambda: _parse_stdlib(cleaned),
-        # Strategy 4: Main element only
-        lambda: _parse_main_element_only(xml_content),
-    ]:
-        try:
-            result = strategy()
-            if result is not None:
-                return result
-        except Exception:
-            continue
-
-    return None
-
-
-def _parse_lxml_full_recovery(xml_content: str) -> Optional[etree._Element]:
-    """Parse with lxml full recovery mode."""
-    parser = etree.XMLParser(
-        recover=True,
-        remove_blank_text=True,
-        resolve_entities=False,
-        no_network=True,
-        load_dtd=False,
-        dtd_validation=False,
-        huge_tree=True
-    )
-    return etree.fromstring(xml_content.encode("utf-8"), parser)
-
-
-def _parse_lxml_no_doctype(xml_content: str) -> Optional[etree._Element]:
-    """Parse after removing DOCTYPE."""
-    cleaned = remove_doctype_and_entities(xml_content)
-    parser = etree.XMLParser(recover=True, resolve_entities=False)
-    return etree.fromstring(cleaned.encode("utf-8"), parser)
-
-
-def _parse_stdlib(xml_content: str) -> Optional[etree._Element]:
-    """Parse with standard library then convert to lxml."""
-    root = ET.fromstring(xml_content)
-    xml_str = ET.tostring(root, encoding="unicode")
-    return etree.fromstring(xml_str.encode("utf-8"))
-
-
-def _parse_main_element_only(xml_content: str) -> Optional[etree._Element]:
-    """Parse only main element."""
-    main = extract_main_element(xml_content)
-    if main:
-        parser = etree.XMLParser(recover=True, resolve_entities=False)
-        return etree.fromstring(main.encode("utf-8"), parser)
-    return None
-
-
-def extract_entity_mappings(xml_content: str) -> dict[str, str]:
+def extract_entity_mappings(xml_content: str) -> Dict[str, str]:
     """
     Extract ENTITY declarations for reference.
 
@@ -292,59 +143,80 @@ def extract_entity_mappings(xml_content: str) -> dict[str, str]:
     return entities
 
 
-def get_element_text(element: Union[etree._Element, ET.Element], xpath: str, default: str = "") -> str:
+def extract_tag_content(xml_content: str, tag_name: str) -> List[str]:
     """
-    Safely get text content from XML element using XPath.
-
-    Compatible with both lxml and standard library elements.
+    Extract content of all tags with given name using regex.
 
     Args:
-        element: XML element (lxml or stdlib)
-        xpath: XPath expression
-        default: Default value if not found
+        xml_content: XML string
+        tag_name: Tag name to find
 
     Returns:
-        Text content or default
+        List of tag contents (including the tag itself)
     """
-    try:
-        if isinstance(element, etree._Element):
-            # lxml element
-            result = element.xpath(xpath)
-            if result and isinstance(result[0], str):
-                return result[0]
-            elif result and hasattr(result[0], "text"):
-                return result[0].text or default
-        else:
-            # Standard library element - use find
-            elem = element.find(xpath.replace('//', './').replace('/', './'))
-            if elem is not None and elem.text:
-                return elem.text
-        return default
-    except Exception:
-        return default
+    pattern = rf'<{tag_name}\b[^>]*>.*?</{tag_name}>'
+    matches = re.findall(pattern, xml_content, re.DOTALL | re.IGNORECASE)
+    return matches
 
 
-def get_attribute(element: Union[etree._Element, ET.Element], attr: str, default: str = "") -> str:
+def extract_tag_attribute(tag_content: str, attr_name: str) -> Optional[str]:
     """
-    Safely get attribute value from XML element.
-
-    Compatible with both lxml and standard library elements.
+    Extract attribute value from a tag string.
 
     Args:
-        element: XML element
-        attr: Attribute name
-        default: Default value if not found
+        tag_content: Tag string (e.g., '<field name="ma_kh" header="Mã KH"/>')
+        attr_name: Attribute name
 
     Returns:
-        Attribute value or default
+        Attribute value or None
     """
-    try:
-        return element.get(attr, default)
-    except Exception:
-        return default
+    # Pattern: attr_name="value" or attr_name='value'
+    pattern = rf'{attr_name}\s*=\s*["\']([^"\']*)["\']'
+    match = re.search(pattern, tag_content)
+    if match:
+        return match.group(1)
+    return None
 
 
-def find_hardcoded_partitions(sql: str) -> list[tuple[str, int]]:
+def extract_all_tag_attributes(tag_content: str) -> Dict[str, str]:
+    """
+    Extract all attributes from a tag string.
+
+    Args:
+        tag_content: Tag string
+
+    Returns:
+        Dictionary of attribute name -> value
+    """
+    attributes = {}
+
+    # Pattern: name="value" or name='value'
+    pattern = r'(\w+)\s*=\s*["\']([^"\']*)["\']'
+
+    for match in re.finditer(pattern, tag_content):
+        attr_name = match.group(1)
+        attr_value = match.group(2)
+        attributes[attr_name] = attr_value
+
+    return attributes
+
+
+def find_elements_by_regex(xml_content: str, pattern: str) -> List[str]:
+    """
+    Find all XML elements matching a regex pattern.
+
+    Args:
+        xml_content: XML string
+        pattern: Regex pattern
+
+    Returns:
+        List of matching element strings
+    """
+    matches = re.findall(pattern, xml_content, re.DOTALL | re.IGNORECASE)
+    return matches
+
+
+def find_hardcoded_partitions(sql: str) -> List[Tuple[str, int]]:
     """
     Find hardcoded partition tables in SQL.
 
@@ -365,7 +237,7 @@ def find_hardcoded_partitions(sql: str) -> list[tuple[str, int]]:
     return findings
 
 
-def is_valid_xml_structure(xml_content: str) -> tuple[bool, str]:
+def is_valid_xml_structure(xml_content: str) -> Tuple[bool, str]:
     """
     Check if XML has valid basic structure.
 
@@ -380,7 +252,7 @@ def is_valid_xml_structure(xml_content: str) -> tuple[bool, str]:
         return False, "Empty XML content"
 
     # Check for main element
-    if not re.search(r'<(dir|grid|report|form)\b', xml_content):
+    if not re.search(r'<(dir|grid|report|form)\b', xml_content, re.IGNORECASE):
         return False, "No main element found (dir, grid, report, form)"
 
     # Try to count opening/closing tags roughly
@@ -392,3 +264,26 @@ def is_valid_xml_structure(xml_content: str) -> tuple[bool, str]:
         return False, f"Tag mismatch: {opening_tags} opening vs {closing_tags} closing"
 
     return True, "Structure appears valid"
+
+
+def replace_tag_attribute(xml_content: str, tag_pattern: str, attr_name: str, new_value: str) -> str:
+    """
+    Replace attribute value in matching tags.
+
+    Args:
+        xml_content: XML string
+        tag_pattern: Regex pattern to match tags
+        attr_name: Attribute name to replace
+        new_value: New attribute value
+
+    Returns:
+        XML string with replaced attributes
+    """
+    def replace_attr(match):
+        tag_content = match.group(0)
+        # Replace attribute value
+        attr_pattern = rf'{attr_name}\s*=\s*["\']([^"\']*)["\']'
+        replaced = re.sub(attr_pattern, f'{attr_name}="{new_value}"', tag_content)
+        return replaced
+
+    return re.sub(tag_pattern, replace_attr, xml_content, flags=re.DOTALL | re.IGNORECASE)
