@@ -69,7 +69,7 @@ grid_api:
           var value = g._getItemValue(currentRow, colMaVT);
 
     row_count:
-      syntax: "g._rows.length"
+      syntax: "g._rowCount"
       returns: "number"
       description: "Total number of rows"
       examples:
