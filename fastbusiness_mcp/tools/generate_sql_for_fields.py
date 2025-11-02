@@ -48,16 +48,20 @@ class GenerateSQLForFieldsTool:
         if re.match(r'^ngay_', field_name) or re.search(r'_date$', field_name):
             return 'smalldatetime'
 
+        # Check so_luong patterns - EXPANDED to include sl_ prefix and _sl suffix
+        # sl_nhap, sl_xuat, sl_ton, so_luong, tong_sl, etc.
+        if (re.match(r'^so_luong', field_name) or
+            re.match(r'^sl_', field_name) or  # NEW: sl_nhap, sl_xuat
+            re.search(r'_luong$', field_name) or
+            re.search(r'_sl$', field_name)):
+            return 'numeric(19,4)'
+
         # Check tien patterns (NO _nt)
         if re.match(r'^tien', field_name) or re.search(r'_tien$', field_name) or re.match(r'^t_', field_name):
             return 'numeric(19,4)'
 
         # Check gia patterns
         if re.match(r'^gia', field_name) or 'don_gia' in field_name or 'ty_gia' in field_name:
-            return 'numeric(19,4)'
-
-        # Check so_luong patterns
-        if re.match(r'^so_luong', field_name) or re.search(r'_luong$', field_name) or re.search(r'_sl$', field_name):
             return 'numeric(19,4)'
 
         # Check int patterns
@@ -133,6 +137,30 @@ class GenerateSQLForFieldsTool:
 
         return field_name
 
+    def _extract_table_from_xml(self, xml_content: str) -> Optional[str]:
+        """
+        Extract table name from XML content (GRID_INPUT or DIR only)
+
+        Args:
+            xml_content: XML file content
+
+        Returns:
+            Table name (e.g., 'd31$', 'm31$') or None
+        """
+        # Check for <grid table="...">
+        grid_match = re.search(r'<grid\b[^>]*\btable\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+        if grid_match:
+            table_name = grid_match.group(1)
+            return self._normalize_table_name(table_name)
+
+        # Check for <dir table="...">
+        dir_match = re.search(r'<dir\b[^>]*\btable\s*=\s*["\']([^"\']+)["\']', xml_content, re.IGNORECASE)
+        if dir_match:
+            table_name = dir_match.group(1)
+            return self._normalize_table_name(table_name)
+
+        return None
+
     def _extract_master_table_from_field(self, field_name: str) -> Optional[str]:
         """
         Extract master table name from field pattern (e.g., ma_kh → dmkh)
@@ -160,7 +188,8 @@ class GenerateSQLForFieldsTool:
         Args:
             arguments: Tool arguments
                 - field_names: List of field names (required)
-                - tables: List of table names (required)
+                - tables: List of table names (optional if xml_content provided)
+                - xml_content: XML content to auto-extract table name (optional)
                 - create_master_table: Whether to generate master table creation (optional, default=False)
 
         Returns:
@@ -169,6 +198,7 @@ class GenerateSQLForFieldsTool:
         # Extract arguments
         field_names = arguments.get('field_names', [])
         tables = arguments.get('tables', [])
+        xml_content = arguments.get('xml_content', '')
         create_master_table = arguments.get('create_master_table', False)
 
         # Validate arguments
@@ -178,10 +208,22 @@ class GenerateSQLForFieldsTool:
                 'error': 'field_names is required (list of strings)'
             }
 
+        # Auto-extract table from XML if not provided
+        if not tables and xml_content:
+            extracted_table = self._extract_table_from_xml(xml_content)
+            if extracted_table:
+                tables = [extracted_table]
+                logger.info(f"Auto-extracted table from XML: {extracted_table}")
+            else:
+                return {
+                    'success': False,
+                    'error': 'Could not extract table name from XML content. Please provide tables parameter.'
+                }
+
         if not tables:
             return {
                 'success': False,
-                'error': 'tables is required (list of table names)'
+                'error': 'tables is required (list of table names) or provide xml_content to auto-extract'
             }
 
         if not isinstance(field_names, list):

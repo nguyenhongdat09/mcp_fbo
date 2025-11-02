@@ -188,6 +188,11 @@ The tool will:
 
 Generates `fsd_addfields` SQL commands with automatic SQL type detection and partitioned table support.
 
+AUTO-EXTRACT TABLE FROM XML (RECOMMENDED):
+- Provide xml_content to auto-extract table from <grid table="..."> or <dir table="...">
+- Works for GRID_INPUT and DIR contexts only
+- No need to manually specify tables parameter!
+
 CRITICAL RULES:
 - If XML table has $ (e.g., d91$000000) → Preserve $ in SQL: exec fsd_addfields 'd91$', ...
 - If XML table has NO $ (e.g., dmvt) → Don't add $: exec fsd_addfields 'dmvt', ...
@@ -197,39 +202,33 @@ SQL TYPE AUTO-DETECTION:
 - ten_*, ghi_chu → nvarchar(256)
 - ngay_* → smalldatetime
 - tien*, *_nt → numeric(19,4)
-- so_luong, *_sl → numeric(19,4)
+- so_luong, sl_*, *_sl → numeric(19,4)  (INCLUDES sl_nhap, sl_xuat!)
 - thang, nam → int
 - status → tinyint
 - *%l → nvarchar(256)
 
 EXAMPLES:
-1. Partitioned table:
+1. Auto-extract from XML (RECOMMENDED):
+   field_names=['sl_nhap', 'sl_xuat']
+   xml_content='<grid table="d31$000000">...</grid>'
+   →
+   Auto-extracts: d31$
+   exec fsd_addfields 'd31$', 'sl_nhap', 'numeric(19,4)'
+   exec fsd_addfields 'd31$', 'sl_xuat', 'numeric(19,4)'
+
+2. Manual tables (if XML not available):
    field_names=['ma_bo_phan', 'ten_bo_phan%l']
    tables=['d91$000000']
    →
    exec fsd_addfields 'd91$', 'ma_bo_phan', 'varchar(33)'
    exec fsd_addfields 'd91$', 'ten_bo_phan%l', 'nvarchar(256)'
 
-2. Non-partitioned table:
-   field_names=['ma_bo_phan']
-   tables=['dmvt']
-   →
-   exec fsd_addfields 'dmvt', 'ma_bo_phan', 'varchar(33)'
-
-3. Multiple tables:
-   field_names=['so_luong', 'tien_nt']
-   tables=['d91$000000', 'm91$000000']
-   →
-   exec fsd_addfields 'd91$', 'so_luong', 'numeric(19,4)'
-   exec fsd_addfields 'd91$', 'tien_nt', 'numeric(19,4)'
-   exec fsd_addfields 'm91$', 'so_luong', 'numeric(19,4)'
-   exec fsd_addfields 'm91$', 'tien_nt', 'numeric(19,4)'
-
 The tool will:
-1. Auto-detect SQL type from field name pattern
-2. Preserve $ suffix if table is partitioned
-3. Strip lookup suffixes (t, lk) from field names
-4. Optionally generate master table creation for lookup fields
+1. Auto-extract table from XML (if xml_content provided)
+2. Auto-detect SQL type from field name pattern
+3. Preserve $ suffix if table is partitioned
+4. Strip lookup suffixes (t, lk) from field names
+5. Optionally generate master table creation for lookup fields
 """,
                     inputSchema={
                         "type": "object",
@@ -237,19 +236,23 @@ The tool will:
                             "field_names": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of field names to add (e.g., ['ma_kh', 'ten_kh%l', 'so_luong'])",
+                                "description": "List of field names to add (e.g., ['ma_kh', 'ten_kh%l', 'sl_nhap'])",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "XML content to auto-extract table name from <grid> or <dir> (recommended for GRID_INPUT/DIR)",
                             },
                             "tables": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "List of table names (e.g., ['d91$000000', 'm91$000000'] or ['dmvt'])",
+                                "description": "Manual list of table names (optional if xml_content provided)",
                             },
                             "create_master_table": {
                                 "type": "boolean",
                                 "description": "Generate master table creation for lookup fields (default: false)",
                             },
                         },
-                        "required": ["field_names", "tables"],
+                        "required": ["field_names"],
                     },
                 ),
             ]
