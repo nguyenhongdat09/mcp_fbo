@@ -1,0 +1,288 @@
+# GRID API REFERENCE (g.xxx)
+# Sử dụng trong: Grid Detail, Grid View
+
+grid_api:
+
+  description: |
+    Grid API dùng để thao tác với grid cells.
+    Object chính: g (grid object)
+
+    CRITICAL RULES:
+    - Grid Detail: MUST get parent form first! var f = g.get_element().parentForm
+    - Grid View: NO parent form access, only g.xxx
+
+  # ============================================
+  # GET / SET CELL VALUES
+  # ============================================
+
+  cell_operations:
+
+    get_item_value:
+      syntax: "g._getItemValue(row, col)"
+      returns: "any"
+      description: "Lấy giá trị cell trong grid"
+      parameters:
+        - name: "row"
+          type: "number"
+          description: "Row index (0-based)"
+        - name: "col"
+          type: "number"
+          description: "Column index (0-based)"
+      examples:
+        basic: |
+          var row = g._activeRow;
+          var col = g._getColumnOrder('ma_vt');
+          var maVT = g._getItemValue(row, col);
+
+    set_item_value:
+      syntax: "g._setItemValue(row, col, value)"
+      description: "Gán giá trị cho cell trong grid"
+      examples:
+        basic: |
+          var row = g._activeRow;
+          var col = g._getColumnOrder('so_luong');
+          g._setItemValue(row, col, 100);
+
+    get_column_order:
+      syntax: "g._getColumnOrder(fieldName)"
+      returns: "number"
+      description: "Lấy column index từ field name"
+      examples:
+        basic: |
+          var colMaVT = g._getColumnOrder('ma_vt');
+          var colSoLuong = g._getColumnOrder('so_luong');
+
+  # ============================================
+  # GRID STATE
+  # ============================================
+
+  grid_state:
+
+    active_row:
+      syntax: "g._activeRow"
+      returns: "number"
+      description: "Current active row index"
+      examples:
+        basic: |
+          var currentRow = g._activeRow;
+          var colMaVT = g._getColumnOrder('ma_vt');
+          var value = g._getItemValue(currentRow, colMaVT);
+
+    row_count:
+      syntax: "g._rows.length"
+      returns: "number"
+      description: "Total number of rows"
+      examples:
+        basic: |
+          var totalRows = g._rows.length;
+
+  # ============================================
+  # ROW OPERATIONS
+  # ============================================
+
+  row_operations:
+
+    append_row:
+      syntax: "g._appendRow(data, focus)"
+      description: "Thêm row mới vào cuối grid"
+      parameters:
+        - name: "data"
+          type: "object | null"
+          description: "Row data object or null"
+        - name: "focus"
+          type: "boolean"
+          description: "Focus to new row"
+      examples:
+        basic: |
+          g._appendRow(null, true);  // Add empty row and focus
+
+    delete_row:
+      syntax: "g._deleteRow(row)"
+      description: "Xóa row"
+      parameters:
+        - name: "row"
+          type: "number"
+          description: "Row index to delete"
+      examples:
+        current: |
+          var row = g._activeRow;
+          g._deleteRow(row);
+
+  # ============================================
+  # PARENT FORM ACCESS (Grid Detail ONLY)
+  # ============================================
+
+  parent_access:
+
+    get_parent_form:
+      syntax: "g.get_element().parentForm"
+      returns: "Form object"
+      description: "Lấy parent form object từ grid detail"
+      critical: "MUST call this FIRST in Grid Detail scripts!"
+      examples:
+        basic: |
+          function load$GridAPDetail$(g) {
+              // CRITICAL: Get parent form FIRST!
+              var f = g.get_element().parentForm;
+
+              // Now can use both g.xxx and f.xxx
+              var tyGia = f.getItemValue('ty_gia');
+          }
+      note: "Only works in Grid Detail. Grid View has NO parent form!"
+
+  # ============================================
+  # CALCULATIONS & AGGREGATIONS
+  # ============================================
+
+  calculation_operations:
+
+    grid_calculation:
+      syntax: "g.$a = { ... }"
+      description: "Define grid calculations and aggregations"
+      examples:
+        basic: |
+          function load$GridAPDetail$(g) {
+              var f = g.get_element().parentForm;
+
+              g.$a = {
+                  // Calculate within grid
+                  tien: '[tien]:=[so_luong]*[gia]',
+
+                  // Use parent form field ($ prefix!)
+                  gia_vnd: '[gia_vnd]:=[gia_nt]*[$ty_gia]',
+
+                  // Aggregate to parent form
+                  t_tien: ['t_tien', 'tien']
+              };
+          }
+      critical_notes:
+        - "Parent form fields use $ prefix: [$field_name]"
+        - "Grid fields: [field_name]"
+        - "Aggregate format: ['parent_field', 'grid_field']"
+
+    execute_aggregate:
+      syntax: "g.executeAggregate([fields])"
+      description: "Trigger calculation/aggregation manually"
+      examples:
+        recalc: |
+          function onChange$Voucher$ty_gia(sender) {
+              var f = sender.parentForm;
+              var g = f.grid;
+
+              // Recalculate all rows
+              g.executeAggregate([g.$a.t_tien]);
+          }
+
+    grid_headers:
+      syntax: "g.$h"
+      description: "Define header fields for AJAX requests"
+      examples:
+        basic: |
+          g.$h = {
+              // Include parent form fields for server requests
+              ty_gia: '[$ty_gia]',
+              ngay_ct: '[$ngay_ct]'
+          };
+      note: "Use when grid AJAX needs parent form values"
+
+# ============================================
+# CONTEXT-SPECIFIC USAGE
+# ============================================
+
+context_usage:
+
+  grid_detail:
+    description: "Grid Detail (embedded in Form)"
+    must_do:
+      - "MUST get parent form first!"
+      - "Can use both g.xxx and f.xxx"
+      - "Parent fields use $ prefix in calculations"
+    example: |
+      function load$GridAPDetail$(g) {
+          // Step 1: Get parent form (CRITICAL!)
+          var f = g.get_element().parentForm;
+
+          // Step 2: Setup calculations
+          g.$a = {
+              tien: '[tien]:=[so_luong]*[gia]',
+              gia_vnd: '[gia_vnd]:=[gia_nt]*[$ty_gia]',
+              t_tien: ['t_tien', 'tien']
+          };
+      }
+
+      function onChange$Voucher$APDetail$so_luong(sender) {
+          var g = sender.grid;
+          var f = g.get_element().parentForm;
+
+          var row = g._activeRow;
+          var colSoLuong = g._getColumnOrder('so_luong');
+          var colGia = g._getColumnOrder('gia');
+          var colTien = g._getColumnOrder('tien');
+
+          var soLuong = g._getItemValue(row, colSoLuong);
+          var gia = g._getItemValue(row, colGia);
+
+          g._setItemValue(row, colTien, soLuong * gia);
+      }
+
+  grid_view:
+    description: "Grid View (standalone)"
+    must_do:
+      - "NO parent form access!"
+      - "Only use g.xxx API"
+    must_not:
+      - "var f = g.get_element().parentForm  // ❌ WRONG!"
+      - "f.getItemValue('field')  // ❌ WRONG!"
+    example: |
+      function load$Grid(g) {
+          // Only grid operations
+          var row = g._activeRow;
+          var col = g._getColumnOrder('ma_kh');
+          var value = g._getItemValue(row, col);
+
+          // NO parent form access!
+      }
+
+# ============================================
+# ANTI-PATTERNS
+# ============================================
+
+anti_patterns:
+
+  grid_view_parent_access:
+    wrong: |
+      function load$Grid(g) {
+          var f = g.get_element().parentForm;  // ❌ WRONG!
+          var value = f.getItemValue('ma_kh');   // ❌ WRONG!
+      }
+    reason: "Grid View has NO parent form!"
+    correct: |
+      function load$Grid(g) {
+          // Only use g.xxx API
+          var row = g._activeRow;
+          var col = g._getColumnOrder('ma_kh');
+          var value = g._getItemValue(row, col);
+      }
+
+  missing_parent_form:
+    wrong: |
+      function load$GridAPDetail$(g) {
+          var tyGia = f.getItemValue('ty_gia');  // ❌ f not defined!
+      }
+    reason: "Must get parent form first!"
+    correct: |
+      function load$GridAPDetail$(g) {
+          var f = g.get_element().parentForm;  // ✅ Get parent first
+          var tyGia = f.getItemValue('ty_gia');
+      }
+
+  parent_field_no_dollar:
+    wrong: |
+      g.$a = {
+          gia_vnd: '[gia_vnd]:=[gia_nt]*[ty_gia]'  // ❌ Missing $ prefix
+      };
+    reason: "Parent form fields need $ prefix"
+    correct: |
+      g.$a = {
+          gia_vnd: '[gia_vnd]:=[gia_nt]*[$ty_gia]'  // ✅ $ prefix for parent
+      };

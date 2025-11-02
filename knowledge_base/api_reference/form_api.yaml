@@ -1,0 +1,420 @@
+# FORM API REFERENCE (f.xxx)
+# Sử dụng trong: Dir (Form), Filter
+
+form_api:
+
+  description: |
+    Form API dùng để thao tác với form fields trong Dir và Filter files.
+    Object chính: f (form object)
+    Nhận object: Từ function parameter hoặc sender.parentForm
+
+  # ============================================
+  # GET / SET VALUES
+  # ============================================
+
+  value_operations:
+
+    get_item:
+      syntax: "f.getItem(name)"
+      returns: "Field object"
+      description: "Lấy đối tượng field trên Form"
+      use_when:
+        - "Cần access field properties (Hidden, ReadOnly, etc.)"
+        - "Cần add event listener"
+        - "Cần focus vào field"
+      examples:
+        basic: "var maKH = f.getItem('ma_kh');"
+        focus: "f.getItem('ma_kh').focus();"
+
+    get_item_value:
+      syntax: "f.getItemValue(name)"
+      returns: "any (number | Date | string | boolean)"
+      description: "Lấy giá trị của field (universal getter)"
+      use_when:
+        - "RECOMMENDED for all get operations"
+        - "Works for ALL field types"
+      examples:
+        number: "var soLuong = f.getItemValue('so_luong');"
+        date: "var ngayCT = f.getItemValue('ngay_ct');"
+        text: "var maKH = f.getItemValue('ma_kh');"
+      important: "Works for ALL field types, recommended universal getter"
+
+    set_item_value:
+      syntax: "f.setItemValue(name, value)"
+      description: "Gán giá trị cho field (universal setter)"
+      use_when:
+        - "ALWAYS use this for setting values"
+        - "Works for all field types"
+        - "Triggers change events properly"
+      examples:
+        text: "f.setItemValue('ma_kh', 'KH001');"
+        number: "f.setItemValue('so_luong', 100);"
+        date: "f.setItemValue('ngay_ct', new Date());"
+        multiple: |
+          if (f._action === 'New') {
+              f.setItemValue('ngay_ct', new Date());
+              f.setItemValue('status', 1);
+              f.setItemValue('ma_nt', 'VND');
+              f.setItemValue('ty_gia', 1);
+          }
+      anti_patterns:
+        - wrong: "f.fields.ma_kh = 'KH001';"
+          correct: "f.setItemValue('ma_kh', 'KH001');"
+        - wrong: "document.getElementById('ma_kh').value = 'KH001';"
+          correct: "f.setItemValue('ma_kh', 'KH001');"
+      important: "UNIVERSAL SETTER - Always use this, works for all types"
+
+  # ============================================
+  # FORM STATE
+  # ============================================
+
+  form_state:
+
+    get_action:
+      syntax: "f._action"
+      returns: "'New' | 'Edit' | 'View'"
+      description: "Lấy trạng thái hiện tại của Form"
+      possible_values:
+        - value: "New"
+          meaning: "Form đang ở chế độ thêm mới"
+        - value: "Edit"
+          meaning: "Form đang ở chế độ sửa"
+        - value: "View"
+          meaning: "Form đang ở chế độ xem (read-only)"
+      examples:
+        new_record: |
+          function active$Form$(f) {
+              if (f._action === 'New') {
+                  f.setItemValue('ngay_ct', new Date());
+                  f.setItemValue('status', 1);
+              }
+          }
+        skip_view: |
+          if (f._action === 'View') {
+              return;  // Don't process in view mode
+          }
+
+    get_fields:
+      syntax: "f._fields"
+      returns: "Array of field objects"
+      description: "Mảng tất cả các fields trên form"
+
+  # ============================================
+  # FOCUS OPERATIONS
+  # ============================================
+
+  focus_operations:
+
+    focus_field:
+      syntax: "f.getItem(name).focus()"
+      description: "Focus vào một field"
+      examples:
+        on_load: |
+          function active$Form$(f) {
+              f.getItem('ma_kh').focus();
+          }
+        after_validation: |
+          if (!maKH) {
+              alert('Chưa nhập mã khách hàng');
+              f.getItem('ma_kh').focus();
+              return;
+          }
+
+  # ============================================
+  # VALIDATION
+  # ============================================
+
+  validation_operations:
+
+    valid_fields:
+      syntax: "f.validFields('field1, field2, ...')"
+      returns: "boolean"
+      description: "Validate required fields (allowNulls=false)"
+      use_when:
+        - "Before processing data"
+        - "Before AJAX request"
+      examples:
+        single: |
+          if (!f.validFields('ma_kh')) {
+              return;  // Stop if invalid
+          }
+        multiple: |
+          if (!f.validFields('ma_kh, ngay_ct, so_luong')) {
+              return;  // Shows error on first invalid field
+          }
+      note: "Only validates fields with allowNulls=false. Shows alert and focuses on first invalid field."
+
+    set_readonly_fields:
+      syntax: "f.setReadOnlyFields('field1, field2')"
+      description: "Thiết lập read-only cho fields"
+      examples:
+        on_edit: |
+          if (f._action === 'Edit') {
+              f.setReadOnlyFields('ma_kh, ngay_ct');
+          }
+
+  # ============================================
+  # AJAX REQUEST
+  # ============================================
+
+  ajax_operations:
+
+    request:
+      syntax: "f.request(actionId, context, params, sender)"
+      description: "Gửi AJAX request tới server"
+      parameters:
+        - name: "actionId"
+          type: "string"
+          description: "ID của <action> trong <response>"
+        - name: "context"
+          type: "string"
+          description: "Context string để identify trong ResponseComplete"
+        - name: "params"
+          type: "string[]"
+          description: "Array field names to send as parameters"
+        - name: "sender"
+          type: "object"
+          description: "Current field object (this)"
+      workflow: |
+        1. Define <action> in <response> section of XML
+        2. Call f.request() to invoke action
+        3. Handle response in on$Form$ResponseComplete
+      examples:
+        load_customer: |
+          // In field onchange handler
+          function onChange$Voucher$ma_kh(sender) {
+              var f = sender.parentForm;
+              var maKH = f.getItemValue('ma_kh');
+
+              if (maKH) {
+                  f.request('GetCustomer', 'GetCustomer', ['ma_kh'], sender);
+              }
+          }
+
+          // In response handler
+          function on$Form$ResponseComplete(sender, e) {
+              var f = e.object;
+
+              if (e.type.Context === 'GetCustomer') {
+                  var result = e.type.Result;
+
+                  // CRITICAL: Access by INDEX!
+                  // SQL: select ma_kh, ten_kh, dia_chi, dien_thoai
+                  var tenKH = result[1].Value;      // Index 1 = ten_kh
+                  var diaChi = result[2].Value;     // Index 2 = dia_chi
+                  var dienThoai = result[3].Value;  // Index 3 = dien_thoai
+
+                  f.setItemValue('ten_kh', tenKH);
+                  f.setItemValue('dia_chi', diaChi);
+                  f.setItemValue('dien_thoai', dienThoai);
+              }
+          }
+      critical_notes:
+        - "Action ID must match <action id='...'> in XML"
+        - "Context is YOUR choice, use meaningful name"
+        - "Parameters sent as @param_name in SQL"
+        - "Response accessed by INDEX, not property name!"
+
+  # ============================================
+  # GRID ACCESS (from Form)
+  # ============================================
+
+  grid_access:
+
+    get_grid:
+      syntax: "f.grid"
+      returns: "Grid object"
+      description: "Lấy grid detail object từ form"
+      use_when:
+        - "Access grid detail from form script"
+        - "Add row from form"
+        - "Trigger grid calculation"
+      examples:
+        add_row: |
+          function active$Form$(f) {
+              if (f._action === 'New') {
+                  var g = f.grid;
+                  g._appendRow(null, true);
+              }
+          }
+        trigger_calc: |
+          function onChange$Voucher$ty_gia(sender) {
+              var f = sender.parentForm;
+              var g = f.grid;
+
+              // Recalc all rows
+              g.executeAggregate([g.$a.t_tien]);
+          }
+      note: "Only works if form has embedded grid detail. Returns undefined if no grid."
+
+  # ============================================
+  # BUTTON OPERATIONS
+  # ============================================
+
+  button_operations:
+
+    find_button:
+      syntax: "f._findButton(name)"
+      returns: "Button object"
+      description: "Lấy button object"
+      examples:
+        disable: |
+          var btnSave = f._findButton('Save');
+          btnSave.set_enabled(false);
+        conditional: |
+          var btnApprove = f._findButton('Approve');
+          var status = f.getItemValue('status');
+          btnApprove.set_enabled(status === 1);
+
+  # ============================================
+  # LOOKUP OPERATIONS
+  # ============================================
+
+  lookup_operations:
+
+    set_reference_key_filter:
+      syntax: "f.setReferenceKeyFilter(name)"
+      description: "Refresh lookup based on new filter condition"
+      use_when:
+        - "Lookup filter condition changed"
+        - "Need to reload lookup list"
+      examples:
+        reload_lookup: |
+          function onChange$Voucher$ma_bp(sender) {
+              var f = sender.parentForm;
+
+              // ma_nv lookup has condition: ma_bp = '{$%c[ma_bp]}'
+              // When ma_bp changes, reload ma_nv lookup
+              f.setReferenceKeyFilter('ma_nv');
+          }
+
+# ============================================
+# COMMON PATTERNS
+# ============================================
+
+common_patterns:
+
+  active_form_new:
+    description: "Set defaults khi mở form mới"
+    template: |
+      function active$Form$(f) {
+          if (f._action === 'New') {
+              // Set default values
+              f.setItemValue('ngay_ct', new Date());
+              f.setItemValue('status', 1);
+              f.setItemValue('ma_nt', 'VND');
+              f.setItemValue('ty_gia', 1);
+
+              // Focus to first field
+              f.getItem('ma_kh').focus();
+          }
+      }
+
+  load_data_onchange:
+    description: "Load dữ liệu khi field thay đổi"
+    template: |
+      // Field handler
+      function onChange$Voucher$ma_kh(sender) {
+          var f = sender.parentForm;
+
+          // Skip in view mode
+          if (f._action === 'View') {
+              return;
+          }
+
+          var maKH = f.getItemValue('ma_kh');
+
+          if (maKH) {
+              // Validate first
+              if (!f.validFields('ma_kh')) {
+                  return;
+              }
+
+              // Send request
+              f.request('GetCustomer', 'GetCustomer', ['ma_kh'], sender);
+          } else {
+              // Clear related fields
+              f.setItemValue('ten_kh', '');
+              f.setItemValue('dia_chi', '');
+          }
+      }
+
+      // Response handler
+      function on$Form$ResponseComplete(sender, e) {
+          var f = e.object;
+
+          if (e.type.Context === 'GetCustomer') {
+              var result = e.type.Result;
+
+              if (result && result.length > 0) {
+                  // Access by INDEX!
+                  // SQL: select ma_kh, ten_kh, dia_chi, dien_thoai
+                  var tenKH = result[1].Value;
+                  var diaChi = result[2].Value;
+                  var dienThoai = result[3].Value;
+
+                  f.setItemValue('ten_kh', tenKH);
+                  f.setItemValue('dia_chi', diaChi);
+                  f.setItemValue('dien_thoai', dienThoai);
+              } else {
+                  alert('Không tìm thấy khách hàng');
+                  f.getItem('ma_kh').focus();
+              }
+          }
+      }
+
+  calculate_form_field:
+    description: "Tính toán trên form field"
+    template: |
+      function onChange$Voucher$so_luong(sender) {
+          var f = sender.parentForm;
+
+          if (f._action === 'View') {
+              return;
+          }
+
+          var soLuong = f.getItemValue('so_luong');
+          var gia = f.getItemValue('gia');
+
+          var tien = soLuong * gia;
+
+          f.setItemValue('tien', tien);
+      }
+
+# ============================================
+# ANTI-PATTERNS (Things to NEVER do)
+# ============================================
+
+anti_patterns:
+
+  direct_field_access:
+    wrong: |
+      f.fields.ma_kh = 'KH001';
+      var value = f.fields.ma_kh;
+    reason: "Never access fields directly"
+    correct: |
+      f.setItemValue('ma_kh', 'KH001');
+      var value = f.getItemValue('ma_kh');
+
+  dom_manipulation:
+    wrong: |
+      document.getElementById('ma_kh').value = 'KH001';
+      jQuery('#ma_kh').val('KH001');
+    reason: "Never use DOM manipulation, breaks framework"
+    correct: |
+      f.setItemValue('ma_kh', 'KH001');
+
+  result_property_access:
+    wrong: |
+      function on$Form$ResponseComplete(sender, e) {
+          var result = e.type.Result;
+          var maKH = result[0].ma_kh;        // UNDEFINED!
+          var tenKH = result[0]['ten_kh'];   // UNDEFINED!
+      }
+    reason: "Results accessed by INDEX, not property name"
+    correct: |
+      function on$Form$ResponseComplete(sender, e) {
+          var result = e.type.Result;
+          var maKH = result[0].Value;   // Column 1
+          var tenKH = result[1].Value;  // Column 2
+      }
