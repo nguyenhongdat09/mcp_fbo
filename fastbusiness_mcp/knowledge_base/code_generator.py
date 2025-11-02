@@ -442,9 +442,25 @@ class CodeGenerator:
         if not self.knowledge_engine:
             return []
 
-        patterns = self.knowledge_engine.get_patterns_for_context(
-            context.get('file_type'),
-            context.get('grid_subtype')
-        )
+        # Construct context string from file_type and grid_subtype
+        file_type = context.get('file_type')
+        grid_subtype = context.get('grid_subtype')
+
+        # Map to pattern context strings
+        if file_type == 'Dir':
+            context_str = 'Form (Dir)'
+        elif file_type == 'Grid':
+            if grid_subtype == 'GridDetail':
+                context_str = 'Grid Detail'
+            elif grid_subtype == 'GridView':
+                context_str = 'Grid View'
+            else:
+                context_str = 'Grid'
+        elif file_type == 'Filter':
+            context_str = 'Form (Dir)'  # Filter uses same API as Form
+        else:
+            return []
+
+        patterns = self.knowledge_engine.get_patterns_for_context(context_str)
 
         return patterns
