@@ -10,6 +10,7 @@ from mcp.types import Resource, Tool, TextContent
 
 from .tools.generate_field_from_lmdb import GenerateFieldFromLMDBTool
 from .tools.generate_sql_for_fields import GenerateSQLForFieldsTool
+from .tools.code_assistant_tool import CodeAssistantTool
 from .utils.logger import setup_logger
 from .utils.file_utils import read_file
 
@@ -17,12 +18,12 @@ logger = setup_logger(__name__)
 
 
 class FastBusinessMCPServer:
-    """FastBusiness MCP Server - LMDB Field Generation."""
+    """FastBusiness MCP Server - LMDB Field Generation + AI Code Assistant."""
 
     def __init__(self, config_path: str = "config.yaml"):
         """Initialize MCP server."""
         self.config = self._load_config(config_path)
-        self.server = Server("fastbusiness-field-generator")
+        self.server = Server("fastbusiness-mcp-server")
 
         # Initialize LMDB field tool
         self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path="data/fields_lmdb")
@@ -30,11 +31,14 @@ class FastBusinessMCPServer:
         # Initialize SQL generation tool
         self.sql_gen_tool = GenerateSQLForFieldsTool()
 
+        # Initialize Code Assistant (Knowledge Base System)
+        self.code_assistant = CodeAssistantTool(knowledge_base_dir="knowledge_base")
+
         # Register handlers
         self._register_resources()
         self._register_tools()
 
-        logger.info("FastBusiness MCP Server (LMDB Field Generation) initialized")
+        logger.info("FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized")
 
     def _load_config(self, config_path: str) -> dict:
         """Load configuration from YAML file."""
@@ -262,6 +266,230 @@ The tool will:
                         "required": ["field_names"],
                     },
                 ),
+                # ============================================
+                # KNOWLEDGE BASE SYSTEM TOOLS
+                # ============================================
+                Tool(
+                    name="detect_context_from_file",
+                    description="""🔍 Detect context from FastBusiness XML file
+
+Detects:
+- File type (Dir, Grid, Filter)
+- Grid subtype (GridDetail vs GridView)
+- Which API to use (form_api, grid_api, or both)
+- Critical rules to follow
+- Context-specific recommendations
+
+EXAMPLES:
+User: "What context is this file?"
+→ file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\AITran.xml'
+→ Returns: DIR, use Form API (f.xxx)
+
+User: "What API should I use in this grid?"
+→ file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Grid\\Detail.xml'
+→ Returns: GridDetail, use both Grid API (g.xxx) and Form API (f.xxx), MUST get parent form
+
+The tool will:
+1. Analyze file type from path and content
+2. Detect grid subtype if applicable
+3. Return which API(s) to use
+4. List critical rules to follow
+5. Provide context-specific recommendations
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "type": "string",
+                                "description": "Path to XML file (recommended)",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "XML content (fallback if file_path not available)",
+                            },
+                        },
+                    },
+                ),
+                Tool(
+                    name="get_api_help",
+                    description="""📚 Get FastBusiness API reference
+
+Get detailed API reference for Form API (f.xxx) or Grid API (g.xxx).
+
+EXAMPLES:
+User: "How do I get a field value?"
+→ api_type='form', category='value_operations', operation='get_item_value'
+→ Returns: f.getItemValue(name) with examples and anti-patterns
+
+User: "Show me Grid API for getting cell values"
+→ api_type='grid', category='cell_operations', operation='get_item_value'
+→ Returns: g._getItemValue(row, col) with examples
+
+User: "Show all Form API"
+→ api_type='form'
+→ Returns: Complete Form API reference
+
+The tool will:
+1. Return API syntax, description, parameters
+2. Show usage examples
+3. Highlight anti-patterns to avoid
+4. Provide context-specific notes
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "api_type": {
+                                "type": "string",
+                                "description": "'form' or 'grid'",
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "API category (e.g., 'value_operations', 'cell_operations') - optional",
+                            },
+                            "operation": {
+                                "type": "string",
+                                "description": "Specific operation name (e.g., 'get_item_value') - optional",
+                            },
+                        },
+                        "required": ["api_type"],
+                    },
+                ),
+                Tool(
+                    name="generate_code_from_pattern",
+                    description="""⚡ Generate JavaScript code from pattern
+
+Generate code from common patterns with variable substitution.
+
+AVAILABLE PATTERNS:
+- form_init_new: Initialize form with default values
+- form_field_onchange: Field onChange handler
+- form_load_data_onchange: Load data from server on field change
+- form_calculate_field: Calculate field value
+- grid_detail_init: Initialize Grid Detail with calculations
+- grid_detail_cell_onchange: Grid Detail cell onChange
+- grid_detail_add_row_from_form: Add grid row from form
+- grid_view_load: Grid View load handler
+- lookup_reload_on_filter_change: Reload lookup when filter changes
+
+EXAMPLES:
+User: "Generate onChange handler for ma_kh field"
+→ pattern_name='form_field_onchange'
+→ variables={'field_name': 'ma_kh', 'logic': '// Load customer data'}
+→ file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\AITran.xml'
+
+User: "Generate Grid Detail initialization"
+→ pattern_name='grid_detail_init'
+→ variables={'grid_name': 'GridAPDetail', 'calculations': 'tien: "[tien]:=[so_luong]*[gia]"'}
+
+The tool will:
+1. Load pattern template from knowledge base
+2. Substitute variables in template
+3. Validate context compatibility
+4. Return ready-to-use JavaScript code
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "pattern_name": {
+                                "type": "string",
+                                "description": "Pattern name (e.g., 'form_init_new', 'grid_detail_init')",
+                            },
+                            "variables": {
+                                "type": "object",
+                                "description": "Variables for template substitution (e.g., {'field_name': 'ma_kh'})",
+                            },
+                            "file_path": {
+                                "type": "string",
+                                "description": "Current file path for context detection (optional)",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "XML content for context detection (optional)",
+                            },
+                        },
+                        "required": ["pattern_name"],
+                    },
+                ),
+                Tool(
+                    name="search_patterns",
+                    description="""🔎 Search code patterns
+
+Search for patterns by query, context, or get patterns appropriate for current file.
+
+EXAMPLES:
+User: "Show me patterns for this file"
+→ file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\AITran.xml'
+→ Returns: Form patterns (init, onchange, calculate, etc.)
+
+User: "Show me grid patterns"
+→ context_filter='Grid Detail'
+→ Returns: Grid Detail patterns only
+
+User: "Search for AJAX patterns"
+→ query='ajax'
+→ Returns: Patterns related to AJAX (load_data_onchange, etc.)
+
+The tool will:
+1. Detect context from file if provided
+2. Filter patterns by context or query
+3. Return matching patterns with descriptions
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search query (e.g., 'ajax', 'calculate') - optional",
+                            },
+                            "file_path": {
+                                "type": "string",
+                                "description": "Current file path for context-aware search - optional",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "XML content for context detection - optional",
+                            },
+                            "context_filter": {
+                                "type": "string",
+                                "description": "Context filter ('Dir', 'Grid Detail', 'Grid View') - optional",
+                            },
+                        },
+                    },
+                ),
+                Tool(
+                    name="get_critical_rules",
+                    description="""⚠️  Get critical rules for current context
+
+Returns critical rules that MUST be followed for the current file context.
+
+EXAMPLES:
+User: "What are the critical rules for this file?"
+→ file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Grid\\Detail.xml'
+→ Returns:
+  - grid_detail_must_get_parent: MUST call var f = g.get_element().parentForm
+  - grid_parent_field_calculation: Parent fields use $ prefix: [$field_name]
+
+The tool will:
+1. Detect context from file
+2. Return critical rules for that context
+3. Provide detailed rule descriptions
+4. Show code examples
+5. List recommendations
+""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "type": "string",
+                                "description": "Current file path",
+                            },
+                            "xml_content": {
+                                "type": "string",
+                                "description": "XML content (fallback)",
+                            },
+                        },
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -392,6 +620,153 @@ SQL Script:
 
                     return [TextContent(type="text", text=response)]
 
+                # ============================================
+                # KNOWLEDGE BASE SYSTEM TOOLS HANDLERS
+                # ============================================
+                elif name == "detect_context_from_file":
+                    file_path = arguments.get('file_path')
+                    xml_content = arguments.get('xml_content')
+
+                    result = self.code_assistant.detect_context(file_path, xml_content)
+
+                    if result.get('success'):
+                        response = result.get('summary', '')
+                    else:
+                        response = f"❌ {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "get_api_help":
+                    api_type = arguments.get('api_type')
+                    category = arguments.get('category')
+                    operation = arguments.get('operation')
+
+                    result = self.code_assistant.get_api_help(api_type, operation, category)
+
+                    if result.get('success'):
+                        if 'formatted' in result:
+                            response = result['formatted']
+                        else:
+                            # Return full API structure
+                            import json
+                            response = f"📚 {api_type.upper()} API Reference:\n\n```json\n{json.dumps(result['api'], indent=2)}\n```"
+                    else:
+                        response = f"❌ {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "generate_code_from_pattern":
+                    pattern_name = arguments.get('pattern_name')
+                    variables = arguments.get('variables', {})
+                    file_path = arguments.get('file_path')
+                    xml_content = arguments.get('xml_content')
+
+                    result = self.code_assistant.generate_code(pattern_name, variables, file_path, xml_content)
+
+                    if result.get('success'):
+                        response = f"""✅ Code generated from pattern: {pattern_name}
+
+Pattern: {result.get('description', '')}
+Context: {result.get('context', '')}
+Location: {result.get('location', '')}
+
+Generated Code:
+```javascript
+{result.get('code', '')}
+```"""
+
+                        if result.get('warnings'):
+                            warnings_text = '\n'.join(result['warnings'])
+                            response += f"\n\n⚠️  Warnings:\n{warnings_text}"
+                    else:
+                        response = f"❌ {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "search_patterns":
+                    query = arguments.get('query')
+                    file_path = arguments.get('file_path')
+                    xml_content = arguments.get('xml_content')
+                    context_filter = arguments.get('context_filter')
+
+                    result = self.code_assistant.search_patterns(query, file_path, xml_content, context_filter)
+
+                    if result.get('success'):
+                        patterns = result.get('patterns', [])
+
+                        if len(patterns) == 0:
+                            response = "No patterns found matching criteria"
+                        else:
+                            pattern_list = []
+                            for i, pattern in enumerate(patterns, 1):
+                                pattern_list.append(f"{i}. **{pattern['name']}**")
+                                pattern_list.append(f"   Description: {pattern.get('description', '')}")
+                                pattern_list.append(f"   Context: {pattern.get('context', '')}")
+                                pattern_list.append(f"   Location: {pattern.get('location', '')}")
+                                pattern_list.append("")
+
+                            header = f"Found {len(patterns)} patterns"
+                            if result.get('context'):
+                                header += f" for {result['context']}"
+                            if result.get('filter'):
+                                header += f" (filter: {result['filter']})"
+                            if result.get('query'):
+                                header += f" (query: '{result['query']}')"
+
+                            response = f"🔎 {header}\n\n" + '\n'.join(pattern_list)
+                    else:
+                        response = f"❌ {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
+                elif name == "get_critical_rules":
+                    file_path = arguments.get('file_path')
+                    xml_content = arguments.get('xml_content')
+
+                    result = self.code_assistant.get_critical_rules(file_path, xml_content)
+
+                    if result.get('success'):
+                        file_type = result.get('file_type', 'UNKNOWN')
+                        grid_subtype = result.get('grid_subtype')
+                        critical_rules = result.get('critical_rules', [])
+                        rule_details = result.get('rule_details', [])
+                        recommendations = result.get('recommendations', [])
+
+                        response = f"⚠️  **Critical Rules for {file_type}"
+                        if grid_subtype:
+                            response += f" ({grid_subtype})"
+                        response += ":**\n\n"
+
+                        if not critical_rules:
+                            response += "No critical rules for this context.\n"
+                        else:
+                            for rule in rule_details:
+                                rule_id = rule.get('rule_id', '')
+                                priority = rule.get('priority', '')
+                                context = rule.get('context', '')
+
+                                response += f"🔴 **{rule_id}** (Priority: {priority})\n"
+                                response += f"Context: {context}\n\n"
+
+                                if rule.get('must_do'):
+                                    response += "Must do:\n"
+                                    for step in rule['must_do']:
+                                        response += f"  {step.get('step', '')}. {step.get('code', '')}\n"
+                                        response += f"     Reason: {step.get('reason', '')}\n"
+                                    response += "\n"
+
+                                if rule.get('example'):
+                                    response += f"Example:\n```javascript\n{rule['example']}\n```\n\n"
+
+                        if recommendations:
+                            response += "\n💡 **Recommendations:**\n"
+                            for rec in recommendations:
+                                response += f"  {rec}\n"
+                    else:
+                        response = f"❌ {result.get('error', 'Unknown error')}"
+
+                    return [TextContent(type="text", text=response)]
+
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -470,7 +845,7 @@ SQL Script:
 
     async def run(self) -> None:
         """Run the MCP server."""
-        logger.info("Starting FastBusiness MCP Server (LMDB Field Generation)...")
+        logger.info("Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...")
 
         # Run server
         async with stdio_server() as (read_stream, write_stream):
