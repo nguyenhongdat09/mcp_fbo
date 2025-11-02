@@ -1247,7 +1247,7 @@ anti_patterns:
       jQuery('#ma_kh').val('KH001');
     
     reason: "Never use DOM manipulation, breaks framework"
-    
+     
     correct: |
       f.setItemValue('ma_kh', 'KH001');
   
