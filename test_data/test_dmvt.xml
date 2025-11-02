@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dir table="dmvt" type="Category">
+  <fields>
+    <field name="ma_vt" type="String"/>
+    <field name="ten_vt" type="String"/>
+    <field name="don_gia" type="Decimal"/>
+  </fields>
+</dir>

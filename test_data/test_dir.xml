@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dir table="m91$000000" code="stt_rec" type="Voucher">
+  <partition table="c91$000000" prime="m91$" inquiry="i91$" field="ngay_ct"/>
+  <fields>
+    <field name="ma_kh" type="String"/>
+    <field name="ten_kh%l" type="String" readOnly="true" external="true"/>
+    <field name="ngay_ct" type="DateTime"/>
+  </fields>
+</dir>

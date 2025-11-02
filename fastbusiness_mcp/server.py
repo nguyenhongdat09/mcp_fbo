@@ -186,12 +186,19 @@ The tool will:
                     name="generate_sql_for_fields",
                     description="""⭐ Generate SQL commands for adding fields to database tables
 
-Generates `fsd_addfields` SQL commands with automatic SQL type detection and partitioned table support.
+Generates `fsd_addfields` SQL commands with automatic table extraction and SQL type detection.
 
-AUTO-EXTRACT TABLE FROM XML (RECOMMENDED):
-- Provide xml_content to auto-extract table from <grid table="..."> or <dir table="...">
+✨ NEW: AUTOMATIC TABLE EXTRACTION - Python does everything!
+- Provide file_path (current file path) - RECOMMENDED
+- Or provide xml_content (current file content) - fallback
+- Python auto-extracts table from <grid table="..."> or <dir table="...">
 - Works for GRID_INPUT and DIR contexts only
-- No need to manually specify tables parameter!
+- NO NEED to pass tables parameter!
+
+EXTRACTION RULES:
+- <grid table="d31$000000"> → Extracts d31$ (has $ → keep up to $)
+- <dir table="m31$000000"> → Extracts m31$ (has $ → keep up to $)
+- <dir table="dmvt"> → Extracts dmvt (no $ → take all)
 
 CRITICAL RULES:
 - If XML table has $ (e.g., d91$000000) → Preserve $ in SQL: exec fsd_addfields 'd91$', ...
@@ -208,27 +215,28 @@ SQL TYPE AUTO-DETECTION:
 - *%l → nvarchar(256)
 
 EXAMPLES:
-1. Auto-extract from XML (RECOMMENDED):
+1. Using file_path (RECOMMENDED):
    field_names=['sl_nhap', 'sl_xuat']
-   xml_content='<grid table="d31$000000">...</grid>'
+   file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Grid\\Detail.xml'
    →
-   Auto-extracts: d31$
+   Python reads file → Finds <grid table="d31$000000"> → Extracts d31$
    exec fsd_addfields 'd31$', 'sl_nhap', 'numeric(19,4)'
    exec fsd_addfields 'd31$', 'sl_xuat', 'numeric(19,4)'
 
-2. Manual tables (if XML not available):
-   field_names=['ma_bo_phan', 'ten_bo_phan%l']
-   tables=['d91$000000']
+2. Using xml_content (fallback):
+   field_names=['ma_kh']
+   xml_content='<dir table="m31$000000">...</dir>'
    →
-   exec fsd_addfields 'd91$', 'ma_bo_phan', 'varchar(33)'
-   exec fsd_addfields 'd91$', 'ten_bo_phan%l', 'nvarchar(256)'
+   Python parses XML → Finds <dir table="m31$000000"> → Extracts m31$
+   exec fsd_addfields 'm31$', 'ma_kh', 'varchar(33)'
 
 The tool will:
-1. Auto-extract table from XML (if xml_content provided)
-2. Auto-detect SQL type from field name pattern
-3. Preserve $ suffix if table is partitioned
-4. Strip lookup suffixes (t, lk) from field names
-5. Optionally generate master table creation for lookup fields
+1. Read file (if file_path provided) or use xml_content
+2. Auto-extract table from <grid table="..."> or <dir table="...">
+3. Auto-detect SQL type from field name pattern
+4. Preserve $ suffix if table is partitioned
+5. Strip lookup suffixes (t, lk) from field names
+6. Optionally generate master table creation for lookup fields
 """,
                     inputSchema={
                         "type": "object",
@@ -238,14 +246,13 @@ The tool will:
                                 "items": {"type": "string"},
                                 "description": "List of field names to add (e.g., ['ma_kh', 'ten_kh%l', 'sl_nhap'])",
                             },
+                            "file_path": {
+                                "type": "string",
+                                "description": "File path to read XML and extract table (recommended)",
+                            },
                             "xml_content": {
                                 "type": "string",
-                                "description": "XML content to auto-extract table name from <grid> or <dir> (recommended for GRID_INPUT/DIR)",
-                            },
-                            "tables": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "Manual list of table names (optional if xml_content provided)",
+                                "description": "XML content to extract table (fallback if file_path not available)",
                             },
                             "create_master_table": {
                                 "type": "boolean",

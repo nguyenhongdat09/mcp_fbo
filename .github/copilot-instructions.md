@@ -186,20 +186,22 @@ User: "Thêm trường mã bộ phận dạng lookup"
 ### Step 3: Generate SQL (If User Confirms)
 
 ```
-User: "Có, thêm vào d91$ và m91$"
+User: "Có"
 
 → Tool: generate_sql_for_fields
   Parameters:
     - field_names: ['ma_bo_phant', 'ten_bo_phan%l']
-    - tables: ['d91$', 'm91$']
+    - file_path: 'e:\FBO\SP2263\App_Data\Controllers\Dir\SI2Tran.xml'
+    (hoặc xml_content nếu không có file_path)
+
+→ Python tự động:
+  1. Đọc file XML
+  2. Tìm <dir table="m91$000000"> hoặc <grid table="d91$000000">
+  3. Extract table name: m91$ (có $ → lấy đến $) hoặc dmvt (không $ → lấy hết)
 
 → MCP generates SQL:
 
--- Thêm vào detail table d91$ (partitioned - có $)
-exec fsd_addfields 'd91$', 'ma_bo_phan', 'varchar(33)'
-exec fsd_addfields 'd91$', 'ten_bo_phan%l', 'nvarchar(256)'
-
--- Thêm vào master table m91$ (partitioned - có $)
+-- Thêm vào bảng m91$ (auto-extracted from XML)
 exec fsd_addfields 'm91$', 'ma_bo_phan', 'varchar(33)'
 exec fsd_addfields 'm91$', 'ten_bo_phan%l', 'nvarchar(256)'
 
@@ -216,6 +218,11 @@ END
 ✅ SQL đã được generate!
 📋 Copy và chạy trong SQL Server Management Studio
 ⚠️ Chạy SQL trước khi deploy XML file lên server!
+
+💡 LƯU Ý:
+- Python tự động extract table từ XML - KHÔNG CẦN nhập tables!
+- Chỉ extract 1 table duy nhất (d31$, m31$, hoặc dmvt)
+- Không gợi ý thêm table khác (c31$, i31$, etc.)
 ```
 
 ---
@@ -263,27 +270,44 @@ lmdb_database_stats()
 → Shows field count by context type
 ```
 
-### 4. generate_sql_for_fields (NEW)
+### 4. generate_sql_for_fields
 
-**Purpose:** Generate `fsd_addfields` SQL commands for database schema updates
+**Purpose:** Generate `fsd_addfields` SQL commands - Python tự động extract table từ XML!
 
 **Parameters:**
 - `field_names` (required): List of field names to add
-- `tables` (required): List of table names (e.g., ['d91$', 'm91$'])
-- `file_path` (optional): XML file path to extract table names automatically
-- `xml_content` (optional): XML content to extract table names
+- `file_path` (recommended): File path to read XML and extract table
+- `xml_content` (fallback): XML content if file_path not available
+- `create_master_table` (optional): Generate master table for lookup fields
+
+**CRITICAL:** KHÔNG CẦN truyền `tables` parameter! Python tự động extract!
+
+**Extraction Rules:**
+- `<grid table="d31$000000">` → Extracts `d31$` (có $ → lấy đến $)
+- `<dir table="m31$000000">` → Extracts `m31$` (có $ → lấy đến $)
+- `<dir table="dmvt">` → Extracts `dmvt` (không $ → lấy hết)
 
 **Auto-Detects:**
+- Table name from XML (AUTOMATIC)
 - SQL type from field name pattern
 - Partitioned table (preserve `$` suffix)
 - Master table creation for lookup fields
 
-**Example:**
+**Examples:**
 ```
-generate_sql_for_fields(
-  field_names=['ma_bo_phan', 'ten_bo_phan%l'],
-  tables=['d91$', 'm91$']
-)
+1. Using file_path (RECOMMENDED):
+   generate_sql_for_fields(
+     field_names=['sl_nhap', 'sl_xuat'],
+     file_path='e:\\FBO\\SP2263\\App_Data\\Controllers\\Grid\\Detail.xml'
+   )
+   → Python reads file → Extracts d31$ → Generates SQL
+
+2. Using xml_content (fallback):
+   generate_sql_for_fields(
+     field_names=['ma_kh'],
+     xml_content='<dir table="m31$000000">...</dir>'
+   )
+   → Python extracts m31$ → Generates SQL
 ```
 
 ---
@@ -297,16 +321,19 @@ generate_sql_for_fields(
 | `exec fsd_addfields 'dmvt$', ...` when XML has `dmvt` | `exec fsd_addfields 'dmvt', ...` | Table not found error |
 | Forget to ask user about SQL generation | Always ask after XML field is added | User forgets to update database |
 | Wrong SQL type for field | Use auto-detection patterns | Data type mismatch errors |
+| Manually specify tables parameter | ❌ REMOVED! Use file_path, Python auto-extracts | Wrong tables, multiple tables |
 
 ---
 
 ## 📞 When to Ask User for Clarification
 
 - Field name or terminology unclear → Ask for Vietnamese/English labels
-- Which table to add field to? → Ask `"Thêm vào bảng nào? (Ví dụ: d93$, m91$, i91$)"`
 - SQL generation needed? → **Always ask before generating**
-- Multiple tables? → Ask which tables need the field (master, detail, inquiry)
 - Lookup field needs master table? → Ask if master data table exists
+
+**KHÔNG CẦN hỏi:**
+- ❌ Which table to add field to? → Python tự động extract từ XML!
+- ❌ Multiple tables? → Python chỉ extract 1 table duy nhất từ XML
 
 ---
 
@@ -330,6 +357,8 @@ ngay_*     → smalldatetime
 tien*      → numeric(19,4)
 *_nt       → numeric(19,4)
 so_luong   → numeric(19,4)
+sl_*       → numeric(19,4)  (NEW: sl_nhap, sl_xuat, sl_ton)
+*_sl       → numeric(19,4)
 thang/nam  → int
 status     → tinyint
 *%l        → nvarchar(256)
@@ -353,11 +382,19 @@ dmkh       → exec fsd_addfields 'dmkh', ...
    ↓
 3. Ask user about SQL generation
    ↓
-4. generate_sql_for_fields (auto-detect SQL types + preserve $)
+4. generate_sql_for_fields
+   Parameters: field_names + file_path (or xml_content)
+   Python auto:
+   - Reads XML file
+   - Extracts table from <grid> or <dir>
+   - Detects SQL types
+   - Preserves $ suffix
    ↓
 5. User runs SQL in SSMS
    ↓
 6. Deploy XML to server
+
+✨ NEW: Python tự động extract table - KHÔNG CẦN nhập tables!
 ```
 
 ---

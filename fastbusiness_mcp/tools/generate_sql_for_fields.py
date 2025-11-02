@@ -188,8 +188,8 @@ class GenerateSQLForFieldsTool:
         Args:
             arguments: Tool arguments
                 - field_names: List of field names (required)
-                - tables: List of table names (optional if xml_content provided)
-                - xml_content: XML content to auto-extract table name (optional)
+                - file_path: File path to read XML and extract table (optional)
+                - xml_content: XML content to extract table (optional)
                 - create_master_table: Whether to generate master table creation (optional, default=False)
 
         Returns:
@@ -197,7 +197,7 @@ class GenerateSQLForFieldsTool:
         """
         # Extract arguments
         field_names = arguments.get('field_names', [])
-        tables = arguments.get('tables', [])
+        file_path = arguments.get('file_path', '')
         xml_content = arguments.get('xml_content', '')
         create_master_table = arguments.get('create_master_table', False)
 
@@ -208,31 +208,40 @@ class GenerateSQLForFieldsTool:
                 'error': 'field_names is required (list of strings)'
             }
 
-        # Auto-extract table from XML if not provided
-        if not tables and xml_content:
-            extracted_table = self._extract_table_from_xml(xml_content)
-            if extracted_table:
-                tables = [extracted_table]
-                logger.info(f"Auto-extracted table from XML: {extracted_table}")
-            else:
-                return {
-                    'success': False,
-                    'error': 'Could not extract table name from XML content. Please provide tables parameter.'
-                }
-
-        if not tables:
+        # Must provide either file_path or xml_content
+        if not file_path and not xml_content:
             return {
                 'success': False,
-                'error': 'tables is required (list of table names) or provide xml_content to auto-extract'
+                'error': 'Either file_path or xml_content must be provided to extract table name'
             }
+
+        # Read file if file_path provided
+        if file_path and not xml_content:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    xml_content = f.read()
+                logger.info(f"Read XML from file: {file_path}")
+            except Exception as e:
+                return {
+                    'success': False,
+                    'error': f'Failed to read file {file_path}: {str(e)}'
+                }
+
+        # Extract table from XML
+        extracted_table = self._extract_table_from_xml(xml_content)
+        if not extracted_table:
+            return {
+                'success': False,
+                'error': 'Could not extract table name from XML content. Make sure XML has <grid table="..."> or <dir table="..."> tag.'
+            }
+
+        tables = [extracted_table]
+        logger.info(f"Auto-extracted table from XML: {extracted_table}")
 
         if not isinstance(field_names, list):
             field_names = [field_names]
 
-        if not isinstance(tables, list):
-            tables = [tables]
-
-        logger.info(f"Generating SQL for fields: {field_names} → tables: {tables}")
+        logger.info(f"Generating SQL for fields: {field_names} → table: {extracted_table}")
 
         # Generate SQL commands
         sql_commands = []
