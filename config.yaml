@@ -1,12 +1,19 @@
 # FastBusiness MCP Server Configuration
+
 server:
   name: "fastbusiness-xml-context"
   version: "1.0.0"
 
+# Database paths (can be overridden by environment variables)
 database:
   path: "data/fields.db"
-  lmdb_path: "data/fields_lmdb"  # LMDB field database path (relative to project root)
+  lmdb_path: "data/fields_lmdb"  # LMDB field database path (override with FASTBUSINESS_VSCODE_DB_PATH env var)
 
+# Resource paths (can be overridden by environment variables)
+paths:
+  knowledge_base: "knowledge_base"  # Knowledge base directory (override with FASTBUSINESS_KNOWLEDGE_BASE_PATH env var)
+
+# Legacy data paths (deprecated, use paths section instead)
 data:
   quick_reference: "data/quick_reference.txt"
   xml_summary: "data/xml_meaning_summary.txt"

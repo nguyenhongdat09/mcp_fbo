@@ -26,18 +26,36 @@ class FastBusinessMCPServer:
         self.config = self._load_config(config_path)
         self.server = Server("fastbusiness-mcp-server")
 
-        # Get LMDB database path from config (with fallback)
-        lmdb_path = self.config.get("database", {}).get("lmdb_path", "data/fields_lmdb")
-
-        # Convert to absolute path if relative
         from pathlib import Path
         import os
-        if not Path(lmdb_path).is_absolute():
-            # Use config file location as base directory
-            config_dir = Path(config_path).parent if config_path != "config.yaml" else Path.cwd()
-            lmdb_path = str(config_dir / lmdb_path)
 
-        logger.info(f"Using LMDB database path: {lmdb_path}")
+        # ============================================
+        # LMDB DATABASE PATH RESOLUTION (Priority Order)
+        # ============================================
+        # 1. Environment variable (highest priority)
+        # 2. Config file
+        # 3. Default relative path
+
+        lmdb_path = None
+
+        # Priority 1: Check environment variable
+        env_db_path = os.environ.get('FASTBUSINESS_VSCODE_DB_PATH')
+        if env_db_path:
+            lmdb_path = env_db_path
+            logger.info(f"✓ Using LMDB path from environment variable: {lmdb_path}")
+
+        # Priority 2: Check config file
+        if not lmdb_path:
+            lmdb_path = self.config.get("database", {}).get("lmdb_path", "data/fields_lmdb")
+            logger.info(f"✓ Using LMDB path from config: {lmdb_path}")
+
+        # Convert to absolute path if relative
+        if not Path(lmdb_path).is_absolute():
+            # Use current working directory as base
+            lmdb_path = str(Path.cwd() / lmdb_path)
+            logger.info(f"✓ Converted to absolute path: {lmdb_path}")
+
+        logger.info(f"📂 Final LMDB database path: {lmdb_path}")
 
         # Initialize LMDB field tool
         self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path=lmdb_path)
@@ -45,11 +63,28 @@ class FastBusinessMCPServer:
         # Initialize SQL generation tool
         self.sql_gen_tool = GenerateSQLForFieldsTool()
 
+        # ============================================
+        # KNOWLEDGE BASE PATH RESOLUTION
+        # ============================================
+        # 1. Environment variable (highest priority)
+        # 2. Config file
+        # 3. Default relative path
+
+        kb_path = os.environ.get('FASTBUSINESS_KNOWLEDGE_BASE_PATH')
+        if not kb_path:
+            kb_path = self.config.get("paths", {}).get("knowledge_base", "knowledge_base")
+
+        # Convert to absolute path if relative
+        if not Path(kb_path).is_absolute():
+            kb_path = str(Path.cwd() / kb_path)
+
+        logger.info(f"📚 Knowledge base path: {kb_path}")
+
         # Initialize Code Assistant (Knowledge Base System)
-        self.code_assistant = CodeAssistantTool(knowledge_base_dir="knowledge_base")
+        self.code_assistant = CodeAssistantTool(knowledge_base_dir=kb_path)
 
         # Initialize XML Handler Tool
-        self.xml_handler = XMLHandlerTool(knowledge_base_dir="knowledge_base")
+        self.xml_handler = XMLHandlerTool(knowledge_base_dir=kb_path)
 
         # Register handlers
         self._register_resources()
