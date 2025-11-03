@@ -26,8 +26,21 @@ class FastBusinessMCPServer:
         self.config = self._load_config(config_path)
         self.server = Server("fastbusiness-mcp-server")
 
+        # Get LMDB database path from config (with fallback)
+        lmdb_path = self.config.get("database", {}).get("lmdb_path", "data/fields_lmdb")
+
+        # Convert to absolute path if relative
+        from pathlib import Path
+        import os
+        if not Path(lmdb_path).is_absolute():
+            # Use config file location as base directory
+            config_dir = Path(config_path).parent if config_path != "config.yaml" else Path.cwd()
+            lmdb_path = str(config_dir / lmdb_path)
+
+        logger.info(f"Using LMDB database path: {lmdb_path}")
+
         # Initialize LMDB field tool
-        self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path="data/fields_lmdb")
+        self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path=lmdb_path)
 
         # Initialize SQL generation tool
         self.sql_gen_tool = GenerateSQLForFieldsTool()
@@ -674,11 +687,25 @@ XML Definition:
                     else:
                         # Format error response
                         response = f"❌ {result['error']}"
+
+                        # Add database diagnostics if database is empty
+                        if result.get('database_empty'):
+                            response += f"\n\n📂 Database path: {result['database_path']}"
+                            response += f"\n\n💡 To fix this issue:"
+                            response += f"\n   1. Run: python scripts/import_fields_to_lmdb.py --xml-dir <path_to_xml_dir>"
+                            response += f"\n   2. Or specify absolute database path in config.yaml"
+                            response += f"\n   3. Make sure both VS Code and Cursor use same working directory"
+
+                        # Show similar fields if available
                         if 'similar_fields' in result:
                             similar = '\n'.join([f"  - {f['field_name']}: {f['header']}" for f in result['similar_fields'][:5]])
                             response += f"\n\n💡 Similar fields found:\n{similar}"
                         if 'suggestion' in result:
                             response += f"\n\n{result['suggestion']}"
+
+                        # Show database stats if not empty
+                        if 'database_fields_count' in result:
+                            response += f"\n\n📊 Database has {result['database_fields_count']} fields in {result['context_type']}"
 
                     return [TextContent(type="text", text=response)]
 

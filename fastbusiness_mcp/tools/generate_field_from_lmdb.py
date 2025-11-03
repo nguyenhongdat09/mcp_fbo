@@ -107,30 +107,46 @@ class GenerateFieldFromLMDBTool:
 
         else:
             # Not found - optionally show similar fields
-            result = {
-                'success': False,
-                'error': f'Field "{field_name}" not found in {context_type}',
-                'field_name': field_name,
-                'context_type': context_type
-            }
+            # Check if database is empty
+            total_fields = self.lmdb.count_fields(context_type)
 
-            if show_similar:
-                similar = self.matcher.search_similar_fields(
-                    context_type=context_type,
-                    field_name=field_name,
-                    limit=10
-                )
-                if similar:
-                    result['similar_fields'] = [
-                        {
-                            'field_name': f['field_name'],
-                            'header': f['definition'].get('header', 'N/A')
-                        }
-                        for f in similar
-                    ]
-                    result['suggestion'] = f"Did you mean one of these? {', '.join([f['field_name'] for f in similar[:5]])}"
+            if total_fields == 0:
+                result = {
+                    'success': False,
+                    'error': f'Database is EMPTY! Field "{field_name}" not found in {context_type}',
+                    'field_name': field_name,
+                    'context_type': context_type,
+                    'database_empty': True,
+                    'database_path': str(self.lmdb.db_path.absolute()),
+                    'help': 'Run: python scripts/import_fields_to_lmdb.py --xml-dir <your_xml_directory>'
+                }
+                logger.error(f"✗ Database is EMPTY at {self.lmdb.db_path.absolute()}")
+            else:
+                result = {
+                    'success': False,
+                    'error': f'Field "{field_name}" not found in {context_type}',
+                    'field_name': field_name,
+                    'context_type': context_type,
+                    'database_fields_count': total_fields
+                }
 
-            logger.warning(f"✗ Field not found: {field_name}")
+                if show_similar:
+                    similar = self.matcher.search_similar_fields(
+                        context_type=context_type,
+                        field_name=field_name,
+                        limit=10
+                    )
+                    if similar:
+                        result['similar_fields'] = [
+                            {
+                                'field_name': f['field_name'],
+                                'header': f['definition'].get('header', 'N/A')
+                            }
+                            for f in similar
+                        ]
+                        result['suggestion'] = f"Did you mean one of these? {', '.join([f['field_name'] for f in similar[:5]])}"
+
+                logger.warning(f"✗ Field not found: {field_name} (database has {total_fields} fields)")
             return result
 
     def _determine_source(self, field_def: Dict, requested_name: str) -> str:

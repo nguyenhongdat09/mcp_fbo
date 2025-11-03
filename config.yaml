@@ -5,6 +5,7 @@ server:
 
 database:
   path: "data/fields.db"
+  lmdb_path: "data/fields_lmdb"  # LMDB field database path (relative to project root)
 
 data:
   quick_reference: "data/quick_reference.txt"

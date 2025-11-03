@@ -27,6 +27,7 @@ class LMDBManager:
             db_path: Path to LMDB database directory
         """
         self.db_path = Path(db_path)
+        db_existed = self.db_path.exists()
         self.db_path.mkdir(parents=True, exist_ok=True)
 
         # Open LMDB environment
@@ -44,7 +45,13 @@ class LMDBManager:
         for db_name in ['DIR', 'FILTER_VOUCHER', 'FILTER_NORMAL', 'GRID_VIEW', 'GRID_INPUT']:
             self.dbs[db_name] = self.env.open_db(db_name.encode())
 
-        logger.info(f"LMDB initialized at {self.db_path}")
+        # Log database info
+        if not db_existed:
+            logger.warning(f"⚠️  LMDB database created NEW at {self.db_path.absolute()} - Database is EMPTY!")
+            logger.warning(f"⚠️  Run: python scripts/import_fields_to_lmdb.py --xml-dir <your_xml_dir>")
+        else:
+            total_fields = sum(self.count_fields(ctx) for ctx in self.dbs.keys())
+            logger.info(f"✓ LMDB initialized at {self.db_path.absolute()} ({total_fields} fields)")
 
     def put_field(self, context_type: str, field_name: str, field_data: Dict) -> bool:
         """

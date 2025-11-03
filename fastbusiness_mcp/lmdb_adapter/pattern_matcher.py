@@ -99,11 +99,14 @@ class FieldPatternMatcher:
         """
         # Step 1: Try exact match with lookup suffix
         full_field_name = self.add_lookup_suffix(field_name, lookup_type)
+        logger.info(f"🔍 Searching for field: {full_field_name} in context={context_type}, lookup={lookup_type}")
         field_def = self.lmdb.get_field(context_type, full_field_name)
 
         if field_def:
             logger.info(f"✓ Found exact match: {full_field_name}")
             return field_def
+        else:
+            logger.debug(f"✗ Exact match not found: {full_field_name}")
 
         # Step 2: Try pattern-based template
         pattern_match = self.detect_pattern(field_name)
