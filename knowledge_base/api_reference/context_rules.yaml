@@ -205,7 +205,8 @@ api_selection_rules:
         }
 
       wrong: |
-        function load$GridAPDetail$(g) {
+        function load$
+        GridAPDetail$(g) {
             var tyGia = f.getItemValue('ty_gia');  // ❌ WRONG - f not defined!
         }
 

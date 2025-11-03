@@ -1,0 +1,48 @@
+2025-11-03 17:52:08,290 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 17:52:08,291 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 17:53:32,112 | INFO | __main__ | Auto-detected context type: DIR from file_path: e:\FBO\SP2263\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 17:53:32,113 | INFO | __main__ | Calling tool.execute() with arguments: field_name=sl_nhap, context_type=DIR, lookup_type=default
+2025-11-03 17:54:51,960 | INFO | __main__ | Auto-detected context type: DIR from file_path: e:\FBO\SP2263\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 17:54:51,960 | INFO | __main__ | Calling tool.execute() with arguments: field_name=sl_nhap, context_type=DIR, lookup_type=default
+2025-11-03 17:59:34,735 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 17:59:34,736 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 17:59:38,052 | INFO | __main__ | Auto-detected context type: DIR from file_path: e:\FBO\SP2263\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 17:59:38,053 | INFO | __main__ | Calling tool.execute() with arguments: field_name=sl_nhap, context_type=DIR, lookup_type=default
+2025-11-03 18:00:46,585 | INFO | __main__ | Auto-detected context type: DIR from file_path: \\172.168.5.14\CustomerPro\FBO\BinhMinhViet\R2SP201\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 18:00:46,585 | INFO | __main__ | Calling tool.execute() with arguments: field_name=sl_nhap, context_type=DIR, lookup_type=default
+2025-11-03 18:01:17,515 | INFO | __main__ | Auto-detected context type: DIR from file_path: \\172.168.5.14\CustomerPro\FBO\BinhMinhViet\R2SP201\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 18:01:17,516 | INFO | __main__ | Calling tool.execute() with arguments: field_name=dept_id, context_type=DIR, lookup_type=autocomplete
+2025-11-03 18:18:18,035 | INFO | __main__ | Auto-detected context type: DIR from file_path: \\172.168.5.14\CustomerPro\FBO\BinhMinhViet\R2SP201\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 18:18:18,036 | INFO | __main__ | Calling tool.execute() with arguments: field_name=dept_id, context_type=DIR, lookup_type=autocomplete
+2025-11-03 18:26:13,551 | INFO | __main__ | Auto-detected context type: DIR from file_path: e:\FBO\SP2263\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 18:26:13,551 | INFO | __main__ | Calling tool.execute() with arguments: field_name=dept_id, context_type=DIR, lookup_type=autocomplete
+2025-11-03 19:01:30,795 | INFO | __main__ | Using LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:01:30,917 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:01:30,918 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:01:46,748 | INFO | __main__ | Auto-detected context type: DIR from file_path: e:\FBO\SP2263\App_Data\Controllers\Dir\AITran.xml
+2025-11-03 19:01:46,748 | INFO | __main__ | Calling tool.execute() with arguments: field_name=dept_id, context_type=DIR, lookup_type=autocomplete
+2025-11-03 19:19:41,640 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:19:41,642 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:19:41,642 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:19:41,766 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:19:41,767 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:19:59,865 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:19:59,867 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:19:59,868 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:19:59,992 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:19:59,993 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:21:49,286 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:21:49,287 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:21:49,288 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:21:49,412 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:21:49,413 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:22:09,757 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:22:09,759 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:22:09,759 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:22:09,883 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:22:09,884 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:22:55,542 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:22:55,544 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:22:55,545 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:22:55,669 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:22:55,670 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
