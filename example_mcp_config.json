@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fastbusiness-mcp": {
+      "command": "C:\\FastBusiness-MCP-v1.0.0\\fastbusiness_mcp.exe",
+      "cwd": "C:\\FastBusiness-MCP-v1.0.0",
+      "env": {
+        "FASTBUSINESS_VSCODE_DB_PATH": "E:\\mcp_fbo\\data\\fields_lmdb"
+      }
+    }
+  }
+}
