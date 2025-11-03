@@ -12,10 +12,10 @@ from .tools.generate_field_from_lmdb import GenerateFieldFromLMDBTool
 from .tools.generate_sql_for_fields import GenerateSQLForFieldsTool
 from .tools.code_assistant_tool import CodeAssistantTool
 from .tools.xml_handler_tool import XMLHandlerTool
-from .utils.logger import setup_logger
+from .utils.logger import setup_logger 
 from .utils.file_utils import read_file
-
-logger = setup_logger(__name__)
+  
+logger = setup_logger(__name__) 
 
 
 class FastBusinessMCPServer:
@@ -633,6 +633,10 @@ Tool will:
                     file_path = arguments.get('file_path', '')
                     xml_content = arguments.get('xml_content', '')
 
+                    # Always ensure context_type is set (default to DIR)
+                    if 'context_type' not in arguments:
+                        arguments['context_type'] = 'DIR'
+
                     if file_path or xml_content:
                         # Priority 1: Use file_path for path-based detection (most accurate)
                         if file_path:
@@ -644,18 +648,19 @@ Tool will:
                         # Override context_type with detected value
                         if detected_context != 'UNKNOWN':
                             arguments['context_type'] = detected_context
-                            logger.info(f"Auto-detected context type: {detected_context}")
+                            logger.info(f"Auto-detected context type: {detected_context} from file_path: {file_path}")
                         else:
-                            # Fallback to DIR if detection fails
-                            arguments['context_type'] = arguments.get('context_type', 'DIR')
-                            logger.warning(f"Cannot detect context, using: {arguments['context_type']}")
+                            # Keep existing context_type (already defaulted to DIR above)
+                            logger.warning(f"Cannot detect context from path, using: {arguments['context_type']}")
 
                     # Remove file_path and xml_content from arguments (not needed by execute)
                     arguments.pop('file_path', None)
                     arguments.pop('xml_content', None)
-
+                    
+                    # Log final arguments for debugging
+                    logger.info(f"Calling tool.execute() with arguments: field_name={arguments.get('field_name')}, context_type={arguments.get('context_type')}, lookup_type={arguments.get('lookup_type')}")
                     result = await self.lmdb_field_tool.execute(arguments)
-
+                    
                     if result['success']:
                         # Format success response
                         response = f"""✅ Field generated from {result['source']}

@@ -1,0 +1,4 @@
+<field name="ma_bp">
+      <header v="Bộ phận" e="Department"></header>
+      <items style="AutoComplete" controller="Department" reference="ten_bp%l" key="status = '1'" check="1=1" information="ma_bp$vxdmbp.ten_bp%l"/>
+    </field>
