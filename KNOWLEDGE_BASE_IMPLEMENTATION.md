@@ -21,7 +21,6 @@ The Knowledge Base System is now **fully implemented, integrated, and tested**! 
 - Generates context-appropriate code from patterns
 
 ---
-
 ## Architecture
 
 ```
