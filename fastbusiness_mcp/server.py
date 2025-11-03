@@ -11,7 +11,7 @@ from mcp.types import Resource, Tool, TextContent
 from .tools.generate_field_from_lmdb import GenerateFieldFromLMDBTool
 from .tools.generate_sql_for_fields import GenerateSQLForFieldsTool
 from .tools.code_assistant_tool import CodeAssistantTool
-from .tools.xml_handler_tool import XMLHandlerTool
+from .tools.xml_snippet_tool import XMLSnippetTool
 from .utils.logger import setup_logger 
 from .utils.file_utils import read_file
   
@@ -83,8 +83,8 @@ class FastBusinessMCPServer:
         # Initialize Code Assistant (Knowledge Base System)
         self.code_assistant = CodeAssistantTool(knowledge_base_dir=kb_path)
 
-        # Initialize XML Handler Tool
-        self.xml_handler = XMLHandlerTool(knowledge_base_dir=kb_path)
+        # Initialize XML Snippet Tool (Cách 2: Generate precise snippets)
+        self.xml_snippet = XMLSnippetTool()
 
         # Register handlers
         self._register_resources()
@@ -543,131 +543,121 @@ The tool will:
                     },
                 ),
                 # ============================================
-                # XML HANDLER TOOLS
+                # XML SNIPPET TOOLS (Cách 2)
                 # ============================================
                 Tool(
-                    name="add_onchange_handler",
-                    description="""✨ Add onChange handler to field in FastBusiness XML file
+                    name="add_clientscript_to_field",
+                    description="""[SNIPPET] Add clientScript to field XML and return modified field
 
-[WARNING]  CRITICAL: Use this tool when user asks to add onChange handler!
-DON'T read file or write code manually - this tool does everything automatically.
+APPROACH: Server generates EXACT field XML with clientScript - AI just replaces it
 
-What this tool does:
-1. [OK] Auto-detects file type (Dir/Grid/Filter)
-2. [OK] Finds field in XML
-3. [OK] Adds <clientScript> to field definition
-4. [OK] Generates correct function name (onChange$Voucher$field_name)
-5. [OK] Uses correct API based on context (f.xxx or g.xxx)
-6. [OK] Inserts function into <script> section
+WORKFLOW:
+1. AI gets field XML using get_field_info tool
+2. AI calls this tool with field XML
+3. Server returns modified field XML with clientScript
+4. AI replaces old field XML with new field XML in editor
 
 EXAMPLES:
-User: "Thêm onchange cho ma_kh thì console.log(1)"
-→ field_name='ma_kh', handler_code='console.log(1);'
 
-User: "Khi nhập số lượng thì tính tiền = số lượng * giá"
-→ field_name='so_luong'
-→ handler_code='var sl = f.getItemValue("so_luong"); var gia = f.getItemValue("gia"); f.setItemValue("tien", sl * gia);'
+Example 1: Add onChange handler
+User: "Thêm xử lý khi nhập so_ct_hd"
+→ First call get_field_info: field_name='so_ct_hd', file_path='...'
+→ Get field_xml from result
+→ Then call add_clientscript_to_field:
+  field_xml='<field name="so_ct_hd">...</field>'
+  handler_type='onchange'
+  function_name='onChange$Voucher$so_ct_hd'
+→ Get modified_field from result
+→ Replace field_xml with modified_field in editor
 
-Tool will:
-1. Detect Dir/Grid context
-2. Add: <clientScript><![CDATA[onchange="onChange$Voucher$ma_kh(this);"]]></clientScript>
-3. Generate: function onChange$Voucher$ma_kh(sender) { var f = sender.parentForm; ... }
-4. Insert into <script> section
+Example 2: Add onFocus handler
+→ handler_type='onfocus'
+→ function_name='onFocus$Voucher$ma_kh'
+
+IMPORTANT:
+- You MUST get field_xml from get_field_info tool first
+- You MUST generate correct function_name (onChange$Voucher$field_name or onFocus$...)
+- Server returns both original_field and modified_field
+- You replace original_field with modified_field in your editor
 """,
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "file_path": {
+                            "field_xml": {
                                 "type": "string",
-                                "description": "Path to XML file (REQUIRED)",
+                                "description": "Original field XML (from get_field_info tool)",
                             },
-                            "field_name": {
+                            "handler_type": {
                                 "type": "string",
-                                "description": "Field name to add handler to (e.g., 'ma_kh', 'so_luong')",
+                                "description": "Handler type: 'onchange' or 'onfocus'",
                             },
-                            "handler_code": {
+                            "function_name": {
                                 "type": "string",
-                                "description": "JavaScript code for handler body (optional - will generate skeleton if not provided)",
+                                "description": "Function name (e.g., 'onChange$Voucher$so_ct_hd')",
                             },
                         },
-                        "required": ["file_path", "field_name"],
+                        "required": ["field_xml", "handler_type", "function_name"],
                     },
                 ),
                 Tool(
-                    name="add_onfocus_handler",
-                    description="""✨ Add onFocus handler to field in FastBusiness XML file
+                    name="add_function_to_script",
+                    description="""[SNIPPET] Generate CDATA snippet for function to insert before </text></script>
 
-[WARNING]  CRITICAL: Use this tool when user asks to add onFocus handler!
-DON'T read file or write code manually - this tool does everything automatically.
+APPROACH: Server generates EXACT CDATA snippet - AI finds and replaces pattern
+
+WORKFLOW:
+1. AI has JavaScript function code
+2. AI calls this tool with function_code
+3. Server returns CDATA snippet wrapped with </text></script>
+4. AI finds pattern "    </text>\\n</script>" in file
+5. AI replaces it with function_snippet
 
 EXAMPLES:
-User: "Khi focus mã khách thì load dữ liệu"
-→ field_name='ma_kh'
-→ handler_code='f.request("GetCustomer", "GetCustomer", ["ma_kh"], sender);'
 
-Tool will:
-1. Detect context
-2. Add clientScript to field
-3. Generate correct function
-4. Insert into script section
+User: "Khi nhập so_ct_hd thì gán so_seri_hd = '123455'"
+
+Step 1: AI generates function:
+function_code = '''
+function onChange$Voucher$so_ct_hd(sender) {
+    var f = sender.parentForm;
+    if (f._action === 'View') return;
+    f.setItemValue("so_seri_hd", "123455");
+}
+'''
+
+Step 2: Call add_function_to_script with function_code
+
+Step 3: Get function_snippet from result:
+<![CDATA[
+function onChange$Voucher$so_ct_hd(sender) {
+    var f = sender.parentForm;
+    if (f._action === 'View') return;
+    f.setItemValue("so_seri_hd", "123455");
+}
+]]>
+    </text>
+</script>
+
+Step 4: Find "    </text>\\n</script>" in file
+
+Step 5: Replace with function_snippet
+
+RESULT: Function is inserted INSIDE CDATA, BEFORE </text>
+
+IMPORTANT:
+- Pattern to find: "    </text>\\n</script>" (with 4 spaces before </text>)
+- This ensures function goes INSIDE CDATA, not outside
+- Server wraps function in CDATA automatically
 """,
                     inputSchema={
                         "type": "object",
                         "properties": {
-                            "file_path": {
+                            "function_code": {
                                 "type": "string",
-                                "description": "Path to XML file (REQUIRED)",
-                            },
-                            "field_name": {
-                                "type": "string",
-                                "description": "Field name to add handler to",
-                            },
-                            "handler_code": {
-                                "type": "string",
-                                "description": "JavaScript code for handler body (optional)",
+                                "description": "Complete JavaScript function code",
                             },
                         },
-                        "required": ["file_path", "field_name"],
-                    },
-                ),
-                Tool(
-                    name="add_form_lifecycle_handler",
-                    description="""✨ Add form lifecycle handler (active$Form$, etc.)
-
-[WARNING]  CRITICAL: Use this tool when user asks to add form lifecycle handler!
-DON'T read file or write code manually - this tool does everything automatically.
-
-EXAMPLES:
-User: "Khi load form mới thì gán ngày = hôm nay"
-→ lifecycle='active'
-→ handler_code='if (f._action === "New") { f.setItemValue("ngay_ct", new Date()); }'
-
-Supported lifecycles:
-- active: When form loads (active$Form$)
-- beforeSave: Before form saves
-- afterSave: After form saves
-
-Tool will:
-1. Generate lifecycle function
-2. Insert into script section
-""",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "file_path": {
-                                "type": "string",
-                                "description": "Path to XML file (REQUIRED)",
-                            },
-                            "lifecycle": {
-                                "type": "string",
-                                "description": "Lifecycle event: 'active', 'beforeSave', 'afterSave'",
-                            },
-                            "handler_code": {
-                                "type": "string",
-                                "description": "JavaScript code for handler body",
-                            },
-                        },
-                        "required": ["file_path", "lifecycle", "handler_code"],
+                        "required": ["function_code"],
                     },
                 ),
             ]
@@ -977,88 +967,62 @@ Generated Code:
                     return [TextContent(type="text", text=response)]
 
                 # ============================================
-                # XML HANDLER TOOLS HANDLERS
+                # XML SNIPPET TOOLS HANDLERS (Cách 2)
                 # ============================================
-                elif name == "add_onchange_handler":
-                    file_path = arguments.get('file_path')
-                    field_name = arguments.get('field_name')
-                    handler_code = arguments.get('handler_code')
+                elif name == "add_clientscript_to_field":
+                    field_xml = arguments.get('field_xml')
+                    handler_type = arguments.get('handler_type')
+                    function_name = arguments.get('function_name')
 
-                    if not file_path or not field_name:
-                        return [TextContent(type="text", text="[ERROR] file_path and field_name are required")]
+                    if not field_xml or not handler_type or not function_name:
+                        return [TextContent(type="text", text="[ERROR] field_xml, handler_type, and function_name are required")]
 
-                    result = self.xml_handler.add_onchange_handler(file_path, field_name, handler_code)
+                    result = self.xml_snippet.add_clientscript_to_field(field_xml, handler_type, function_name)
 
                     if result.get('success'):
-                        response = f"""[OK] Đã thêm onChange handler cho field '{field_name}'
+                        response = f"""[OK] Generated field XML with clientScript
 
-📝 Function name: {result.get('function_name', '')}
-
-📝 Generated code:
-```javascript
-{result.get('generated_code', '')}
+[ORIGINAL FIELD]
+```xml
+{result.get('original_field', '')}
 ```
 
-📁 File: {result.get('file_path', '')}
+[MODIFIED FIELD]
+```xml
+{result.get('modified_field', '')}
+```
 
-✨ Đã thêm vào XML:
-1. Added <clientScript> to field definition
-2. Generated function in <script> section
-3. Used correct API based on context
+[INSTRUCTIONS]
+{result.get('instructions', '')}
 """
                     else:
                         response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
-                elif name == "add_onfocus_handler":
-                    file_path = arguments.get('file_path')
-                    field_name = arguments.get('field_name')
-                    handler_code = arguments.get('handler_code')
+                elif name == "add_function_to_script":
+                    function_code = arguments.get('function_code')
 
-                    if not file_path or not field_name:
-                        return [TextContent(type="text", text="[ERROR] file_path and field_name are required")]
+                    if not function_code:
+                        return [TextContent(type="text", text="[ERROR] function_code is required")]
 
-                    result = self.xml_handler.add_onfocus_handler(file_path, field_name, handler_code)
+                    result = self.xml_snippet.add_function_to_script(function_code)
 
                     if result.get('success'):
-                        response = f"""[OK] Đã thêm onFocus handler cho field '{field_name}'
+                        response = f"""[OK] Generated function snippet
 
-📝 Function name: {result.get('function_name', '')}
-
-📝 Generated code:
-```javascript
-{result.get('generated_code', '')}
+[FUNCTION SNIPPET]
+```xml
+{result.get('function_snippet', '')}
 ```
 
-📁 File: {result.get('file_path', '')}
-"""
-                    else:
-                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
-
-                    return [TextContent(type="text", text=response)]
-
-                elif name == "add_form_lifecycle_handler":
-                    file_path = arguments.get('file_path')
-                    lifecycle = arguments.get('lifecycle')
-                    handler_code = arguments.get('handler_code')
-
-                    if not file_path or not lifecycle or not handler_code:
-                        return [TextContent(type="text", text="[ERROR] file_path, lifecycle, and handler_code are required")]
-
-                    result = self.xml_handler.add_form_lifecycle_handler(file_path, lifecycle, handler_code)
-
-                    if result.get('success'):
-                        response = f"""[OK] Đã thêm {lifecycle} lifecycle handler
-
-📝 Function name: {result.get('function_name', '')}
-
-📝 Generated code:
-```javascript
-{result.get('generated_code', '')}
+[SEARCH PATTERN]
+```
+{result.get('search_pattern', '')}
 ```
 
-📁 File: {result.get('file_path', '')}
+[INSTRUCTIONS]
+{result.get('instructions', '')}
 """
                     else:
                         response = f"[ERROR] {result.get('error', 'Unknown error')}"

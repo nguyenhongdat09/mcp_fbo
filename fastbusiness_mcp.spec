@@ -40,7 +40,7 @@ hiddenimports = [
     'fastbusiness_mcp.tools.generate_field_from_lmdb',
     'fastbusiness_mcp.tools.generate_sql_for_fields',
     'fastbusiness_mcp.tools.code_assistant_tool',
-    'fastbusiness_mcp.tools.xml_handler_tool',
+    'fastbusiness_mcp.tools.xml_snippet_tool',
     'fastbusiness_mcp.knowledge_base',
     'fastbusiness_mcp.knowledge_base.engine',
     'fastbusiness_mcp.knowledge_base.context_detector',
