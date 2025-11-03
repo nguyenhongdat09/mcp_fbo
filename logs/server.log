@@ -46,3 +46,13 @@
 2025-11-03 19:22:55,545 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
 2025-11-03 19:22:55,669 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
 2025-11-03 19:22:55,670 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:24:00,544 | INFO | __main__ | ✓ Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:24:00,546 | INFO | __main__ | 📂 Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:24:00,547 | INFO | __main__ | 📚 Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:24:00,668 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:24:00,669 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
+2025-11-03 19:31:31,453 | INFO | __main__ | [OK] Using LMDB path from environment variable: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:31:31,453 | INFO | __main__ | [DB] Final LMDB database path: E:\mcp_fbo\data\fields_lmdb
+2025-11-03 19:31:31,453 | INFO | __main__ | [KB] Knowledge base path: E:\mcp_fbo\knowledge_base
+2025-11-03 19:31:31,573 | INFO | __main__ | FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant) initialized
+2025-11-03 19:31:31,575 | INFO | __main__ | Starting FastBusiness MCP Server (LMDB Field Generation + AI Code Assistant)...
