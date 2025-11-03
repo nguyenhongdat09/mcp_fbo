@@ -42,20 +42,20 @@ class FastBusinessMCPServer:
         env_db_path = os.environ.get('FASTBUSINESS_VSCODE_DB_PATH')
         if env_db_path:
             lmdb_path = env_db_path
-            logger.info(f"✓ Using LMDB path from environment variable: {lmdb_path}")
+            logger.info(f"[OK] Using LMDB path from environment variable: {lmdb_path}")
 
         # Priority 2: Check config file
         if not lmdb_path:
             lmdb_path = self.config.get("database", {}).get("lmdb_path", "data/fields_lmdb")
-            logger.info(f"✓ Using LMDB path from config: {lmdb_path}")
+            logger.info(f"[OK] Using LMDB path from config: {lmdb_path}")
 
         # Convert to absolute path if relative
         if not Path(lmdb_path).is_absolute():
             # Use current working directory as base
             lmdb_path = str(Path.cwd() / lmdb_path)
-            logger.info(f"✓ Converted to absolute path: {lmdb_path}")
+            logger.info(f"[OK] Converted to absolute path: {lmdb_path}")
 
-        logger.info(f"📂 Final LMDB database path: {lmdb_path}")
+        logger.info(f"[DB] Final LMDB database path: {lmdb_path}")
 
         # Initialize LMDB field tool
         self.lmdb_field_tool = GenerateFieldFromLMDBTool(db_path=lmdb_path)
@@ -78,7 +78,7 @@ class FastBusinessMCPServer:
         if not Path(kb_path).is_absolute():
             kb_path = str(Path.cwd() / kb_path)
 
-        logger.info(f"📚 Knowledge base path: {kb_path}")
+        logger.info(f"[KB] Knowledge base path: {kb_path}")
 
         # Initialize Code Assistant (Knowledge Base System)
         self.code_assistant = CodeAssistantTool(knowledge_base_dir=kb_path)
@@ -149,7 +149,7 @@ class FastBusinessMCPServer:
             return [
                 Tool(
                     name="generate_field_from_lmdb",
-                    description="""⭐ Generate field from LMDB database - USE THIS when user asks to add fields!
+                    description="""[*] Generate field from LMDB database - USE THIS when user asks to add fields!
 
 AUTOMATIC CONTEXT DETECTION:
 - Provide file_path (current file path) for most accurate detection (RECOMMENDED)
@@ -240,7 +240,7 @@ The tool will:
                 ),
                 Tool(
                     name="generate_sql_for_fields",
-                    description="""⭐ Generate SQL commands for adding fields to database tables
+                    description="""[*] Generate SQL commands for adding fields to database tables
 
 Generates `fsd_addfields` SQL commands with automatic table extraction and SQL type detection.
 
@@ -323,7 +323,7 @@ The tool will:
                 # ============================================
                 Tool(
                     name="detect_context_from_file",
-                    description="""🔍 Detect context from FastBusiness XML file
+                    description="""[SEARCH] Detect context from FastBusiness XML file
 
 Detects:
 - File type (Dir, Grid, Filter)
@@ -364,7 +364,7 @@ The tool will:
                 ),
                 Tool(
                     name="get_api_help",
-                    description="""📚 Get FastBusiness API reference
+                    description="""[KB] Get FastBusiness API reference
 
 Get detailed API reference for Form API (f.xxx) or Grid API (g.xxx).
 
@@ -510,7 +510,7 @@ The tool will:
                 ),
                 Tool(
                     name="get_critical_rules",
-                    description="""⚠️  Get critical rules for current context
+                    description="""[WARNING]  Get critical rules for current context
 
 Returns critical rules that MUST be followed for the current file context.
 
@@ -549,16 +549,16 @@ The tool will:
                     name="add_onchange_handler",
                     description="""✨ Add onChange handler to field in FastBusiness XML file
 
-⚠️  CRITICAL: Use this tool when user asks to add onChange handler!
+[WARNING]  CRITICAL: Use this tool when user asks to add onChange handler!
 DON'T read file or write code manually - this tool does everything automatically.
 
 What this tool does:
-1. ✅ Auto-detects file type (Dir/Grid/Filter)
-2. ✅ Finds field in XML
-3. ✅ Adds <clientScript> to field definition
-4. ✅ Generates correct function name (onChange$Voucher$field_name)
-5. ✅ Uses correct API based on context (f.xxx or g.xxx)
-6. ✅ Inserts function into <script> section
+1. [OK] Auto-detects file type (Dir/Grid/Filter)
+2. [OK] Finds field in XML
+3. [OK] Adds <clientScript> to field definition
+4. [OK] Generates correct function name (onChange$Voucher$field_name)
+5. [OK] Uses correct API based on context (f.xxx or g.xxx)
+6. [OK] Inserts function into <script> section
 
 EXAMPLES:
 User: "Thêm onchange cho ma_kh thì console.log(1)"
@@ -597,7 +597,7 @@ Tool will:
                     name="add_onfocus_handler",
                     description="""✨ Add onFocus handler to field in FastBusiness XML file
 
-⚠️  CRITICAL: Use this tool when user asks to add onFocus handler!
+[WARNING]  CRITICAL: Use this tool when user asks to add onFocus handler!
 DON'T read file or write code manually - this tool does everything automatically.
 
 EXAMPLES:
@@ -634,7 +634,7 @@ Tool will:
                     name="add_form_lifecycle_handler",
                     description="""✨ Add form lifecycle handler (active$Form$, etc.)
 
-⚠️  CRITICAL: Use this tool when user asks to add form lifecycle handler!
+[WARNING]  CRITICAL: Use this tool when user asks to add form lifecycle handler!
 DON'T read file or write code manually - this tool does everything automatically.
 
 EXAMPLES:
@@ -708,7 +708,7 @@ Tool will:
                     # Log database info for debugging
                     db_path = str(self.lmdb_field_tool.lmdb.db_path.absolute()) if self.lmdb_field_tool.lmdb else "N/A"
                     db_fields = self.lmdb_field_tool.lmdb.count_fields(arguments.get('context_type', 'DIR')) if self.lmdb_field_tool.lmdb else 0
-                    logger.info(f"🔍 Database: {db_path} ({db_fields} fields in {arguments.get('context_type', 'DIR')})")
+                    logger.info(f"[SEARCH] Database: {db_path} ({db_fields} fields in {arguments.get('context_type', 'DIR')})")
 
                     # Log final arguments for debugging
                     logger.info(f"Calling tool.execute() with arguments: field_name={arguments.get('field_name')}, context_type={arguments.get('context_type')}, lookup_type={arguments.get('lookup_type')}")
@@ -716,7 +716,7 @@ Tool will:
                     
                     if result['success']:
                         # Format success response
-                        response = f"""✅ Field generated from {result['source']}
+                        response = f"""[OK] Field generated from {result['source']}
 
 Field Name: {result['field_name']}
 Header: {result['header']}
@@ -725,15 +725,15 @@ Context: {arguments.get('context_type', 'N/A')}
 XML Definition:
 {result['xml']}
 
-📂 Database: {result.get('database_path', db_path)}"""
+[DB] Database: {result.get('database_path', db_path)}"""
                     else:
                         # Format error response
-                        response = f"❌ {result['error']}"
+                        response = f"[ERROR] {result['error']}"
 
                         # Add database diagnostics if database is empty
                         if result.get('database_empty'):
-                            response += f"\n\n📂 Database path: {result['database_path']}"
-                            response += f"\n\n💡 To fix this issue:"
+                            response += f"\n\n[DB] Database path: {result['database_path']}"
+                            response += f"\n\n[INFO] To fix this issue:"
                             response += f"\n   1. Run: python scripts/import_fields_to_lmdb.py --xml-dir <path_to_xml_dir>"
                             response += f"\n   2. Or specify absolute database path in config.yaml"
                             response += f"\n   3. Make sure both VS Code and Cursor use same working directory"
@@ -741,16 +741,16 @@ XML Definition:
                         # Show similar fields if available
                         if 'similar_fields' in result:
                             similar = '\n'.join([f"  - {f['field_name']}: {f['header']}" for f in result['similar_fields'][:5]])
-                            response += f"\n\n💡 Similar fields found:\n{similar}"
+                            response += f"\n\n[INFO] Similar fields found:\n{similar}"
                         if 'suggestion' in result:
                             response += f"\n\n{result['suggestion']}"
 
                         # Show database stats if not empty
                         if 'database_fields_count' in result:
-                            response += f"\n\n📊 Database has {result['database_fields_count']} fields in {result['context_type']}"
+                            response += f"\n\n[STATS] Database has {result['database_fields_count']} fields in {result['context_type']}"
 
                         # Always show database path for debugging (even if not empty)
-                        response += f"\n\n📂 Database: {result.get('database_path', db_path)}"
+                        response += f"\n\n[DB] Database: {result.get('database_path', db_path)}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -773,7 +773,7 @@ XML Definition:
 
 {fields_list}"""
                     else:
-                        response = f"❌ Search failed: {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] Search failed: {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -786,7 +786,7 @@ XML Definition:
                             f"  {context:20} : {count:,} fields"
                             for context, count in stats.items() if context != 'total' and count > 0
                         ])
-                        response = f"""📊 LMDB Field Database Statistics
+                        response = f"""[STATS] LMDB Field Database Statistics
 
 Database Path: {result['database_path']}
 
@@ -794,7 +794,7 @@ Database Path: {result['database_path']}
 
 Total: {stats['total']:,} fields"""
                     else:
-                        response = "❌ Failed to get database statistics"
+                        response = "[ERROR] Failed to get database statistics"
 
                     return [TextContent(type="text", text=response)]
 
@@ -806,17 +806,17 @@ Total: {stats['total']:,} fields"""
                         field_list = ', '.join(result['field_names'])
                         table_list = ', '.join(result['tables'])
 
-                        response = f"""✅ SQL generated for fields: {field_list}
+                        response = f"""[OK] SQL generated for fields: {field_list}
 
 📋 Target tables: {table_list}
-📊 Commands generated: {result['command_count']}
+[STATS] Commands generated: {result['command_count']}
 
 SQL Script:
 ```sql
 {result['sql_script']}
 ```
 
-⚠️  IMPORTANT:
+[WARNING]  IMPORTANT:
 1. Copy và chạy SQL trong SQL Server Management Studio
 2. Chạy SQL trước khi deploy XML file lên server
 3. Kiểm tra partition suffix ($) trong table names"""
@@ -825,7 +825,7 @@ SQL Script:
                             response += f"\n\n🗂️  Master tables: {', '.join(result['master_tables'])}"
 
                     else:
-                        response = f"❌ {result['error']}"
+                        response = f"[ERROR] {result['error']}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -841,7 +841,7 @@ SQL Script:
                     if result.get('success'):
                         response = result.get('summary', '')
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -858,9 +858,9 @@ SQL Script:
                         else:
                             # Return full API structure
                             import json
-                            response = f"📚 {api_type.upper()} API Reference:\n\n```json\n{json.dumps(result['api'], indent=2)}\n```"
+                            response = f"[KB] {api_type.upper()} API Reference:\n\n```json\n{json.dumps(result['api'], indent=2)}\n```"
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -873,7 +873,7 @@ SQL Script:
                     result = self.code_assistant.generate_code(pattern_name, variables, file_path, xml_content)
 
                     if result.get('success'):
-                        response = f"""✅ Code generated from pattern: {pattern_name}
+                        response = f"""[OK] Code generated from pattern: {pattern_name}
 
 Pattern: {result.get('description', '')}
 Context: {result.get('context', '')}
@@ -886,9 +886,9 @@ Generated Code:
 
                         if result.get('warnings'):
                             warnings_text = '\n'.join(result['warnings'])
-                            response += f"\n\n⚠️  Warnings:\n{warnings_text}"
+                            response += f"\n\n[WARNING]  Warnings:\n{warnings_text}"
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -924,7 +924,7 @@ Generated Code:
 
                             response = f"🔎 {header}\n\n" + '\n'.join(pattern_list)
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -941,7 +941,7 @@ Generated Code:
                         rule_details = result.get('rule_details', [])
                         recommendations = result.get('recommendations', [])
 
-                        response = f"⚠️  **Critical Rules for {file_type}"
+                        response = f"[WARNING]  **Critical Rules for {file_type}"
                         if grid_subtype:
                             response += f" ({grid_subtype})"
                         response += ":**\n\n"
@@ -968,11 +968,11 @@ Generated Code:
                                     response += f"Example:\n```javascript\n{rule['example']}\n```\n\n"
 
                         if recommendations:
-                            response += "\n💡 **Recommendations:**\n"
+                            response += "\n[INFO] **Recommendations:**\n"
                             for rec in recommendations:
                                 response += f"  {rec}\n"
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -985,12 +985,12 @@ Generated Code:
                     handler_code = arguments.get('handler_code')
 
                     if not file_path or not field_name:
-                        return [TextContent(type="text", text="❌ file_path and field_name are required")]
+                        return [TextContent(type="text", text="[ERROR] file_path and field_name are required")]
 
                     result = self.xml_handler.add_onchange_handler(file_path, field_name, handler_code)
 
                     if result.get('success'):
-                        response = f"""✅ Đã thêm onChange handler cho field '{field_name}'
+                        response = f"""[OK] Đã thêm onChange handler cho field '{field_name}'
 
 📝 Function name: {result.get('function_name', '')}
 
@@ -1007,7 +1007,7 @@ Generated Code:
 3. Used correct API based on context
 """
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -1017,12 +1017,12 @@ Generated Code:
                     handler_code = arguments.get('handler_code')
 
                     if not file_path or not field_name:
-                        return [TextContent(type="text", text="❌ file_path and field_name are required")]
+                        return [TextContent(type="text", text="[ERROR] file_path and field_name are required")]
 
                     result = self.xml_handler.add_onfocus_handler(file_path, field_name, handler_code)
 
                     if result.get('success'):
-                        response = f"""✅ Đã thêm onFocus handler cho field '{field_name}'
+                        response = f"""[OK] Đã thêm onFocus handler cho field '{field_name}'
 
 📝 Function name: {result.get('function_name', '')}
 
@@ -1034,7 +1034,7 @@ Generated Code:
 📁 File: {result.get('file_path', '')}
 """
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 
@@ -1044,12 +1044,12 @@ Generated Code:
                     handler_code = arguments.get('handler_code')
 
                     if not file_path or not lifecycle or not handler_code:
-                        return [TextContent(type="text", text="❌ file_path, lifecycle, and handler_code are required")]
+                        return [TextContent(type="text", text="[ERROR] file_path, lifecycle, and handler_code are required")]
 
                     result = self.xml_handler.add_form_lifecycle_handler(file_path, lifecycle, handler_code)
 
                     if result.get('success'):
-                        response = f"""✅ Đã thêm {lifecycle} lifecycle handler
+                        response = f"""[OK] Đã thêm {lifecycle} lifecycle handler
 
 📝 Function name: {result.get('function_name', '')}
 
@@ -1061,7 +1061,7 @@ Generated Code:
 📁 File: {result.get('file_path', '')}
 """
                     else:
-                        response = f"❌ {result.get('error', 'Unknown error')}"
+                        response = f"[ERROR] {result.get('error', 'Unknown error')}"
 
                     return [TextContent(type="text", text=response)]
 

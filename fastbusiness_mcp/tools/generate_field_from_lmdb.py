@@ -33,7 +33,7 @@ class GenerateFieldFromLMDBTool:
                 self.lmdb = LMDBManager(db_path=self.db_path)
                 self.matcher = FieldPatternMatcher(self.lmdb)
                 self._initialized = True
-                logger.info(f"✓ LMDB field database initialized at {self.db_path}")
+                logger.info(f"[OK] LMDB field database initialized at {self.db_path}")
             except Exception as e:
                 logger.error(f"Failed to initialize LMDB: {e}")
                 raise
@@ -103,7 +103,7 @@ class GenerateFieldFromLMDBTool:
                 'database_path': str(self.lmdb.db_path.absolute())
             }
 
-            logger.info(f"✓ Generated field: {result['field_name']} from {result['source']}")
+            logger.info(f"[OK] Generated field: {result['field_name']} from {result['source']}")
             return result
 
         else:

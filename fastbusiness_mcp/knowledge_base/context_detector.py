@@ -225,10 +225,10 @@ class ContextDetector:
 
         # Recommendations based on file type
         if file_type == 'Dir':
-            recommendations.append("✓ Use Form API: f.getItemValue(), f.setItemValue()")
+            recommendations.append("[OK] Use Form API: f.getItemValue(), f.setItemValue()")
 
             if context.get('has_grid_detail'):
-                recommendations.append("⚠️  CRITICAL: If writing Grid Detail script, MUST get parent form first!")
+                recommendations.append("[WARNING]  CRITICAL: If writing Grid Detail script, MUST get parent form first!")
                 recommendations.append("   Code: var f = g.get_element().parentForm;")
 
         elif file_type == 'Grid':
@@ -239,11 +239,11 @@ class ContextDetector:
                 recommendations.append("   Step 3: Parent fields in calculations use $ prefix: [$field_name]")
 
             elif grid_subtype == 'GridView':
-                recommendations.append("✓ Grid View - Use grid API only: g._getItemValue(), g._setItemValue()")
-                recommendations.append("❌ NO parent form access! Don't use f.xxx")
+                recommendations.append("[OK] Grid View - Use grid API only: g._getItemValue(), g._setItemValue()")
+                recommendations.append("[ERROR] NO parent form access! Don't use f.xxx")
 
         elif file_type == 'Filter':
-            recommendations.append("✓ Use Form API (same as Dir): f.getItemValue(), f.setItemValue()")
+            recommendations.append("[OK] Use Form API (same as Dir): f.getItemValue(), f.setItemValue()")
 
         # Response handler recommendation
         recommendations.append("📋 Response handlers: Access result by INDEX → result[0].Value, result[1].Value")
@@ -260,7 +260,7 @@ class ContextDetector:
             Formatted summary string
         """
         if not context.get('success'):
-            return f"❌ Error: {context.get('error', 'Unknown error')}"
+            return f"[ERROR] Error: {context.get('error', 'Unknown error')}"
 
         lines = []
         lines.append("📋 **File Context:**")
@@ -287,7 +287,7 @@ class ContextDetector:
 
         # Recommendations
         if context.get('recommendations'):
-            lines.append("\n💡 **Recommendations:**")
+            lines.append("\n[INFO] **Recommendations:**")
             for rec in context['recommendations']:
                 lines.append(f"  {rec}")
 

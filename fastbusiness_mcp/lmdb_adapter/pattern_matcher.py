@@ -99,11 +99,11 @@ class FieldPatternMatcher:
         """
         # Step 1: Try exact match with lookup suffix
         full_field_name = self.add_lookup_suffix(field_name, lookup_type)
-        logger.info(f"🔍 Searching for field: {full_field_name} in context={context_type}, lookup={lookup_type}")
+        logger.info(f"[SEARCH] Searching for field: {full_field_name} in context={context_type}, lookup={lookup_type}")
         field_def = self.lmdb.get_field(context_type, full_field_name)
 
         if field_def:
-            logger.info(f"✓ Found exact match: {full_field_name}")
+            logger.info(f"[OK] Found exact match: {full_field_name}")
             return field_def
         else:
             logger.debug(f"✗ Exact match not found: {full_field_name}")
@@ -116,7 +116,7 @@ class FieldPatternMatcher:
             template = self.lmdb.get_field(context_type, template_field_name)
 
             if template:
-                logger.info(f"✓ Using {pattern_type} template: {template_field_name}")
+                logger.info(f"[OK] Using {pattern_type} template: {template_field_name}")
                 return self.substitute_field(template, full_field_name, field_name)
 
         # Step 3: Try default text templates
@@ -125,7 +125,7 @@ class FieldPatternMatcher:
             template = self.lmdb.get_field(context_type, template_field_name)
 
             if template:
-                logger.info(f"✓ Using default template: {template_field_name}")
+                logger.info(f"[OK] Using default template: {template_field_name}")
                 return self.substitute_field(template, full_field_name, field_name)
 
         logger.warning(f"✗ No template found for '{field_name}' in {context_type}")

@@ -42,28 +42,28 @@ class KnowledgeEngine:
             if context_rules_path.exists():
                 with open(context_rules_path, 'r', encoding='utf-8') as f:
                     self.context_rules = yaml.safe_load(f)
-                logger.info(f"✓ Loaded context_rules.yaml")
+                logger.info(f"[OK] Loaded context_rules.yaml")
 
             # Load form API
             form_api_path = self.api_ref_dir / "form_api.yaml"
             if form_api_path.exists():
                 with open(form_api_path, 'r', encoding='utf-8') as f:
                     self.form_api = yaml.safe_load(f)
-                logger.info(f"✓ Loaded form_api.yaml")
+                logger.info(f"[OK] Loaded form_api.yaml")
 
             # Load grid API
             grid_api_path = self.api_ref_dir / "grid_api.yaml"
             if grid_api_path.exists():
                 with open(grid_api_path, 'r', encoding='utf-8') as f:
                     self.grid_api = yaml.safe_load(f)
-                logger.info(f"✓ Loaded grid_api.yaml")
+                logger.info(f"[OK] Loaded grid_api.yaml")
 
             # Load common patterns
             patterns_path = self.api_ref_dir / "common_patterns.yaml"
             if patterns_path.exists():
                 with open(patterns_path, 'r', encoding='utf-8') as f:
                     self.patterns = yaml.safe_load(f)
-                logger.info(f"✓ Loaded common_patterns.yaml")
+                logger.info(f"[OK] Loaded common_patterns.yaml")
 
         except Exception as e:
             logger.error(f"Failed to load knowledge: {e}")
@@ -394,7 +394,7 @@ class KnowledgeEngine:
 
         # Important notes
         if 'important' in api_operation:
-            help_text.append(f"\n⚠️  **Important:** {api_operation['important']}")
+            help_text.append(f"\n[WARNING]  **Important:** {api_operation['important']}")
 
         # Critical notes
         if 'critical' in api_operation:
@@ -402,7 +402,7 @@ class KnowledgeEngine:
 
         # Anti-patterns
         if 'anti_patterns' in api_operation:
-            help_text.append("\n**❌ Anti-patterns (DON'T do this):**")
+            help_text.append("\n**[ERROR] Anti-patterns (DON'T do this):**")
             for anti in api_operation['anti_patterns']:
                 if isinstance(anti, dict):
                     help_text.append(f"\n*Wrong:* `{anti.get('wrong')}`")

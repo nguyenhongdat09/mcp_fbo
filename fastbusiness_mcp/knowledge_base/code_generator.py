@@ -258,15 +258,15 @@ class CodeGenerator:
         # Check context compatibility
         if 'Form' in pattern_context or 'Dir' in pattern_context:
             if file_type != 'Dir':
-                warnings.append(f'⚠️  Pattern is for Form (Dir) but file type is {file_type}')
+                warnings.append(f'[WARNING]  Pattern is for Form (Dir) but file type is {file_type}')
 
         if 'Grid Detail' in pattern_context:
             if grid_subtype != 'GridDetail':
-                warnings.append(f'⚠️  Pattern is for Grid Detail but grid subtype is {grid_subtype}')
+                warnings.append(f'[WARNING]  Pattern is for Grid Detail but grid subtype is {grid_subtype}')
 
         if 'Grid View' in pattern_context:
             if grid_subtype != 'GridView':
-                warnings.append(f'⚠️  Pattern is for Grid View but grid subtype is {grid_subtype}')
+                warnings.append(f'[WARNING]  Pattern is for Grid View but grid subtype is {grid_subtype}')
 
         return warnings
 

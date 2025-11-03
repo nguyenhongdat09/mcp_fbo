@@ -47,11 +47,11 @@ class LMDBManager:
 
         # Log database info
         if not db_existed:
-            logger.warning(f"⚠️  LMDB database created NEW at {self.db_path.absolute()} - Database is EMPTY!")
-            logger.warning(f"⚠️  Run: python scripts/import_fields_to_lmdb.py --xml-dir <your_xml_dir>")
+            logger.warning(f"[WARNING]  LMDB database created NEW at {self.db_path.absolute()} - Database is EMPTY!")
+            logger.warning(f"[WARNING]  Run: python scripts/import_fields_to_lmdb.py --xml-dir <your_xml_dir>")
         else:
             total_fields = sum(self.count_fields(ctx) for ctx in self.dbs.keys())
-            logger.info(f"✓ LMDB initialized at {self.db_path.absolute()} ({total_fields} fields)")
+            logger.info(f"[OK] LMDB initialized at {self.db_path.absolute()} ({total_fields} fields)")
 
     def put_field(self, context_type: str, field_name: str, field_data: Dict) -> bool:
         """

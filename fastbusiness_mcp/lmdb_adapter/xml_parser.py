@@ -65,7 +65,7 @@ class FastBusinessXMLParser:
             fields = self._extract_all_field_tags(xml_content)
 
             if not fields:
-                logger.info(f"✓ Parsed {xml_path.name}: 0 fields")
+                logger.info(f"[OK] Parsed {xml_path.name}: 0 fields")
                 return {}
 
             # Return results
@@ -74,7 +74,7 @@ class FastBusinessXMLParser:
             self.stats['files_parsed'] += 1
             self.stats['fields_extracted'] += len(fields)
 
-            logger.info(f"✓ Parsed {xml_path.name}: {len(fields)} fields")
+            logger.info(f"[OK] Parsed {xml_path.name}: {len(fields)} fields")
             logger.info(f"  {context_type}: {len(fields)} fields")
 
             return results

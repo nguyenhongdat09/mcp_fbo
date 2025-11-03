@@ -1,85 +1,92 @@
 # FastBusiness MCP Server
 
-An AI-powered MCP (Model Context Protocol) server for FastBusiness XML development. This server provides intelligent code completion, validation, and generation for FastBusiness ERP XML files.
+MCP (Model Context Protocol) server cho FastBusiness XML development.
 
-## <� Features
-
-### Core Capabilities
-
-1. **File Type Detection** - Automatically identifies XML file types
-2. **Critical Validations** - Partition, result access, parent form, lookup
-3. **Automatic Fixers** - Fix common mistakes automatically
-4. **Code Generators** - Generate fields, commands, scripts
-5. **Field Registry** - Search and track field definitions
-
-## =� Quick Start
+## Cài đặt
 
 ```bash
-# Install
-pip install -e .
+# Install dependencies
+pip install -r requirements.txt
 
-# Initialize database
-python scripts/init_db.py
+# Import field definitions vào LMDB database
+python scripts/import_fields_to_lmdb.py --xml-dir "E:\FBO\SP2263\App_Data\Controllers"
+```
 
-# Configure Claude Desktop
-# Add to claude_desktop_config.json:
+## Cấu hình MCP
+
+### Cursor/VS Code MCP Config
+
+```json
 {
   "mcpServers": {
-    "fastbusiness": {
-      "command": "python",
-      "args": ["-m", "fastbusiness_mcp.server"]
+    "fastbusiness-mcp": {
+      "command": "E:\\mcp_fbo\\venv\\Scripts\\python.exe",
+      "args": ["-m", "fastbusiness_mcp.server"],
+      "cwd": "E:\\mcp_fbo",
+      "env": {
+        "FASTBUSINESS_VSCODE_DB_PATH": "E:\\mcp_fbo\\data\\fields_lmdb"
+      }
     }
   }
 }
 ```
 
-## =' Available Tools
+### Environment Variables
 
-- `detect_file_type` - Detect XML file type
-- `validate_partition` - Validate partition usage (CRITICAL)
-- `validate_result_access` - Validate result access (CRITICAL)
-- `validate_xml_structure` - Comprehensive validation
-- `fix_partition` - Auto-fix partition issues
-- `fix_result_access` - Auto-fix result access
-- `generate_field` - Generate field definitions
-- `generate_command` - Generate SQL commands
-- `generate_script` - Generate JavaScript scripts
-- `search_fields` - Search field registry
+- `FASTBUSINESS_VSCODE_DB_PATH`: Đường dẫn tới LMDB database
+- `FASTBUSINESS_KNOWLEDGE_BASE_PATH`: Đường dẫn tới knowledge base
 
-## � Critical Rules
+## Các Tool Chính
 
-### Partition Strategy
+### 1. generate_field_from_lmdb
+Generate field XML từ database
+
+### 2. generate_sql_for_fields
+Generate SQL commands để add fields vào database
+
+### 3. add_onchange_handler
+Thêm onChange handler vào field
+
+### 4. add_onfocus_handler
+Thêm onFocus handler vào field
+
+### 5. add_form_lifecycle_handler
+Thêm form lifecycle handlers (active$Form$, etc.)
+
+### 6. detect_context_from_file
+Detect file type và context (Dir/Grid/Filter)
+
+### 7. get_api_help
+Get API reference (Form API, Grid API)
+
+### 8. get_critical_rules
+Get critical rules cho context hiện tại
+
+## Critical Rules
+
+### Partition
 ```sql
-L select * from d91$202501
- select * from @@prime$partition$current
+-- Sai
+select * from d91$202501
+
+-- Đúng
+select * from @@prime$partition$current
 ```
 
 ### Result Access
 ```javascript
-L var x = result[0].column_name;  // undefined!
- var x = result[0].Value;  // correct
+// Sai
+var x = result[0].column_name;
+
+// Đúng
+var x = result[0].Value;
 ```
 
 ### Grid Detail Parent Access
 ```javascript
- var f = g.get_element().parentForm;
+var f = g.get_element().parentForm;
 ```
 
-### Lookup Companion Fields
-```xml
-<field name="ma_kh">
-  <items style="AutoComplete" controller="Customer" reference="ten_kh%l"/>
-</field>
-<!-- MUST have companion -->
-<field name="ten_kh%l" external="true" readOnly="true">
-  <header v="" e=""/>
-</field>
-```
-
-## =� Documentation
-
-See `docs/` directory for detailed documentation.
-
-## =� License
+## License
 
 MIT License

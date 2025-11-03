@@ -4,15 +4,16 @@ server:
   name: "fastbusiness-xml-context"
   version: "1.0.0"
 
-# Database paths (can be overridden by environment variables) 
+# Database paths
+# Priority: 1. Environment variables  2. This config  3. Default paths
 database:
-  path: "data/fields.db"
-  lmdb_path: "E:/mcp_fbo/data/fields_lmdb"  # Windows absolute path
-# Resource paths (can be overridden by environment variables)
-paths:
-  knowledge_base: "knowledge_base"  # Knowledge base directory (override with FASTBUSINESS_KNOWLEDGE_BASE_PATH env var)
+  lmdb_path: "E:/mcp_fbo/data/fields_lmdb"  # Override with env: FASTBUSINESS_VSCODE_DB_PATH
 
-# Legacy data paths (deprecated, use paths section instead)
+# Resource paths
+paths:
+  knowledge_base: "knowledge_base"  # Override with env: FASTBUSINESS_KNOWLEDGE_BASE_PATH
+
+# Legacy data paths (deprecated)
 data:
   quick_reference: "data/quick_reference.txt"
   xml_summary: "data/xml_meaning_summary.txt"
@@ -23,4 +24,4 @@ logging:
 
 validation:
   strict_mode: true
-  auto_fix: false  # Set to true to auto-apply fixes
+  auto_fix: false
