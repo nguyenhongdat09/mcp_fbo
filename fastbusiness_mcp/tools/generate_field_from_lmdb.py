@@ -99,7 +99,8 @@ class GenerateFieldFromLMDBTool:
                 'header': field_def.get('header', ''),
                 'definition': field_def,
                 'xml': field_def.get('xml', ''),
-                'source': self._determine_source(field_def, field_name)
+                'source': self._determine_source(field_def, field_name),
+                'database_path': str(self.lmdb.db_path.absolute())
             }
 
             logger.info(f"✓ Generated field: {result['field_name']} from {result['source']}")
@@ -127,7 +128,8 @@ class GenerateFieldFromLMDBTool:
                     'error': f'Field "{field_name}" not found in {context_type}',
                     'field_name': field_name,
                     'context_type': context_type,
-                    'database_fields_count': total_fields
+                    'database_fields_count': total_fields,
+                    'database_path': str(self.lmdb.db_path.absolute())
                 }
 
                 if show_similar:

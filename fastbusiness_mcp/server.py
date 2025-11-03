@@ -670,6 +670,11 @@ Tool will:
                     arguments.pop('file_path', None)
                     arguments.pop('xml_content', None)
                     
+                    # Log database info for debugging
+                    db_path = str(self.lmdb_field_tool.lmdb.db_path.absolute()) if self.lmdb_field_tool.lmdb else "N/A"
+                    db_fields = self.lmdb_field_tool.lmdb.count_fields(arguments.get('context_type', 'DIR')) if self.lmdb_field_tool.lmdb else 0
+                    logger.info(f"🔍 Database: {db_path} ({db_fields} fields in {arguments.get('context_type', 'DIR')})")
+
                     # Log final arguments for debugging
                     logger.info(f"Calling tool.execute() with arguments: field_name={arguments.get('field_name')}, context_type={arguments.get('context_type')}, lookup_type={arguments.get('lookup_type')}")
                     result = await self.lmdb_field_tool.execute(arguments)
@@ -683,7 +688,9 @@ Header: {result['header']}
 Context: {arguments.get('context_type', 'N/A')}
 
 XML Definition:
-{result['xml']}"""
+{result['xml']}
+
+📂 Database: {result.get('database_path', db_path)}"""
                     else:
                         # Format error response
                         response = f"❌ {result['error']}"
@@ -706,6 +713,9 @@ XML Definition:
                         # Show database stats if not empty
                         if 'database_fields_count' in result:
                             response += f"\n\n📊 Database has {result['database_fields_count']} fields in {result['context_type']}"
+
+                        # Always show database path for debugging (even if not empty)
+                        response += f"\n\n📂 Database: {result.get('database_path', db_path)}"
 
                     return [TextContent(type="text", text=response)]
 
