@@ -52,7 +52,7 @@ hiddenimports = [
 
 # Analysis - collect all files and dependencies
 a = Analysis(
-    ['fastbusiness_mcp/server.py'],  # Entry point
+    ['run_server.py'],  # Entry point - uses absolute imports
     pathex=[],
     binaries=[],
     datas=datas,
