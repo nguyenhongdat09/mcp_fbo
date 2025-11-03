@@ -451,7 +451,7 @@ class XMLHandlerTool:
         field_name: str,
         script_content: str
     ) -> Tuple[str, bool]:
-        """Add clientScript to field definition
+        """Add clientScript to field definition BEFORE closing </field> tag
 
         Args:
             xml_content: XML content
@@ -461,46 +461,47 @@ class XMLHandlerTool:
         Returns:
             (modified_xml, field_found)
         """
-        # Find field definition
-        # Pattern: <field name="field_name" ... > or <field name="field_name" ... />
-        pattern = rf'(<field\b[^>]*\bname\s*=\s*["\']?{re.escape(field_name)}["\']?[^>]*)(/>|>)'
+        # Find field definition with its closing tag
+        # Pattern: <field name="field_name" ...> ... </field>
+        pattern = rf'<field\b[^>]*\bname\s*=\s*["\']?{re.escape(field_name)}["\']?[^>]*(?:/>|>.*?</field>)'
 
-        match = re.search(pattern, xml_content, re.IGNORECASE)
+        match = re.search(pattern, xml_content, re.DOTALL | re.IGNORECASE)
         if not match:
             return xml_content, False
 
-        field_opening = match.group(1)
-        field_closing = match.group(2)
+        field_content = match.group(0)
 
-        # Check if clientScript already exists
-        if '<clientScript>' in xml_content[match.start():match.end() + 100]:
-            # clientScript already exists - replace it
-            # Find existing clientScript
-            after_field = xml_content[match.end():]
-            script_match = re.search(r'<clientScript>.*?</clientScript>', after_field, re.DOTALL)
-            if script_match:
-                # Replace existing script
-                new_script = f'<clientScript><![CDATA[{script_content}]]></clientScript>'
-                xml_content = (
-                    xml_content[:match.end()] +
-                    after_field[:script_match.start()] +
-                    new_script +
-                    after_field[script_match.end():]
-                )
-            else:
-                # Add new script after field
-                new_field = f'{field_opening}{field_closing}\n        <clientScript><![CDATA[{script_content}]]></clientScript>'
-                xml_content = xml_content[:match.start()] + new_field + xml_content[match.end():]
+        # Check if field is self-closing
+        if field_content.strip().endswith('/>'):
+            # Self-closing: <field name="xxx" />
+            # Convert to: <field name="xxx">\n  <clientScript>...</clientScript>\n</field>
+            field_without_slash = field_content.rstrip('/> \t\n')
+            new_field = f'{field_without_slash}>\n        <clientScript><![CDATA[{script_content}]]></clientScript>\n    </field>'
+            xml_content = xml_content[:match.start()] + new_field + xml_content[match.end():]
         else:
-            # Add new clientScript
-            if field_closing == '/>':
-                # Self-closing tag - convert to opening + closing
-                new_field = f'{field_opening}>\n        <clientScript><![CDATA[{script_content}]]></clientScript>\n    </field>'
-                xml_content = xml_content[:match.start()] + new_field + xml_content[match.end():]
+            # Has closing tag: <field ...>...</field>
+            # Add clientScript BEFORE </field>
+
+            # Check if clientScript already exists
+            if '<clientScript>' in field_content:
+                # Replace existing clientScript
+                field_content = re.sub(
+                    r'<clientScript>.*?</clientScript>',
+                    f'<clientScript><![CDATA[{script_content}]]></clientScript>',
+                    field_content,
+                    flags=re.DOTALL
+                )
+                xml_content = xml_content[:match.start()] + field_content + xml_content[match.end():]
             else:
-                # Already has closing tag - add clientScript inside
-                new_field = f'{field_opening}{field_closing}\n        <clientScript><![CDATA[{script_content}]]></clientScript>'
-                xml_content = xml_content[:match.start()] + new_field + xml_content[match.end():]
+                # Insert clientScript BEFORE </field>
+                closing_tag_pos = field_content.rfind('</field>')
+                if closing_tag_pos > 0:
+                    new_field = (
+                        field_content[:closing_tag_pos] +
+                        f'<clientScript><![CDATA[{script_content}]]></clientScript>\n    ' +
+                        field_content[closing_tag_pos:]
+                    )
+                    xml_content = xml_content[:match.start()] + new_field + xml_content[match.end():]
 
         return xml_content, True
 
@@ -509,7 +510,7 @@ class XMLHandlerTool:
         xml_content: str,
         function_code: str
     ) -> str:
-        """Add function to <script> section
+        """Add function to <script> section INSIDE CDATA
 
         Args:
             xml_content: XML content
@@ -529,16 +530,39 @@ class XMLHandlerTool:
             function_name_match = re.search(r'function\s+(\w+\$\w+(?:\$\w+)?)\s*\(', function_code)
             if function_name_match:
                 function_name = function_name_match.group(1)
-                # Remove existing function with same name
+                # Remove existing function with same name (inside CDATA)
                 script_content = re.sub(
-                    rf'function\s+{re.escape(function_name)}\s*\([^)]*\)\s*\{{[^}}]*\}}',
+                    rf'function\s+{re.escape(function_name)}\s*\([^)]*\)\s*\{{.*?\}}',
                     '',
                     script_content,
                     flags=re.DOTALL
                 )
 
-            # Add new function
-            new_script_content = script_content.rstrip() + '\n\n' + function_code + '\n'
+            # Insert function INSIDE CDATA (before ]]>)
+            # Find CDATA section
+            cdata_match = re.search(r'<!\[CDATA\[(.*?)\]\]>', script_content, re.DOTALL)
+
+            if cdata_match:
+                # CDATA exists - insert function BEFORE ]]>
+                cdata_content = cdata_match.group(1)
+
+                # Add function to CDATA content
+                new_cdata_content = cdata_content.rstrip() + '\n\n' + function_code + '\n'
+
+                # Replace CDATA content
+                new_script_content = script_content[:cdata_match.start(1)] + new_cdata_content + script_content[cdata_match.end(1):]
+            else:
+                # No CDATA - create one and wrap existing content + new function
+                # Check if there's any content
+                content_before_entities = script_content.split('&')[0].strip()
+                entities_part = '&' + script_content.split('&', 1)[1] if '&' in script_content else ''
+
+                if content_before_entities:
+                    # Wrap existing content + new function in CDATA
+                    new_script_content = f'<![CDATA[\n{content_before_entities}\n\n{function_code}\n]]>\n{entities_part}'
+                else:
+                    # Just add CDATA with function
+                    new_script_content = f'<![CDATA[\n{function_code}\n]]>\n{entities_part.lstrip()}'
 
             xml_content = (
                 xml_content[:script_match.start(1)] +
@@ -546,7 +570,7 @@ class XMLHandlerTool:
                 xml_content[script_match.end(1):]
             )
         else:
-            # No script section - create one
+            # No script section - create one with CDATA
             # Find where to insert (before </dir> or </grid> or </filter>)
             closing_tag_match = re.search(r'(</(?:dir|grid|filter)>)', xml_content, re.IGNORECASE)
             if closing_tag_match:
