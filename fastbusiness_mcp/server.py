@@ -125,6 +125,12 @@ class FastBusinessMCPServer:
                     mimeType="text/plain",
                     description="Summary of XML structures and their meanings",
                 ),
+                Resource(
+                    uri="fastbusiness://instructions/xml-handler-workflow",
+                    name="CRITICAL: XML Handler Workflow - MUST READ FIRST",
+                    mimeType="text/markdown",
+                    description="[REQUIRED] How to add JavaScript handlers to XML files - READ THIS BEFORE adding onChange/onFocus handlers!",
+                ),
             ]
 
         @self.server.read_resource()
@@ -135,6 +141,132 @@ class FastBusinessMCPServer:
                     return read_file(self.config["data"]["quick_reference"])
                 elif uri == "fastbusiness://docs/xml-summary":
                     return read_file(self.config["data"]["xml_summary"])
+                elif uri == "fastbusiness://instructions/xml-handler-workflow":
+                    return """# CRITICAL: XML Handler Workflow
+
+## ⚠️ IMPORTANT: When user asks to add JavaScript handlers, you MUST use the snippet tools!
+
+DO NOT write XML manually! DO NOT use code assistant to generate XML!
+The MCP server provides PRECISE tools that ensure 100% correct XML structure.
+
+## When to Use These Tools:
+
+User says ANY of these:
+- "Thêm xử lý khi nhập X" / "Add handler when entering X"
+- "Khi nhập X thì Y" / "When X is entered then Y"
+- "Thêm onChange cho X" / "Add onChange to X"
+- "Thêm onFocus cho X" / "Add onFocus to X"
+- "Khi focus X thì Y" / "When X is focused then Y"
+
+→ YOU MUST USE: `add_clientscript_to_field` + `add_function_to_script` tools!
+
+## REQUIRED Workflow:
+
+### Step 1: Get field XML
+```
+Call: get_field_info
+  field_name: 'so_ct_hd'
+  file_path: '...'
+
+Result: You get field_xml
+```
+
+### Step 2: Add clientScript to field
+```
+Call: add_clientscript_to_field
+  field_xml: '<field name="so_ct_hd">...</field>' (from Step 1)
+  handler_type: 'onchange' or 'onfocus'
+  function_name: 'onChange$Voucher$so_ct_hd'
+
+Result: Server returns modified_field XML with clientScript
+```
+
+**YOU MUST**: Replace the original field in file with modified_field
+
+### Step 3: Add function to script section
+```
+Call: add_function_to_script
+  function_code: '''
+function onChange$Voucher$so_ct_hd(sender) {
+    var f = sender.parentForm;
+    if (f._action === 'View') return;
+
+    // User's logic here
+    f.setItemValue("so_seri_hd", "123455");
+}
+'''
+
+Result: Server returns function_snippet and search_pattern
+```
+
+**YOU MUST**:
+1. Find the pattern `    </text>\n</script>` in file
+2. Replace it with function_snippet
+
+## Function Naming Rules:
+
+**DIR files** (form):
+- onChange: `onChange$Voucher$field_name`
+- onFocus: `onFocus$Voucher$field_name`
+
+**GRID files** (grid):
+- onChange: `onChange$Grid$field_name` (GridView)
+- onChange: `onChange$Voucher$GridName$field_name` (GridDetail)
+
+**FILTER files**:
+- onChange: `onChange$Filter$field_name`
+
+## Complete Example:
+
+User: "Thêm xử lý nhập so_ct_hd gán so_seri_hd = '123455'"
+
+**Step 1**: Call `get_field_info` with field_name='so_ct_hd', file_path='...'
+→ Get field_xml
+
+**Step 2**: Call `add_clientscript_to_field`:
+```
+field_xml: (result from step 1)
+handler_type: 'onchange'
+function_name: 'onChange$Voucher$so_ct_hd'
+```
+→ Replace field in file with modified_field
+
+**Step 3**: Call `add_function_to_script`:
+```
+function_code: '''
+function onChange$Voucher$so_ct_hd(sender) {
+    var f = sender.parentForm;
+    if (f._action === 'View') return;
+    f.setItemValue("so_seri_hd", "123455");
+}
+'''
+```
+→ Find `    </text>\n</script>` and replace with function_snippet
+
+**DONE!** ✓ clientScript in correct position ✓ Function inside CDATA
+
+## Why Use These Tools?
+
+❌ **DO NOT** manually write XML:
+- clientScript might be in wrong position
+- Function might be outside CDATA
+- Multiple functions might overlap
+
+✅ **USE TOOLS**:
+- Server controls 100% of XML structure
+- Always correct position
+- Always inside CDATA
+- Zero errors
+
+## Remember:
+
+1. **ALWAYS** use `add_clientscript_to_field` for adding handlers
+2. **ALWAYS** use `add_function_to_script` for adding functions
+3. **NEVER** write XML manually
+4. **NEVER** use code assistant for XML structure
+
+The tools exist specifically to ensure precision. USE THEM!
+"""
             except Exception as e:
                 logger.error(f"Error reading resource {uri}: {e}")
 
@@ -547,38 +679,51 @@ The tool will:
                 # ============================================
                 Tool(
                     name="add_clientscript_to_field",
-                    description="""[SNIPPET] Add clientScript to field XML and return modified field
+                    description="""🚨 [REQUIRED] Add clientScript to field - USE THIS TOOL WHEN USER ASKS TO ADD HANDLERS!
+
+⚠️ CRITICAL TRIGGER PHRASES - When user says ANY of these, you MUST use this tool:
+- "Thêm xử lý khi nhập X" / "Add handler when entering X"
+- "Khi nhập X thì Y" / "When X is entered then Y"
+- "Thêm onChange cho X" / "Add onChange to X"
+- "Thêm onFocus cho X" / "Add onFocus to X"
+- "Khi focus X thì Y" / "When X is focused then Y"
+
+❌ DO NOT write XML manually!
+❌ DO NOT use code assistant to generate clientScript XML!
+✅ ALWAYS use this tool for 100% correct XML structure!
 
 APPROACH: Server generates EXACT field XML with clientScript - AI just replaces it
 
-WORKFLOW:
-1. AI gets field XML using get_field_info tool
-2. AI calls this tool with field XML
-3. Server returns modified field XML with clientScript
-4. AI replaces old field XML with new field XML in editor
+REQUIRED WORKFLOW:
+1. Call get_field_info to get field_xml
+2. Call THIS TOOL with field_xml to add clientScript
+3. Replace old field with modified_field in editor
 
 EXAMPLES:
 
-Example 1: Add onChange handler
-User: "Thêm xử lý khi nhập so_ct_hd"
-→ First call get_field_info: field_name='so_ct_hd', file_path='...'
-→ Get field_xml from result
-→ Then call add_clientscript_to_field:
-  field_xml='<field name="so_ct_hd">...</field>'
-  handler_type='onchange'
+Example 1: User says "Thêm xử lý khi nhập so_ct_hd"
+Step 1: get_field_info(field_name='so_ct_hd', file_path='...')
+Step 2: add_clientscript_to_field(
+  field_xml='<field name="so_ct_hd">...</field>',
+  handler_type='onchange',
   function_name='onChange$Voucher$so_ct_hd'
-→ Get modified_field from result
-→ Replace field_xml with modified_field in editor
+)
+Step 3: Replace field in file with modified_field
 
-Example 2: Add onFocus handler
-→ handler_type='onfocus'
-→ function_name='onFocus$Voucher$ma_kh'
+Example 2: User says "Khi focus ma_kh"
+Step 1: get_field_info(field_name='ma_kh', file_path='...')
+Step 2: add_clientscript_to_field(
+  field_xml='<field name="ma_kh">...</field>',
+  handler_type='onfocus',
+  function_name='onFocus$Voucher$ma_kh'
+)
+Step 3: Replace field in file with modified_field
 
-IMPORTANT:
-- You MUST get field_xml from get_field_info tool first
-- You MUST generate correct function_name (onChange$Voucher$field_name or onFocus$...)
-- Server returns both original_field and modified_field
-- You replace original_field with modified_field in your editor
+FUNCTION NAMING:
+- DIR file onChange: onChange$Voucher$field_name
+- DIR file onFocus: onFocus$Voucher$field_name
+- GRID onChange: onChange$Grid$field_name
+- FILTER onChange: onChange$Filter$field_name
 """,
                     inputSchema={
                         "type": "object",
@@ -601,33 +746,48 @@ IMPORTANT:
                 ),
                 Tool(
                     name="add_function_to_script",
-                    description="""[SNIPPET] Generate CDATA snippet for function to insert before </text></script>
+                    description="""🚨 [REQUIRED] Add JavaScript function to script section - MUST USE after add_clientscript_to_field!
 
-APPROACH: Server generates EXACT CDATA snippet - AI finds and replaces pattern
+⚠️ CRITICAL: After using add_clientscript_to_field, you MUST use this tool to add the JavaScript function!
 
-WORKFLOW:
-1. AI has JavaScript function code
-2. AI calls this tool with function_code
-3. Server returns CDATA snippet wrapped with </text></script>
-4. AI finds pattern "    </text>\\n</script>" in file
-5. AI replaces it with function_snippet
+❌ DO NOT write function code manually in XML!
+❌ DO NOT insert function outside CDATA!
+✅ ALWAYS use this tool to ensure function goes INSIDE CDATA!
 
-EXAMPLES:
+APPROACH: Server generates EXACT CDATA snippet with function - AI finds and replaces pattern
+
+REQUIRED WORKFLOW (Step 2 of adding handlers):
+1. You already called add_clientscript_to_field (Step 1)
+2. Now generate the JavaScript function code
+3. Call THIS TOOL with function_code
+4. Find pattern "    </text>\\n</script>" in file
+5. Replace it with function_snippet from tool result
+
+WHY THIS TOOL IS CRITICAL:
+- Ensures function is INSIDE CDATA (not outside)
+- Ensures function is BEFORE </text> closing tag
+- Server wraps function correctly with CDATA tags
+- 100% correct XML structure guaranteed
+
+EXAMPLE:
 
 User: "Khi nhập so_ct_hd thì gán so_seri_hd = '123455'"
 
-Step 1: AI generates function:
-function_code = '''
+After Step 1 (add_clientscript_to_field), now Step 2:
+
+1. Generate function code:
+```javascript
 function onChange$Voucher$so_ct_hd(sender) {
     var f = sender.parentForm;
     if (f._action === 'View') return;
     f.setItemValue("so_seri_hd", "123455");
 }
-'''
+```
 
-Step 2: Call add_function_to_script with function_code
+2. Call add_function_to_script(function_code=...)
 
-Step 3: Get function_snippet from result:
+3. Server returns function_snippet:
+```xml
 <![CDATA[
 function onChange$Voucher$so_ct_hd(sender) {
     var f = sender.parentForm;
@@ -637,17 +797,18 @@ function onChange$Voucher$so_ct_hd(sender) {
 ]]>
     </text>
 </script>
+```
 
-Step 4: Find "    </text>\\n</script>" in file
+4. Find "    </text>\\n</script>" in file
 
-Step 5: Replace with function_snippet
+5. Replace with function_snippet
 
-RESULT: Function is inserted INSIDE CDATA, BEFORE </text>
+RESULT: ✓ Function INSIDE CDATA ✓ BEFORE </text> ✓ Zero errors
 
 IMPORTANT:
-- Pattern to find: "    </text>\\n</script>" (with 4 spaces before </text>)
-- This ensures function goes INSIDE CDATA, not outside
-- Server wraps function in CDATA automatically
+- Always call this AFTER add_clientscript_to_field
+- Search pattern: "    </text>\\n</script>" (4 spaces before </text>)
+- Server automatically wraps function in CDATA
 """,
                     inputSchema={
                         "type": "object",
