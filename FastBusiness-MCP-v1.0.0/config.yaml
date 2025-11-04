@@ -1,0 +1,27 @@
+# FastBusiness MCP Server Configuration
+
+server:
+  name: "fastbusiness-xml-context"
+  version: "1.0.0"
+
+# Database paths
+# Priority: 1. Environment variables  2. This config  3. Default paths
+database:
+  lmdb_path: "E:/mcp_fbo/data/fields_lmdb"  # Override with env: FASTBUSINESS_VSCODE_DB_PATH
+
+# Resource paths
+paths:
+  knowledge_base: "knowledge_base"  # Override with env: FASTBUSINESS_KNOWLEDGE_BASE_PATH
+
+# Legacy data paths (deprecated)
+data:
+  quick_reference: "data/quick_reference.txt"
+  xml_summary: "data/xml_meaning_summary.txt"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+validation:
+  strict_mode: true
+  auto_fix: false
