@@ -139,6 +139,66 @@ Result: function_snippet with CDATA wrapper
 
 ---
 
+## Multiple Handlers Support (NEW!)
+
+You can add **multiple handlers** to the same field! The tool automatically handles:
+
+### Case 1: Add second onChange handler
+
+**User**: "Thêm onChange thứ 2 cho thoi_gian_xep_hang"
+
+**Field currently has**:
+```xml
+<clientScript><![CDATA[onchange="onChange$Voucher$thoi_gian_xep_hang(this);"]]></clientScript>
+```
+
+**Your actions**:
+1. `get_field_info(field_name='thoi_gian_xep_hang')` → Get field_xml WITH existing clientScript
+2. `add_clientscript_to_field(field_xml=..., handler_type='onchange', function_name='onChange$Voucher$thoi_gian_xep_hang2')`
+
+**Result** (server automatically appends with semicolon):
+```xml
+<clientScript><![CDATA[onchange="onChange$Voucher$thoi_gian_xep_hang(this);onChange$Voucher$thoi_gian_xep_hang2(this);"]]></clientScript>
+```
+
+✅ Both functions called on change!
+
+---
+
+### Case 2: Add onFocus to field with onChange
+
+**User**: "Thêm onFocus cho field ma_kh"
+
+**Field currently has**:
+```xml
+<clientScript><![CDATA[onchange="onChange$Voucher$ma_kh(this);"]]></clientScript>
+```
+
+**Your actions**:
+1. `get_field_info(field_name='ma_kh')` → Get field_xml WITH existing clientScript
+2. `add_clientscript_to_field(field_xml=..., handler_type='onfocus', function_name='onFocus$Voucher$ma_kh')`
+
+**Result** (server adds new attribute):
+```xml
+<clientScript><![CDATA[onchange="onChange$Voucher$ma_kh(this);" onfocus="onFocus$Voucher$ma_kh(this);"]]></clientScript>
+```
+
+✅ onChange and onFocus both work!
+
+---
+
+### How It Works
+
+The `add_clientscript_to_field` tool is smart:
+
+1. **No clientScript** → Creates new clientScript
+2. **Has clientScript + SAME handler type** (e.g., onChange + onChange) → **Appends** function with `;`
+3. **Has clientScript + DIFFERENT handler type** (e.g., onChange + onFocus) → **Adds** new attribute
+
+**Always call the tool** - it handles all cases automatically!
+
+---
+
 ## Checklist Before Responding
 
 - [ ] User mentioned adding handler?

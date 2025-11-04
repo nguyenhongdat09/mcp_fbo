@@ -36,6 +36,11 @@ class XMLSnippetTool:
     ) -> Dict:
         """Add clientScript to field XML and return modified field
 
+        Supports adding multiple handlers to same field:
+        - If handler_type already exists → append function (with semicolon)
+        - If handler_type doesn't exist → add new attribute
+        - If no clientScript → create new clientScript
+
         Args:
             field_xml: Original field XML (e.g., from get_field_info)
             handler_type: "onchange" or "onfocus"
@@ -49,19 +54,19 @@ class XMLSnippetTool:
                 'instructions': 'Replace original_field with modified_field in your editor'
             }
 
-        Example:
-            Input field_xml:
-                <field name="so_ct_hd" align="right">
-                  <header v="Số hóa đơn"></header>
-                  <items style="Mask"/>
-                </field>
+        Example 1 - New clientScript:
+            Input: <field name="so_ct_hd">...</field>
+            Output: <field name="so_ct_hd">...<clientScript><![CDATA[onchange="onChange$Voucher$so_ct_hd(this);"]]></clientScript></field>
 
-            Output modified_field:
-                <field name="so_ct_hd" align="right">
-                  <header v="Số hóa đơn"></header>
-                  <items style="Mask"/>
-                  <clientScript><![CDATA[onchange="onChange$Voucher$so_ct_hd(this);"]]></clientScript>
-                </field>
+        Example 2 - Add to existing handler (same type):
+            Input: <clientScript><![CDATA[onchange="func1(this);"]]></clientScript>
+            Add: onchange, func2
+            Output: <clientScript><![CDATA[onchange="func1(this);func2(this);"]]></clientScript>
+
+        Example 3 - Add different handler type:
+            Input: <clientScript><![CDATA[onchange="func1(this);"]]></clientScript>
+            Add: onfocus, func2
+            Output: <clientScript><![CDATA[onchange="func1(this);" onfocus="func2(this);"]]></clientScript>
         """
         try:
             # Validate handler type
@@ -71,23 +76,61 @@ class XMLSnippetTool:
                     'error': f"Invalid handler_type: {handler_type}. Must be 'onchange' or 'onfocus'"
                 }
 
-            # Generate script content
-            script_content = f'{handler_type.lower()}="{function_name}(this);"'
-
-            # Store original
+            handler_type = handler_type.lower()
             original_field = field_xml.strip()
 
             # Check if clientScript already exists
             if '<clientScript>' in field_xml:
-                # Replace existing clientScript
-                modified_field = re.sub(
-                    r'<clientScript>.*?</clientScript>',
-                    f'<clientScript><![CDATA[{script_content}]]></clientScript>',
-                    field_xml,
-                    flags=re.DOTALL
-                )
+                # Extract current clientScript content (between <![CDATA[ and ]]>)
+                cdata_match = re.search(r'<clientScript><!\[CDATA\[(.*?)\]\]></clientScript>', field_xml, re.DOTALL)
+
+                if cdata_match:
+                    current_content = cdata_match.group(1)
+
+                    # Check if handler_type already exists
+                    handler_pattern = rf'{handler_type}="([^"]*)"'
+                    handler_match = re.search(handler_pattern, current_content)
+
+                    if handler_match:
+                        # Handler type exists → append function
+                        existing_functions = handler_match.group(1)
+
+                        # Remove trailing semicolon if exists
+                        existing_functions = existing_functions.rstrip(';')
+
+                        # Append new function with semicolon
+                        new_functions = f'{existing_functions};{function_name}(this);'
+
+                        # Replace old functions with new functions
+                        new_content = re.sub(
+                            handler_pattern,
+                            f'{handler_type}="{new_functions}"',
+                            current_content
+                        )
+                    else:
+                        # Handler type doesn't exist → add new attribute
+                        new_content = current_content.strip() + f' {handler_type}="{function_name}(this);"'
+
+                    # Replace clientScript with updated content
+                    modified_field = re.sub(
+                        r'<clientScript><!\[CDATA\[.*?\]\]></clientScript>',
+                        f'<clientScript><![CDATA[{new_content}]]></clientScript>',
+                        field_xml,
+                        flags=re.DOTALL
+                    )
+                else:
+                    # No CDATA found (malformed) → replace entirely
+                    script_content = f'{handler_type}="{function_name}(this);"'
+                    modified_field = re.sub(
+                        r'<clientScript>.*?</clientScript>',
+                        f'<clientScript><![CDATA[{script_content}]]></clientScript>',
+                        field_xml,
+                        flags=re.DOTALL
+                    )
             else:
-                # Add new clientScript BEFORE </field>
+                # No clientScript → create new one
+                script_content = f'{handler_type}="{function_name}(this);"'
+
                 # Check if self-closing
                 if field_xml.strip().endswith('/>'):
                     # Convert self-closing to regular tag

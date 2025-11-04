@@ -719,6 +719,28 @@ Step 2: add_clientscript_to_field(
 )
 Step 3: Replace field in file with modified_field
 
+Example 3: Add SECOND handler to same field (MULTIPLE HANDLERS)
+User says "Thêm onChange thứ 2 cho thoi_gian_xep_hang"
+Step 1: get_field_info(field_name='thoi_gian_xep_hang', file_path='...')
+→ Result has existing clientScript: <clientScript><![CDATA[onchange="onChange$Voucher$thoi_gian_xep_hang(this);"]]></clientScript>
+Step 2: add_clientscript_to_field(
+  field_xml='<field name="thoi_gian_xep_hang">...<clientScript>...</clientScript></field>',
+  handler_type='onchange',
+  function_name='onChange$Voucher$thoi_gian_xep_hang2'
+)
+→ Server APPENDS function with semicolon:
+  <clientScript><![CDATA[onchange="onChange$Voucher$thoi_gian_xep_hang(this);onChange$Voucher$thoi_gian_xep_hang2(this);"]]></clientScript>
+Step 3: Replace field in file with modified_field
+
+Example 4: Add DIFFERENT handler type (onFocus to field with onChange)
+User says "Thêm onFocus cho field đã có onChange"
+→ Server adds new attribute: onchange="func1(this);" onfocus="func2(this);"
+
+MULTIPLE HANDLERS SUPPORT:
+✅ Same handler type (onChange + onChange) → Appends with semicolon
+✅ Different handler type (onChange + onFocus) → Adds new attribute
+✅ Always preserves existing handlers
+
 FUNCTION NAMING:
 - DIR file onChange: onChange$Voucher$field_name
 - DIR file onFocus: onFocus$Voucher$field_name
