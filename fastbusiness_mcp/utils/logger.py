@@ -35,8 +35,10 @@ def setup_logger(
 
     formatter = logging.Formatter(log_format)
 
-    # Console handler
-    ch = logging.StreamHandler(sys.stdout)
+    # Console handler - CRITICAL: Use stderr for MCP protocol compatibility
+    # MCP requires stdout to be PURE JSON-RPC messages only
+    # All logging MUST go to stderr
+    ch = logging.StreamHandler(sys.stderr)
     ch.setLevel(getattr(logging, level.upper()))
     ch.setFormatter(formatter)
     logger.addHandler(ch)
