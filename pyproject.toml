@@ -1,7 +1,7 @@
 [project]
 name = "fastbusiness-mcp"
-version = "1.0.0"
-description = "MCP Server for FastBusiness XML Development"
+version = "2.0.0"
+description = "MCP Server for FastBusiness — query SQL + read XML entities"
 requires-python = ">=3.10"
 authors = [{name = "FastBusiness Team", email = "team@fastbusiness.com"}]
 readme = "README.md"
@@ -9,20 +9,17 @@ license = {text = "MIT"}
 
 dependencies = [
     "mcp>=0.9.0",
+    "pyyaml>=6.0.0",
+    "pyodbc>=5.0.0",
     "lxml>=5.0.0",
-    "pydantic>=2.0.0",
-    "aiosqlite>=0.19.0",
-    "plyvel>=1.5.0",  # LevelDB support
+    "kuzu>=0.11.0",
+    "watchdog>=4.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "mypy>=1.0.0",
-    "ruff>=0.1.0",
 ]
 
 [project.scripts]
@@ -31,24 +28,3 @@ fastbusiness-mcp = "fastbusiness_mcp.server:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-
-[tool.black]
-line-length = 100
-target-version = ['py310']
-
-[tool.mypy]
-python_version = "3.10"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-
-[tool.ruff]
-line-length = 100
-target-version = "py310"

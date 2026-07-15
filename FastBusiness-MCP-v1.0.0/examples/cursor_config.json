@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "fastbusiness": {
-      "command": "C:\\Path\\To\\FastBusiness-MCP-v1.0.0\\fastbusiness_mcp.exe",
-      "args": []
-    }
-  }
-}

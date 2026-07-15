@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<grid table="d31$000000" type="Detail">
-  <fields>
-    <field name="sl_nhap" type="Decimal"/>
-    <field name="sl_xuat" type="Decimal"/>
-    <field name="ma_vt" type="String"/>
-  </fields>
-</grid>

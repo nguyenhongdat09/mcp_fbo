@@ -1,6 +1,12 @@
 venv/
 __pycache__/
 *.pyc
-data/fields_lmdb/
+*.pyo
 *.mdb
-*.ldb 
+*.ldb
+build/
+dist/
+FastBusiness-MCP-Package/
+logs/
+.codegraph/
+*.log

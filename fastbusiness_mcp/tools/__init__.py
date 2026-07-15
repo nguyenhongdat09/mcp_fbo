@@ -1,9 +1,3 @@
-"""Tools for FastBusiness MCP Server"""
+"""Tools package (kept for package layout; MCP tools live in modules + xml_codegraph)."""
 
-from .generate_field_from_lmdb import GenerateFieldFromLMDBTool
-from .generate_sql_for_fields import GenerateSQLForFieldsTool
-
-__all__ = [
-    'GenerateFieldFromLMDBTool',
-    'GenerateSQLForFieldsTool',
-]
+__all__: list[str] = []

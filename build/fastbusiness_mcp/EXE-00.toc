@@ -69,9 +69,8 @@
  [],
  False,
  False,
- 1762236721,
+ 1784023692,
  [('run.exe',
    'E:\\mcp_fbo\\venv\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\run.exe',
    'EXECUTABLE')],
- 'C:\\Users\\Windows '
- '10\\AppData\\Local\\Programs\\Python\\Python314\\python314.dll')
+ 'C:\\Python312\\python312.dll')

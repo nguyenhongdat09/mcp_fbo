@@ -1,0 +1,40 @@
+# query_database — loại truy vấn (type)
+#
+# type=0 : tên object — tự tra sys.objects, rồi:
+#          USER_TABLE → schema bảng (CREATE TABLE + index + ...)
+#          P/V/FN/TR/... → sp_helptext
+# type=1 : câu SQL tự do inline
+# type=2 : đọc và chạy SQL từ file .sql (query = path file)
+
+types:
+  0:
+    name: object
+    description: Tên bảng / proc / view / function — tự nhận loại qua sys.objects
+    param_field: query
+    param_hint: "Tên object, vd: dmkh, ff_GetStartDateOfCycle, rs_xxx"
+
+  1:
+    name: free_query
+    description: Chạy câu SQL tùy ý (ngắn, inline)
+    param_field: query
+    param_hint: "Câu SELECT / EXEC ..."
+
+  2:
+    name: sql_file
+    description: Đọc và chạy SQL từ file .sql (câu dài)
+    param_field: query
+    param_hint: "Đường dẫn file .sql, vd: E:\\SQL Temp\\tmsg.sql"
+
+templates:
+  table_schema:
+    sql_file: queries/table_schema.sql
+    placeholder: "{{table_name}}"
+
+  object_definition:
+    sql_template: "EXEC sp_helptext N'{{object_name}}'"
+
+defaults:
+  is_create_table: "1"
+  is_create_index: "1"
+  is_create_trigger: "1"
+  is_create_df: "1"
