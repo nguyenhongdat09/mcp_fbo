@@ -15,6 +15,8 @@ from xml_codegraph.rules.edges_rules import EdgeType
 # ============================================================
 _graph_cache: Dict[str, Tuple[float, XmlGraph]] = {}   # graph_dir -> (mtime, graph)
 _store_cache: Dict[str, KuzuIndexStore] = {}          # graph_dir -> store
+_last_sync_times: Dict[str, float] = {}              # graph_dir -> last checked timestamp
+
 
 # Synonym canonical keys = ASCII khong dau (an toan charset / goi tool).
 # Agent nen truyen: "giay bao no", "phieu chi", "dien giai", "gia ban"...
@@ -183,6 +185,32 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
         build_and_save_graph(controllers_dir, graph_dir)
         _safe_log("[CodeGraph] Auto-build finished.")
         _graph_cache.pop(str(graph_dir), None)
+        _last_sync_times[str(graph_dir)] = time.time()
+    else:
+        # Tự động đồng bộ gia tăng nếu đã quá 5 phút kể từ lần kiểm tra cuối
+        import time
+        graph_dir_key = str(graph_dir)
+        now = time.time()
+        if now - _last_sync_times.get(graph_dir_key, 0.0) > 300.0:  # 5 phút
+            _safe_log(f"[CodeGraph] Auto-syncing graph (incremental) for {graph_dir_key}...")
+            from xml_codegraph.builder.graph_builder import build_and_save_graph
+            # Giải phóng handle đọc trước khi ghi để tránh lock database
+            _store_cache.pop(graph_dir_key, None)
+            _graph_cache.pop(graph_dir_key, None)
+            
+            # Xóa cache in-memory Kuzu index để kết nối ghi chạy được
+            from xml_codegraph.storage.kuzu_index import _db_instances
+            kuzu_db_path = graph_dir / "kuzu"
+            cache_key = str(kuzu_db_path).replace("\\", "/").lower()
+            _db_instances.pop(cache_key, None)
+            
+            try:
+                build_and_save_graph(controllers_dir, graph_dir)
+                _last_sync_times[graph_dir_key] = now
+                _safe_log("[CodeGraph] Auto-sync finished.")
+            except Exception as e:
+                _safe_log(f"[CodeGraph] Auto-sync failed: {e}")
+
 
     # 2. Load Graph và Kuzu Index (ưu tiên cache in-memory)
     graph_dir_key = str(graph_dir)

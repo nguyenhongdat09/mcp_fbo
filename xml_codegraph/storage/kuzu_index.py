@@ -662,11 +662,24 @@ class KuzuIndexStore:
             flags=re.IGNORECASE
         )
         
+        # Rewrite is_f_only to needs_xml for Kuzu schema compatibility
+        normalized_query = normalized_query.replace("is_f_only", "needs_xml")
+        
         p = params or {}
         res = self.conn.execute(normalized_query, p)
         cols = res.get_column_names()
         results = []
         while res.has_next():
             row = res.get_next()
-            results.append(dict(zip(cols, row)))
+            row_dict = dict(zip(cols, row))
+            
+            # Map needs_xml back to is_f_only in output keys to support agent expectations
+            mapped_dict = {}
+            for k, v in row_dict.items():
+                mapped_dict[k] = v
+                if "needs_xml" in k:
+                    mapped_key = k.replace("needs_xml", "is_f_only")
+                    mapped_dict[mapped_key] = v
+            results.append(mapped_dict)
         return results
+

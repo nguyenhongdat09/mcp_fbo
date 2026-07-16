@@ -102,14 +102,25 @@ def get_kuzu_store(reference_file: str):
         _kuzu_stores[db_key] = qe._store_cache[graph_key]
         return _kuzu_stores[db_key]
 
-    if db_key not in _kuzu_stores:
+    # Tự động đồng bộ gia tăng nếu đã quá 5 phút
+    import time
+    now = time.time()
+    if now - qe._last_sync_times.get(graph_key, 0.0) > 300.0:
+        # Gọi xml_graph_query với target rỗng / dummy để kích hoạt kiểm tra/đồng bộ tự động
+        try:
+            xml_graph_query("search", "", reference_file, limit=1)
+        except Exception:
+            pass
+
+    if db_key not in _kuzu_stores or graph_key not in qe._store_cache:
         if not _kuzu_db_ready(db_path):
             _ensure_graph_built(reference_file)
         start_watcher_for_project(reference_file)
         _kuzu_stores[db_key] = KuzuIndexStore(db_path, read_only=True)
         qe._store_cache[graph_key] = _kuzu_stores[db_key]
 
-    return _kuzu_stores[db_key]
+    return qe._store_cache[graph_key]
+
 
 
 # Tool 1
