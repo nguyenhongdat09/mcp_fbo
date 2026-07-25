@@ -1,7 +1,10 @@
-"""Đọc connection string từ Web.config — port từ fbo-autocomplete DBQuery."""
-
 import re
 from pathlib import Path
+
+SYS_KEY_PATTERN = re.compile(
+    r'<add\s+(?:key="sysDatabaseName"\s+value="([^"]+)"|value="([^"]+)"\s+key="sysDatabaseName")',
+    re.IGNORECASE,
+)
 
 CONNECTION_NAME_PATTERN = re.compile(
     r'<add\s+name="(appConnectionString|syncConnectionString|sysConnectionString)"\s+'
@@ -11,7 +14,7 @@ CONNECTION_NAME_PATTERN = re.compile(
 
 
 class WebConfigLoader:
-    """Load app/sys connection strings from FastBusiness Web.config."""
+    """Load app/sys connection strings từ FastBusiness Web.config."""
 
     def __init__(self) -> None:
         self.db_connections: dict[str, dict | None] = {"app": None, "sys": None}
@@ -26,17 +29,87 @@ class WebConfigLoader:
         self.db_connections = {"app": None, "sys": None}
         self.raw_connection_strings = {}
 
+        # 1. Tìm sysDatabaseName từ <appSettings>
+        sys_db = None
+        sys_key_match = SYS_KEY_PATTERN.search(content)
+        if sys_key_match:
+            sys_db = (sys_key_match.group(1) or sys_key_match.group(2)).strip()
+
+        # 2. Đọc connection string từ <connectionStrings>
+        raw_conns: dict[str, str] = {}
+        parsed_conns: dict[str, dict] = {}
+        base_parsed = None
+
         for match in CONNECTION_NAME_PATTERN.finditer(content):
             name, connection_string = match.group(1), match.group(2)
             bucket = "app" if ("app" in name.lower() or "sync" in name.lower()) else "sys"
-            self.raw_connection_strings[bucket] = connection_string
-            self.db_connections[bucket] = self.parse_connection_string(connection_string)
+            raw_conns[bucket] = connection_string
+            parsed = self.parse_connection_string(connection_string)
+            parsed_conns[bucket] = parsed
+            if not base_parsed and parsed.get("server"):
+                base_parsed = parsed.copy()
 
-        if self.db_connections["sys"] and self.db_connections["app"]:
-            sys_db = self.db_connections["sys"]["database"]
-            normalized = re.sub(r"_(S|Sys)$", "_A", sys_db)
-            normalized = re.sub(r"_Sys$", "_App", normalized)
-            self.db_connections["app"]["database"] = normalized
+        # Nếu không tìm thấy key sysDatabaseName, lấy fallback từ connectionStrings
+        if not sys_db:
+            if "sys" in parsed_conns and parsed_conns["sys"].get("database"):
+                sys_db = parsed_conns["sys"]["database"]
+            elif "app" in parsed_conns and parsed_conns["app"].get("database"):
+                db_in_app = parsed_conns["app"]["database"]
+                if db_in_app.endswith("_A"):
+                    sys_db = db_in_app[:-2] + "_S"
+                elif db_in_app.endswith("_a"):
+                    sys_db = db_in_app[:-2] + "_s"
+                elif db_in_app.endswith("_App"):
+                    sys_db = db_in_app[:-4] + "_Sys"
+                elif db_in_app.endswith("_app"):
+                    sys_db = db_in_app[:-4] + "_sys"
+                else:
+                    sys_db = db_in_app
+
+        if not sys_db:
+            return
+
+        # 3. Phân tích đuôi DB SYS để suy ra DB APP:
+        # - _S -> _A
+        # - _Sys -> _App
+        if sys_db.endswith("_S"):
+            app_db = sys_db[:-2] + "_A"
+        elif sys_db.endswith("_s"):
+            app_db = sys_db[:-2] + "_a"
+        elif sys_db.endswith("_Sys"):
+            app_db = sys_db[:-4] + "_App"
+        elif sys_db.endswith("_SYS"):
+            app_db = sys_db[:-4] + "_APP"
+        elif sys_db.endswith("_sys"):
+            app_db = sys_db[:-4] + "_app"
+        elif re.search(r"_S$", sys_db, re.IGNORECASE):
+            app_db = re.sub(r"_S$", "_A", sys_db, flags=re.IGNORECASE)
+        elif re.search(r"_Sys$", sys_db, re.IGNORECASE):
+            app_db = re.sub(r"_Sys$", "_App", sys_db, flags=re.IGNORECASE)
+        else:
+            app_db = sys_db
+
+        # Gán connection info cho sys và app
+        sys_info = (parsed_conns.get("sys") or base_parsed or {}).copy()
+        sys_info["database"] = sys_db
+        self.db_connections["sys"] = sys_info
+
+        app_info = (parsed_conns.get("app") or base_parsed or {}).copy()
+        app_info["database"] = app_db
+        self.db_connections["app"] = app_info
+
+        # Rebuild raw connection strings
+        if "sys" in raw_conns:
+            self.raw_connection_strings["sys"] = self._replace_catalog(raw_conns["sys"], sys_db)
+        elif base_parsed:
+            orig_raw = raw_conns.get("app", "")
+            self.raw_connection_strings["sys"] = self._replace_catalog(orig_raw, sys_db)
+
+        if "app" in raw_conns:
+            self.raw_connection_strings["app"] = self._replace_catalog(raw_conns["app"], app_db)
+        elif base_parsed:
+            orig_raw = raw_conns.get("sys", "")
+            self.raw_connection_strings["app"] = self._replace_catalog(orig_raw, app_db)
 
     @staticmethod
     def parse_connection_string(connection_string: str) -> dict[str, str]:
@@ -56,6 +129,15 @@ class WebConfigLoader:
             "user": parts.get("uid", parts.get("user id", "")),
             "password": parts.get("pwd", parts.get("password", "")),
         }
+
+    @staticmethod
+    def _replace_catalog(conn_str: str, new_db: str) -> str:
+        if not conn_str:
+            return ""
+        pattern = re.compile(r"((?:Initial Catalog|Database)\s*=\s*)([^;]+)", re.IGNORECASE)
+        if pattern.search(conn_str):
+            return pattern.sub(rf"\1{new_db}", conn_str)
+        return conn_str + f";Initial Catalog={new_db}"
 
     def get_db_connection(self, db_type: str) -> dict[str, str]:
         db_type = db_type.lower()

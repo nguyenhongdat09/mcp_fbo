@@ -4,14 +4,117 @@ import shutil
 import csv
 import time
 import base64
+import threading
+import zlib
 from pathlib import Path
 from typing import List, Optional
 import kuzu
 from xml_codegraph.core.schema import XmlGraph, GraphNode, GraphEdge
 
 
+def _compress_b64(data: dict | list) -> str:
+    """Nén đối tượng JSON bằng zlib và mã hóa Base64."""
+    if data is None:
+        return ""
+    json_str = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    compressed = zlib.compress(json_str, level=9)
+    return base64.b64encode(compressed).decode('utf-8')
+
+def _decompress_b64(b64_str: str) -> dict | list | None:
+    """Giải mã Base64 và giải nén zlib thành đối tượng JSON. Fallback về uncompressed nếu là DB cũ."""
+    if not b64_str:
+        return None
+    try:
+        raw_bytes = base64.b64decode(b64_str.encode('utf-8'))
+        try:
+            # Thu giải nén (DB mới)
+            decoded = zlib.decompress(raw_bytes).decode('utf-8')
+        except Exception:
+            # Fallback (DB cũ)
+            decoded = raw_bytes.decode('utf-8')
+        return json.loads(decoded)
+    except Exception:
+        return None
+
 # Process-level singleton connection cache to avoid locking issues within the same process
 _db_instances = {}
+_db_locks = {}
+_db_locks_lock = threading.Lock()
+
+
+def get_db_lock(db_path_key: str) -> threading.RLock:
+    """Lay hoac tao Lock rieng biet cho tung database file path."""
+    with _db_locks_lock:
+        if db_path_key not in _db_locks:
+            _db_locks[db_path_key] = threading.RLock()
+        return _db_locks[db_path_key]
+
+
+def close_cached_database(db_path: Path) -> None:
+    """Dong connection va database cached hien co de giai phong file lock."""
+    db_path_key = str(Path(db_path).resolve()).replace("\\", "/").lower()
+    lock = get_db_lock(db_path_key)
+    with lock:
+        if db_path_key in _db_instances:
+            cached = _db_instances[db_path_key]
+            try:
+                cached["conn"].close()
+            except Exception as e:
+                print(f"[CodeGraph] Warning: failed to close connection for {db_path_key}: {e}")
+            try:
+                cached["db"].close()
+            except Exception as e:
+                print(f"[CodeGraph] Warning: failed to close database for {db_path_key}: {e}")
+            _db_instances.pop(db_path_key, None)
+            print(f"[CodeGraph] Closed cached database: {db_path_key}")
+
+
+# Cot bat buoc tren XmlFile (dung de migrate DB cu thieu cot moi).
+# Chi ADD khi thieu — khong doi type cot da co.
+XMLFILE_COLUMN_TYPES = {
+    "node_id": "STRING",
+    "file_path": "STRING",
+    "relative_path": "STRING",
+    "folder_type": "STRING",
+    "folder_subtype": "STRING",
+    "xml_root_tag": "STRING",
+    "xml_namespace": "STRING",
+    "controller_type": "STRING",
+    "db_table": "STRING",
+    "code_field": "STRING",
+    "title_v": "STRING",
+    "title_e": "STRING",
+    "file_size": "INT64",
+    "last_modified": "DOUBLE",
+    "is_encrypted": "BOOLEAN",
+    "source_extension": "STRING",
+    "paired_f_path": "STRING",
+    "needs_xml": "BOOLEAN",
+    "canonical_path": "STRING",
+    "alias_of": "STRING",
+    "fields_names": "STRING[]",
+    "fields_headers": "STRING[]",
+    "fields_json": "STRING[]",
+    "sql_blocks_json": "STRING[]",
+    "js_blocks_json": "STRING[]",
+    "sql_text": "STRING",
+    "js_text": "STRING",
+    "grid_refs": "STRING[]",
+    "lookup_refs": "STRING[]",
+    "entity_names": "STRING[]",
+    "entities_json": "STRING",
+    "param_entities": "STRING[]",
+}
+
+# Cot load_graph can doc (thu tu co dinh de map an toan).
+LOAD_GRAPH_COLUMNS = [
+    "node_id", "file_path", "relative_path", "folder_type", "folder_subtype",
+    "xml_root_tag", "xml_namespace", "controller_type", "db_table", "code_field",
+    "title_v", "title_e", "file_size", "last_modified", "is_encrypted",
+    "source_extension", "paired_f_path", "needs_xml", "fields_json",
+    "sql_blocks_json", "js_blocks_json", "grid_refs", "lookup_refs",
+    "entities_json", "param_entities", "canonical_path", "alias_of",
+]
 
 
 class KuzuIndexStore:
@@ -52,13 +155,40 @@ class KuzuIndexStore:
 
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
-        cache_key = str(self.db_path).replace("\\", "/").lower()
-        if cache_key not in _db_instances:
-            db = kuzu.Database(str(self.db_path), read_only=read_only)
-            conn = kuzu.Connection(db)
-            _db_instances[cache_key] = (db, conn)
+        db_path_key = str(self.db_path).replace("\\", "/").lower()
+        self.lock = get_db_lock(db_path_key)
+        
+        with self.lock:
+            if db_path_key in _db_instances:
+                cached = _db_instances[db_path_key]
+                if cached["read_only"] != read_only:
+                    print(f"[CodeGraph] Connection mode mismatch for {db_path_key} (cached: read_only={cached['read_only']}, requested: read_only={read_only}). Re-opening database...")
+                    try:
+                        cached["conn"].close()
+                    except Exception:
+                        pass
+                    try:
+                        cached["db"].close()
+                    except Exception:
+                        pass
+                    _db_instances.pop(db_path_key, None)
             
-        self.db, self.conn = _db_instances[cache_key]
+            if db_path_key not in _db_instances:
+                db = kuzu.Database(str(self.db_path), read_only=read_only)
+                conn = kuzu.Connection(db)
+                
+                # Boc conn.execute voi lock de tranh deadlock/conflict trong da luong
+                orig_execute = conn.execute
+                lock = get_db_lock(db_path_key)
+                def locked_execute(*args, **kwargs):
+                    with lock:
+                        return orig_execute(*args, **kwargs)
+                conn.execute = locked_execute
+                
+                _db_instances[db_path_key] = {"db": db, "conn": conn, "read_only": read_only}
+                
+            self.db = _db_instances[db_path_key]["db"]
+            self.conn = _db_instances[db_path_key]["conn"]
         
         if not read_only:
             self._init_schema()
@@ -86,6 +216,8 @@ class KuzuIndexStore:
                     source_extension STRING,
                     paired_f_path STRING,
                     needs_xml BOOLEAN,
+                    canonical_path STRING,
+                    alias_of STRING,
                     fields_names STRING[],
                     fields_headers STRING[],
                     fields_json STRING[],
@@ -115,6 +247,55 @@ class KuzuIndexStore:
             """)
         except Exception:
             pass  # Already exists
+
+        self._migrate_schema()
+
+    def _get_table_columns(self, table_name: str) -> dict:
+        """Tra ve {column_name: type} tu CALL table_info."""
+        cols = {}
+        try:
+            res = self.conn.execute(f"CALL table_info('{table_name}') RETURN *")
+            col_names = res.get_column_names()
+            while res.has_next():
+                row = dict(zip(col_names, res.get_next()))
+                name = row.get("name") or row.get("property_name") or row.get("col_name")
+                col_type = row.get("type") or row.get("property_type") or row.get("col_type") or ""
+                if name:
+                    cols[str(name)] = str(col_type)
+        except Exception as e:
+            print(f"[CodeGraph] Warning: table_info({table_name}) failed: {e}")
+        return cols
+
+    def _migrate_schema(self) -> None:
+        """Them cot thieu tren XmlFile (DB build truoc khi them canonical_path/alias_of...)."""
+        if self.read_only:
+            return
+        existing = self._get_table_columns("XmlFile")
+        if not existing:
+            return
+        for col_name, col_type in XMLFILE_COLUMN_TYPES.items():
+            if col_name in existing:
+                continue
+            default_clause = ""
+            if col_type == "STRING":
+                default_clause = " DEFAULT ''"
+            elif col_type == "BOOLEAN":
+                default_clause = " DEFAULT false"
+            elif col_type == "INT64":
+                default_clause = " DEFAULT 0"
+            elif col_type == "DOUBLE":
+                default_clause = " DEFAULT 0.0"
+            try:
+                ddl = f"ALTER TABLE XmlFile ADD {col_name} {col_type}{default_clause}"
+                self.conn.execute(ddl)
+                print(f"[CodeGraph] Migrated XmlFile: added column {col_name} {col_type}")
+            except Exception as e:
+                # Mot so version Kuzu khong chap nhan DEFAULT — thu khong DEFAULT
+                try:
+                    self.conn.execute(f"ALTER TABLE XmlFile ADD {col_name} {col_type}")
+                    print(f"[CodeGraph] Migrated XmlFile: added column {col_name} {col_type} (no default)")
+                except Exception as e2:
+                    print(f"[CodeGraph] Warning: failed to add column {col_name}: {e2} (first: {e})")
 
     def _clear_tables(self) -> None:
         try:
@@ -191,9 +372,9 @@ class KuzuIndexStore:
                         js_copy['content'] = str(js_copy['content']).replace('\n', ' ').replace('\r', ' ')
                     cleaned_js.append(js_copy)
 
-                fields_json = [base64.b64encode(json.dumps(f, ensure_ascii=False).encode('utf-8')).decode('utf-8') for f in cleaned_fields]
-                sql_blocks_json = [base64.b64encode(json.dumps(sql, ensure_ascii=False).encode('utf-8')).decode('utf-8') for sql in cleaned_sql]
-                js_blocks_json = [base64.b64encode(json.dumps(js, ensure_ascii=False).encode('utf-8')).decode('utf-8') for js in cleaned_js]
+                fields_json = [_compress_b64(f) for f in cleaned_fields]
+                sql_blocks_json = [_compress_b64(sql) for sql in cleaned_sql]
+                js_blocks_json = [_compress_b64(js) for js in cleaned_js]
                 
                 sql_text = " ".join([sql.get('content', '').replace('\n', ' ').replace('\r', ' ') for sql in node.sql_blocks])
                 js_text = " ".join([js.get('content', '').replace('\n', ' ').replace('\r', ' ') for js in node.js_blocks])
@@ -201,7 +382,7 @@ class KuzuIndexStore:
                 grid_refs = getattr(node, 'grid_refs', [])
                 lookup_refs = getattr(node, 'lookup_refs', [])
                 entity_names = [ent.get('name', '') for ent in node.entities if ent.get('name')]
-                entities_json_str = base64.b64encode(json.dumps(node.entities, ensure_ascii=False).encode('utf-8')).decode('utf-8')
+                entities_json_str = _compress_b64(node.entities)
                 param_entities = getattr(node, 'param_entities', []) or []
                 
                 writer.writerow([
@@ -223,6 +404,8 @@ class KuzuIndexStore:
                     getattr(node, 'source_extension', '.xml') or '.xml',
                     getattr(node, 'paired_f_path', '') or '',
                     "true" if getattr(node, 'needs_xml', False) else "false",
+                    getattr(node, 'canonical_path', '') or '',
+                    getattr(node, 'alias_of', '') or '',
                     self._format_kuzu_list(fields_names),
                     self._format_kuzu_list(fields_headers),
                     self._format_kuzu_list(fields_json),
@@ -262,16 +445,87 @@ class KuzuIndexStore:
         elapsed = time.time() - t0
         print(f"[CodeGraph] Synced {len(graph.nodes)} nodes, {len(graph.edges)} edges to Kuzu ({elapsed:.1f}s)")
 
+    def create_edge_if_not_exists(self, src_id: str, dst_id: str, edge_type: str, meta: dict) -> None:
+        """Kiem tra va tao canh neu chua ton tai trong database de tranh duplicate."""
+        if src_id == dst_id:
+            return
+            
+        meta_str = json.dumps(meta, ensure_ascii=False)
+        res = self.conn.execute("""
+            MATCH (src:XmlFile {node_id: $src_id})-[r:Rel {edge_type: $edge_type}]->(dst:XmlFile {node_id: $dst_id})
+            WHERE r.meta = $meta
+            RETURN count(*)
+        """, {"src_id": src_id, "dst_id": dst_id, "edge_type": edge_type, "meta": meta_str})
+        
+        if res.has_next() and res.get_next()[0] > 0:
+            return
+            
+        self.conn.execute("""
+            MATCH (src:XmlFile {node_id: $src_id}), (dst:XmlFile {node_id: $dst_id})
+            CREATE (src)-[:Rel {edge_type: $edge_type, meta: $meta}]->(dst)
+        """, {"src_id": src_id, "dst_id": dst_id, "edge_type": edge_type, "meta": meta_str})
+
     def update_single_node(self, node: GraphNode, edges: List[GraphEdge]) -> None:
         """
-        Incremental update: DETACH DELETE the node, and CREATE it + its edges.
+        Incremental update: Backup inbound edges, DETACH DELETE the node,
+        CREATE it + its outgoing edges, and RESTORE inbound edges + companion files.
         """
         nid = node.node_id
         
-        # 1. Delete node and all its relationships
+        # 1. Backup inbound relationships before deleting
+        inbound_edges = []
+        try:
+            res = self.conn.execute("""
+                MATCH (src:XmlFile)-[r:Rel]->(dst:XmlFile {node_id: $nid})
+                RETURN src.node_id, r.edge_type, r.meta
+            """, {"nid": nid})
+            while res.has_next():
+                row = res.get_next()
+                inbound_edges.append({
+                    "source_id": row[0],
+                    "edge_type": row[1],
+                    "meta": json.loads(row[2] or "{}")
+                })
+        except Exception as e:
+            print(f"[CodeGraph] Warning: failed to backup inbound edges for {nid}: {e}")
+
+        # 2. Xoa cac canh outbound cu do chinh file vat ly nay sinh ra
+        try:
+            res_out = self.conn.execute("""
+                MATCH (src:XmlFile {node_id: $src_id})-[r:Rel]->(dst:XmlFile)
+                RETURN dst.node_id, r.edge_type, r.meta
+            """, {"src_id": node.alias_of})
+            
+            to_delete = []
+            while res_out.has_next():
+                row = res_out.get_next()
+                dst_id, edge_type, meta_str = row[0], row[1], row[2]
+                try:
+                    meta = json.loads(meta_str or "{}")
+                    # Khop chinh xac file vat ly dong gop
+                    if meta.get("parsed_from_source") == node.relative_path:
+                        to_delete.append((dst_id, edge_type, meta_str))
+                except Exception:
+                    pass
+            
+            for dst_id, edge_type, meta_str in to_delete:
+                self.conn.execute("""
+                    MATCH (src:XmlFile {node_id: $src_id})-[r:Rel {edge_type: $edge_type}]->(dst:XmlFile {node_id: $dst_id})
+                    WHERE r.meta = $meta
+                    DELETE r
+                """, {
+                    "src_id": node.alias_of,
+                    "dst_id": dst_id,
+                    "edge_type": edge_type,
+                    "meta": meta_str
+                })
+        except Exception as e:
+            print(f"[CodeGraph] Warning: failed to clean old outbound edges for {node.relative_path}: {e}")
+
+        # 3. Delete node and all its relationships (physical node)
         self.conn.execute("MATCH (n:XmlFile {node_id: $nid}) DETACH DELETE n", {"nid": nid})
         
-        # 2. Re-create the node using parameters
+        # 4. Re-create the node using parameters
         fields_names = [f.get('name', '') for f in node.fields if f.get('name')]
         fields_headers = []
         for f in node.fields:
@@ -302,9 +556,9 @@ class KuzuIndexStore:
                 js_copy['content'] = str(js_copy['content']).replace('\n', ' ').replace('\r', ' ')
             cleaned_js.append(js_copy)
 
-        fields_json = [base64.b64encode(json.dumps(f, ensure_ascii=False).encode('utf-8')).decode('utf-8') for f in cleaned_fields]
-        sql_blocks_json = [base64.b64encode(json.dumps(sql, ensure_ascii=False).encode('utf-8')).decode('utf-8') for sql in cleaned_sql]
-        js_blocks_json = [base64.b64encode(json.dumps(js, ensure_ascii=False).encode('utf-8')).decode('utf-8') for js in cleaned_js]
+        fields_json = [_compress_b64(f) for f in cleaned_fields]
+        sql_blocks_json = [_compress_b64(sql) for sql in cleaned_sql]
+        js_blocks_json = [_compress_b64(js) for js in cleaned_js]
         
         sql_text = " ".join([sql.get('content', '').replace('\n', ' ').replace('\r', ' ') for sql in node.sql_blocks])
         js_text = " ".join([js.get('content', '').replace('\n', ' ').replace('\r', ' ') for js in node.js_blocks])
@@ -312,7 +566,7 @@ class KuzuIndexStore:
         grid_refs = getattr(node, 'grid_refs', [])
         lookup_refs = getattr(node, 'lookup_refs', [])
         entity_names = [ent.get('name', '') for ent in node.entities if ent.get('name')]
-        entities_json_str = base64.b64encode(json.dumps(node.entities, ensure_ascii=False).encode('utf-8')).decode('utf-8')
+        entities_json_str = _compress_b64(node.entities)
         param_entities = getattr(node, 'param_entities', []) or []
 
         query = """
@@ -335,6 +589,8 @@ class KuzuIndexStore:
             source_extension: $source_extension,
             paired_f_path: $paired_f_path,
             needs_xml: $needs_xml,
+            canonical_path: $canonical_path,
+            alias_of: $alias_of,
             fields_names: $fields_names,
             fields_headers: $fields_headers,
             fields_json: $fields_json,
@@ -369,6 +625,8 @@ class KuzuIndexStore:
             "source_extension": getattr(node, 'source_extension', '.xml') or '.xml',
             "paired_f_path": getattr(node, 'paired_f_path', '') or '',
             "needs_xml": bool(getattr(node, 'needs_xml', False)),
+            "canonical_path": getattr(node, 'canonical_path', '') or '',
+            "alias_of": getattr(node, 'alias_of', '') or '',
             "fields_names": fields_names,
             "fields_headers": fields_headers,
             "fields_json": fields_json,
@@ -385,21 +643,55 @@ class KuzuIndexStore:
         
         self.conn.execute(query, params)
         
-        # 3. Create edges if target nodes exist
+        # 5. Create outgoing edges if target nodes exist
         for edge in edges:
-            # We must verify if the target node exists in Kuzu before creating the edge
             res = self.conn.execute("MATCH (n:XmlFile {node_id: $target_id}) RETURN count(*)", {"target_id": edge.target_id})
             if res.has_next() and res.get_next()[0] > 0:
-                edge_query = """
-                MATCH (src:XmlFile {node_id: $src_id}), (dst:XmlFile {node_id: $dst_id})
-                CREATE (src)-[:Rel {edge_type: $edge_type, meta: $meta}]->(dst)
-                """
-                self.conn.execute(edge_query, {
-                    "src_id": edge.source_id,
-                    "dst_id": edge.target_id,
-                    "edge_type": edge.edge_type,
-                    "meta": json.dumps(edge.meta, ensure_ascii=False)
-                })
+                self.create_edge_if_not_exists(edge.source_id, edge.target_id, edge.edge_type, edge.meta)
+
+        # 6. Restore inbound edges
+        for edge in inbound_edges:
+            try:
+                check_res = self.conn.execute("MATCH (n:XmlFile {node_id: $src_id}) RETURN count(*)", {"src_id": edge["source_id"]})
+                if check_res.has_next() and check_res.get_next()[0] > 0:
+                    self.create_edge_if_not_exists(edge["source_id"], nid, edge["edge_type"], edge["meta"])
+            except Exception as e:
+                print(f"[CodeGraph] Warning: failed to restore inbound edge from {edge['source_id']} to {nid}: {e}")
+
+        # 7. Rebuild COMPANION_FILE relationships for this node
+        if not node.alias_of or node.alias_of == nid:
+            try:
+                basename = Path(node.relative_path).name.lower()
+                if "." in basename:
+                    basename = basename.split(".")[0]
+                
+                from xml_codegraph.builder.graph_builder import normalize_controller_name
+                norm_basename = normalize_controller_name(basename).lower()
+                
+                comp_res = self.conn.execute("""
+                    MATCH (n:XmlFile)
+                    WHERE (n.alias_of IS NULL OR n.alias_of = n.node_id) AND n.node_id <> $nid
+                    RETURN n.node_id, n.relative_path
+                """, {"nid": nid})
+                
+                companions = []
+                while comp_res.has_next():
+                    row = comp_res.get_next()
+                    other_nid, other_rel_path = row[0], row[1]
+                    other_basename = Path(other_rel_path).name.lower()
+                    if "." in other_basename:
+                        other_basename = other_basename.split(".")[0]
+                    if normalize_controller_name(other_basename).lower() == norm_basename:
+                        companions.append(other_nid)
+                        
+                for other_nid in companions:
+                    meta = {"basename": basename}
+                    # Edge nid -> other_nid
+                    self.create_edge_if_not_exists(nid, other_nid, 'COMPANION_FILE', meta)
+                    # Edge other_nid -> nid
+                    self.create_edge_if_not_exists(other_nid, nid, 'COMPANION_FILE', meta)
+            except Exception as e:
+                print(f"[CodeGraph] Warning: failed to rebuild companion edges for {nid}: {e}")
 
     def load_graph(self) -> XmlGraph:
         """
@@ -407,88 +699,93 @@ class KuzuIndexStore:
         """
         t0 = time.time()
         graph = XmlGraph()
-        
+
+        # Chi SELECT cot thuc su ton tai (DB cu co the thieu canonical_path/alias_of).
+        available = self._get_table_columns("XmlFile")
+        select_cols = [c for c in LOAD_GRAPH_COLUMNS if not available or c in available]
+        if not select_cols:
+            select_cols = list(LOAD_GRAPH_COLUMNS)
+        return_clause = ", ".join(f"n.{c}" for c in select_cols)
+
         # 1. Fetch all nodes
-        nodes_res = self.conn.execute("""
-            MATCH (n:XmlFile) 
-            RETURN n.node_id, n.file_path, n.relative_path, n.folder_type, n.folder_subtype, 
-                   n.xml_root_tag, n.xml_namespace, n.controller_type, n.db_table, n.code_field, 
-                   n.title_v, n.title_e, n.file_size, n.last_modified, n.is_encrypted, 
-                   n.source_extension, n.paired_f_path, n.needs_xml, n.fields_json, 
-                   n.sql_blocks_json, n.js_blocks_json, n.grid_refs, n.lookup_refs,
-                   n.entities_json, n.param_entities
+        nodes_res = self.conn.execute(f"""
+            MATCH (n:XmlFile)
+            RETURN {return_clause}
         """)
-        
+
         while nodes_res.has_next():
             row = nodes_res.get_next()
-            
+            data = dict(zip(select_cols, row))
+
             # Map fields_json back to list of dicts (decoding base64)
             fields = []
-            for f_str in row[18]:
-                try: 
-                    decoded = base64.b64decode(f_str.encode('utf-8')).decode('utf-8')
-                    fields.append(json.loads(decoded))
-                except Exception: pass
-                
+            for f_str in (data.get("fields_json") or []):
+                decoded_obj = _decompress_b64(f_str)
+                if decoded_obj is not None:
+                    fields.append(decoded_obj)
+
             sql_blocks = []
-            for s_str in row[19]:
-                try: 
-                    decoded = base64.b64decode(s_str.encode('utf-8')).decode('utf-8')
-                    sql_blocks.append(json.loads(decoded))
-                except Exception: pass
-                
+            for s_str in (data.get("sql_blocks_json") or []):
+                decoded_obj = _decompress_b64(s_str)
+                if decoded_obj is not None:
+                    sql_blocks.append(decoded_obj)
+
             js_blocks = []
-            for j_str in row[20]:
-                try: 
-                    decoded = base64.b64decode(j_str.encode('utf-8')).decode('utf-8')
-                    js_blocks.append(json.loads(decoded))
-                except Exception: pass
-                
+            for j_str in (data.get("js_blocks_json") or []):
+                decoded_obj = _decompress_b64(j_str)
+                if decoded_obj is not None:
+                    js_blocks.append(decoded_obj)
+
             entities = []
             try:
-                if row[23]:
-                    decoded = base64.b64decode(row[23].encode('utf-8')).decode('utf-8')
-                    entities = json.loads(decoded)
-            except Exception: pass
-            
-            param_entities = row[24] or []
-            
+                entities_json = data.get("entities_json")
+                if entities_json:
+                    decoded_obj = _decompress_b64(entities_json)
+                    if decoded_obj is not None:
+                        entities = decoded_obj
+            except Exception:
+                pass
+
+            param_entities = data.get("param_entities") or []
+
             node = GraphNode(
-                node_id         = row[0],
-                file_path       = row[1] or "",
-                relative_path   = row[2] or "",
-                folder_type     = row[3] or "",
-                folder_subtype  = row[4] or "",
-                xml_root_tag    = row[5] or "",
-                xml_namespace   = row[6] or "",
-                controller_type = row[7] or "",
-                table           = row[8],
-                code_field      = row[9],
-                title_v         = row[10] or "",
-                title_e         = row[11] or "",
-                file_size       = row[12] or 0,
-                last_modified   = row[13] or 0.0,
+                node_id         = data.get("node_id") or "",
+                file_path       = data.get("file_path") or "",
+                relative_path   = data.get("relative_path") or "",
+                folder_type     = data.get("folder_type") or "",
+                folder_subtype  = data.get("folder_subtype") or "",
+                xml_root_tag    = data.get("xml_root_tag") or "",
+                xml_namespace   = data.get("xml_namespace") or "",
+                controller_type = data.get("controller_type") or "",
+                table           = data.get("db_table"),
+                code_field      = data.get("code_field"),
+                title_v         = data.get("title_v") or "",
+                title_e         = data.get("title_e") or "",
+                file_size       = data.get("file_size") or 0,
+                last_modified   = data.get("last_modified") or 0.0,
                 summary         = "",  # Not used in current logic
-                is_encrypted    = bool(row[14]),
+                is_encrypted    = bool(data.get("is_encrypted")),
                 entities        = entities,
                 param_entities  = param_entities,
                 fields          = fields,
                 sql_blocks      = sql_blocks,
                 js_blocks       = js_blocks,
-                grid_refs       = row[21] or [],
-                lookup_refs     = row[22] or [],
-                source_extension = row[15] or ".xml",
-                paired_f_path   = row[16] or None,
-                needs_xml       = bool(row[17]),
+                grid_refs       = data.get("grid_refs") or [],
+                lookup_refs     = data.get("lookup_refs") or [],
+                source_extension = data.get("source_extension") or ".xml",
+                paired_f_path   = data.get("paired_f_path") or None,
+                needs_xml       = bool(data.get("needs_xml")),
+                canonical_path  = data.get("canonical_path") or "",
+                alias_of        = data.get("alias_of") or "",
             )
             graph.add_node(node)
-            
+
         # 2. Fetch all relationships
         edges_res = self.conn.execute("""
-            MATCH (src:XmlFile)-[r:Rel]->(dst:XmlFile) 
+            MATCH (src:XmlFile)-[r:Rel]->(dst:XmlFile)
             RETURN src.node_id, dst.node_id, r.edge_type, r.meta
         """)
-        
+
         while edges_res.has_next():
             row = edges_res.get_next()
             meta = {}
@@ -502,7 +799,7 @@ class KuzuIndexStore:
                 edge_type = row[2],
                 meta      = meta
             ))
-            
+
         elapsed = time.time() - t0
         print(f"[CodeGraph] Loaded {len(graph.nodes)} nodes, {len(graph.edges)} edges from Kuzu ({elapsed:.2f}s)")
         return graph
@@ -682,4 +979,120 @@ class KuzuIndexStore:
                     mapped_dict[mapped_key] = v
             results.append(mapped_dict)
         return results
+
+
+def reevaluate_canonical_group_on_delete(conn, controllers_root: Path, folder_type: str, normalized_name: str, deleted_node_id: str, backup_inbound: list = None, backup_outbound: list = None) -> None:
+    """Tu dong dinh vi canonical node moi dai dien cho nhom, cap nhat alias_of cho cac node alias con song, va dinh tuyen lai tat ca cac canh tu node bi xoa sang node moi."""
+    try:
+        folder_lower = folder_type.lower()
+        norm_lower = normalized_name.lower()
+        
+        # 1. Quet tat ca cac node con lai trong Kuzu DB de tim cac node cung group
+        res = conn.execute("MATCH (n:XmlFile) RETURN n.node_id, n.relative_path, n.is_encrypted, n.folder_type, n.folder_subtype")
+        group_nodes = []
+        
+        from xml_codegraph.builder.graph_builder import normalize_controller_name
+        
+        standard_folders = {"dir", "grid", "filter", "report", "lookup", "form"}
+        
+        while res.has_next():
+            row = res.get_next()
+            nid, rel_path, is_enc, f_type, f_subtype = row[0], row[1], row[2], row[3], row[4]
+            if nid == deleted_node_id:
+                continue
+                
+            stem = Path(rel_path).stem
+            cur_norm = normalize_controller_name(stem).lower()
+            if cur_norm != norm_lower:
+                continue
+                
+            rel_parts = Path(rel_path.replace("\\", "/")).parts
+            logical_f_type = f_type
+            if f_type.lower() == "templates" or f_subtype.lower() == "upload":
+                logical_f_type = "Grid"
+            elif f_subtype.lower() == "fields" or "config/fields" in rel_path.replace("\\", "/").lower():
+                if len(rel_parts) > 1 and rel_parts[0].lower() in standard_folders:
+                    logical_f_type = rel_parts[0]
+                else:
+                    logical_f_type = "Grid"
+            else:
+                if f_type.lower() in standard_folders:
+                    logical_f_type = f_type
+                else:
+                    logical_f_type = "Grid"
+                    
+            if logical_f_type.lower() == folder_lower:
+                group_nodes.append({
+                    "node_id": nid,
+                    "relative_path": rel_path,
+                    "is_encrypted": is_enc,
+                    "logical_f_type": logical_f_type
+                })
+                
+        if not group_nodes:
+            return
+            
+        # 2. Chon canonical node moi trong so cac node con song
+        canonical_rel_path = f"{folder_type.capitalize()}\\{normalized_name}.xml".lower()
+        selected = None
+        
+        # Tieu chi 1: File chinh xac trung khop canonical_rel_path va khong encrypted
+        for item in group_nodes:
+            if item["relative_path"].lower() == canonical_rel_path and not item["is_encrypted"]:
+                selected = item
+                break
+        # Tieu chi 2: File chinh xac trung khop canonical_rel_path (ke ca encrypted)
+        if not selected:
+            for item in group_nodes:
+                if item["relative_path"].lower() == canonical_rel_path:
+                    selected = item
+                    break
+        # Tieu chi 3: File bien the khong bi encrypted
+        if not selected:
+            for item in group_nodes:
+                if not item["is_encrypted"]:
+                    selected = item
+                    break
+        # Tieu chi 4: Chon node dau tien
+        if not selected:
+            selected = group_nodes[0]
+            
+        new_canonical_id = selected["node_id"]
+        new_canonical_path = selected["relative_path"]
+        
+        # 3. Cap nhat Kuzu DB: dat alias_of va canonical_path moi cho tat ca cac node trong nhom
+        for item in group_nodes:
+            nid = item["node_id"]
+            conn.execute("""
+                MATCH (n:XmlFile {node_id: $nid})
+                SET n.alias_of = $alias_of, n.canonical_path = $canonical_path
+            """, {"nid": nid, "alias_of": new_canonical_id, "canonical_path": new_canonical_path})
+            
+        # 4. Dinh tuyen lai cac canh tu backup list sang new_canonical_id
+        def create_edge_helper(src_id, dst_id, edge_type, meta):
+            if src_id == dst_id: return
+            meta_str = json.dumps(meta, ensure_ascii=False)
+            res = conn.execute("""
+                MATCH (src:XmlFile {node_id: $src_id})-[r:Rel {edge_type: $edge_type}]->(dst:XmlFile {node_id: $dst_id})
+                WHERE r.meta = $meta
+                RETURN count(*)
+            """, {"src_id": src_id, "dst_id": dst_id, "edge_type": edge_type, "meta": meta_str})
+            if res.has_next() and res.get_next()[0] > 0:
+                return
+            conn.execute("""
+                MATCH (src:XmlFile {node_id: $src_id}), (dst:XmlFile {node_id: $dst_id})
+                CREATE (src)-[:Rel {edge_type: $edge_type, meta: $meta}]->(dst)
+            """, {"src_id": src_id, "dst_id": dst_id, "edge_type": edge_type, "meta": meta_str})
+            
+        if backup_outbound:
+            for edge in backup_outbound:
+                create_edge_helper(new_canonical_id, edge["dst_id"], edge["edge_type"], edge["meta"])
+        if backup_inbound:
+            for edge in backup_inbound:
+                create_edge_helper(edge["src_id"], new_canonical_id, edge["edge_type"], edge["meta"])
+            
+        print(f"[CodeGraph] Successfully reevaluated canonical group for {folder_type}/{normalized_name}. New canonical node: {new_canonical_path}")
+    except Exception as e:
+        print(f"[CodeGraph] Warning: failed to reevaluate canonical group for deleted node {deleted_node_id}: {e}")
+
 

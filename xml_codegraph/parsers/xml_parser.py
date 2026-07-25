@@ -3,12 +3,27 @@ import re
 from pathlib import Path
 from lxml import etree
 from typing import Dict, List, Tuple, Any
+import functools
+
+@functools.lru_cache(maxsize=512)
+def _read_file_cached(path_str: str) -> bytes:
+    """Cache bytes thô — key là path string, share được giữa tất cả XMLParser instance."""
+    try:
+        return Path(path_str).read_bytes()
+    except Exception:
+        return b""
 
 def read_file_content(path: Path) -> str:
     """Đọc file xử lý mã hóa UTF-8, Windows-1258 hoặc UTF-16 (có/không BOM) một cách an sau."""
-    try:
-        raw_bytes = path.read_bytes()
-    except Exception:
+    if path.suffix.lower() == ".ent":
+        raw_bytes = _read_file_cached(str(path.resolve()))
+    else:
+        try:
+            raw_bytes = path.read_bytes()
+        except Exception:
+            return ""
+
+    if not raw_bytes:
         return ""
 
     if raw_bytes.startswith(b"\xff\xfe") or raw_bytes.startswith(b"\xfe\xff"):
@@ -45,6 +60,42 @@ def read_file_content(path: Path) -> str:
             except Exception:
                 return raw_bytes.decode("utf-8", errors="ignore")
 
+def read_flat_file_content(path: Path) -> str:
+    """Đọc file XML và phân giải toàn bộ thực thể (entity/include) thành nội dung phẳng."""
+    try:
+        raw_content = read_file_content(path)
+        clean_text = preprocess_xml(raw_content)
+        
+        main_xml_dir = path.parent
+        resolver = FboResolver(main_xml_dir)
+        parser = etree.XMLParser(
+            load_dtd=True,
+            resolve_entities=True,
+            no_network=True,
+            strip_cdata=False
+        )
+        parser.resolvers.add(resolver)
+        resolver.loaded_files.append((path, raw_content))
+        
+        base_url_posix = str(path).replace("\\", "/")
+        root = etree.fromstring(
+            clean_text.encode("utf-8"),
+            parser=parser,
+            base_url=base_url_posix,
+        )
+        flatten_cdata_nodes(root)
+        
+        # Serialize root
+        flat_bytes = etree.tostring(
+            root,
+            encoding="utf-8",
+            xml_declaration=True,
+            pretty_print=True
+        )
+        return flat_bytes.decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"Lỗi phân tích cú pháp flat XML: {str(e)}")
+
 def preprocess_xml(xml_text: str) -> str:
     """Chuẩn hóa đường dẫn SYSTEM trong DTD: \\ -> / để libxml2 không báo lỗi URI."""
     pattern = re.compile(r'(SYSTEM\s+["\'])([^"\']+)(["\'])')
@@ -57,30 +108,45 @@ def preprocess_xml(xml_text: str) -> str:
 
 def is_encrypted_file(raw_bytes: bytes) -> bool:
     """
-    Nhận diện file XML bị mã hóa của FBO.
-    File mã hóa thường:
-      - Không có UTF-16 BOM mà chứa nhiều byte NULL (\x00) bài bản
-      - Hoặc có comment đặc biệt <!--C--> hoặc Encrypted block
-      - Hoặc không có tag XML hợp lệ nào sau khi decode
+    Nhận diện file XML bị mã hóa của FBO (binary .f hoặc nội dung không đọc được).
+    Lưu ý: <!--C--> là marker file flat đã giải mã, KHÔNG phải encrypted.
     """
-    # Giải mã thử UTF-16 trước
     has_bom = raw_bytes.startswith(b"\xff\xfe") or raw_bytes.startswith(b"\xfe\xff")
-    if has_bom:
-        try:
-            text = raw_bytes.decode("utf-16", errors="ignore")
-        except Exception:
-            text = ""
-    else:
-        text = raw_bytes.decode("utf-8", errors="ignore")
-    # Kiểm tra có comment <!--C--> (đặc trưng của file flat/encrypted trong FBO)
-    if "<!--C-->" in text:
-        return True
-    # Kiểm tra bài toàn nội dung thường bị mã hóa: tỷ lệ bít NULL cao
     if not has_bom:
         null_ratio = raw_bytes.count(0) / max(len(raw_bytes), 1)
         if null_ratio > 0.3:
             return True
     return False
+
+
+_SCRIPT_BLOCK_RE = re.compile(
+    r"<(script|clientScript)\b[^>]*>(.*?)</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+_SPLIT_CDATA_RE = re.compile(r"\]\]>\s*(?:&[a-zA-Z0-9_]+;)?\s*<!\[CDATA\[", re.DOTALL)
+
+
+def extract_js_blocks_from_raw(raw_content: str) -> List[Dict[str, Any]]:
+    """
+    Trích JS từ XML thô khi lxml không parse được (CDATA bị tách bởi entity include).
+    """
+    blocks: List[Dict[str, Any]] = []
+    if not raw_content:
+        return blocks
+
+    for match in _SCRIPT_BLOCK_RE.finditer(raw_content):
+        tag = match.group(1).lower()
+        inner = match.group(2)
+        inner = re.sub(r"<!\[CDATA\[", "", inner)
+        inner = re.sub(r"\]\]>", "", inner)
+        inner = _SPLIT_CDATA_RE.sub("\n", inner)
+        inner = re.sub(r"&[a-zA-Z0-9_]+;", "\n", inner)
+        content = inner.strip()
+        if not content:
+            continue
+        line_num = raw_content[: match.start()].count("\n") + 1
+        blocks.append({"content": content, "line": line_num, "tag": tag})
+    return blocks
 
 def uri_to_path(url: str) -> Path:
     """Convert a file:/// or file:// URI/path to a pathlib.Path object, handling UNC paths."""
@@ -103,6 +169,17 @@ def uri_to_path(url: str) -> Path:
 
 class FboResolver(etree.Resolver):
     """Bộ giải quyết thực thể động của FBO để tự động nạp các file thực thể phụ thuộc."""
+    
+    # Module-level cache — thread-safe nhờ GIL của CPython
+    _path_exists_cache: dict[str, bool] = {}
+
+    @classmethod
+    def _cached_exists(cls, path: Path) -> bool:
+        key = str(path).lower()
+        if key not in cls._path_exists_cache:
+            cls._path_exists_cache[key] = path.exists()
+        return cls._path_exists_cache[key]
+
     def __init__(self, main_xml_dir: Path):
         super().__init__()
         self.main_xml_dir = main_xml_dir
@@ -122,7 +199,7 @@ class FboResolver(etree.Resolver):
                 is_absolute = False
 
         # Flatten include fallback: nếu file không tồn tại, tìm trong Config/Fields/
-        if not target_path.exists() and not is_absolute:
+        if not self._cached_exists(target_path) and not is_absolute:
             filename = Path(clean_url).name
             # Thử các subdirectory thường chứa config fields trong FBO
             fallback_paths = [
@@ -132,11 +209,11 @@ class FboResolver(etree.Resolver):
                 self.main_xml_dir.parent / "Config" / filename,
             ]
             for fb in fallback_paths:
-                if fb.exists():
+                if self._cached_exists(fb):
                     target_path = fb.resolve()
                     break
 
-        if not target_path.exists():
+        if not self._cached_exists(target_path):
             return None
 
         try:
@@ -158,6 +235,8 @@ def flatten_cdata_nodes(root: etree._Element) -> None:
     trong bộ nhớ. Tránh phân mảnh CDATA hoặc escape ký tự đặc biệt.
     """
     for elem in root.iter():
+        if not isinstance(elem.tag, str):
+            continue
         local_name = etree.QName(elem.tag).localname
         if local_name not in {"text", "query", "clientScript", "script"}:
             continue
@@ -225,7 +304,7 @@ class XmlControllerParser:
             # Làm phẳng CDATA ngay trên cây DOM trong bộ nhớ
             flatten_cdata_nodes(root)
         except Exception as e:
-            # Fallback nếu parse XML lỗi (ví dụ file .ent thô không có root tag)
+            # Fallback nếu parse XML lỗi (ví dụ file .ent thô, flat <!--C--> với entity split CDATA)
             return self._build_empty_result(file_path, raw_content, param_entities, system_entities, str(e))
 
         # Trích xuất metadata từ root element
@@ -383,6 +462,9 @@ class XmlControllerParser:
                         "tag": local_name
                     })
 
+        if not js_blocks:
+            js_blocks = extract_js_blocks_from_raw(raw_content)
+
         return {
             "file_path": str(file_path),
             "relative_path": os.path.relpath(file_path, self.controllers_root),
@@ -406,29 +488,107 @@ class XmlControllerParser:
         }
 
     def _build_empty_result(self, file_path: Path, raw_content: str, param_entities: List[str], system_entities: List[Dict], error_msg: str) -> Dict[str, Any]:
-        """Tạo kết quả rỗng khi XML parser gặp lỗi (thường là file .ent, .txt hoặc XML lỗi cấu trúc)."""
+        """Tạo kết quả rỗng hoặc fallback regex khi XML parser gặp lỗi (thường là file .ent, .txt hoặc XML lỗi cấu trúc)."""
         rel_parts = file_path.relative_to(self.controllers_root).parts
         folder_type = rel_parts[0]
         folder_subtype = rel_parts[1] if len(rel_parts) > 2 else ""
+        
+        sql_blocks = []
+        js_blocks = []
+        grid_refs = []
+        lookup_refs = []
+        fields = []
+        table = None
+        code_field = None
+        
+        # Chỉ chạy fallback regex cho các file XML hoặc các file nằm trong folder chính
+        if file_path.suffix.lower() in {".xml", ".f"} and folder_type.lower() in {"dir", "grid", "filter", "report", "lookup", "form"}:
+            js_blocks = extract_js_blocks_from_raw(raw_content)
+
+            # 1. Trích xuất SQL blocks
+            import re
+            pattern = re.compile(r'<(\w+)(?:\s+[^>]*)?>\s*(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?\s*</\1>', re.DOTALL | re.IGNORECASE)
+            for match in pattern.finditer(raw_content):
+                tag = match.group(1).lower()
+                content = match.group(2)
+                line_num = raw_content[:match.start()].count('\n') + 1
+                
+                if tag in {"query", "command", "action"}:
+                    sql_blocks.append({
+                        "content": content,
+                        "line": line_num,
+                        "tag": tag
+                    })
+            
+            # 2. Trích xuất grid_refs và lookup_refs
+            field_matches = re.finditer(r'<field\s+name\s*=\s*["\']([a-zA-Z0-9_\$]+%?[a-zA-Z0-9_\$]*)["\'][^>]*>(.*?)</field>', raw_content, re.DOTALL | re.IGNORECASE)
+            for fm in field_matches:
+                fname = fm.group(1)
+                fcontent = fm.group(2)
+                
+                ctrl_m = re.search(r'controller\s*=\s*["\']([a-zA-Z0-9_\$]+)["\']', fcontent, re.IGNORECASE)
+                style_m = re.search(r'style\s*=\s*["\']([a-zA-Z0-9_\$]+)["\']', fcontent, re.IGNORECASE)
+                
+                if ctrl_m:
+                    ctrl = ctrl_m.group(1)
+                    style = style_m.group(1) if style_m else None
+                    if style == "Grid":
+                        fk = None
+                        fk_m = re.search(r'String:\s*([a-zA-Z0-9_]+)', fcontent, re.IGNORECASE)
+                        if fk_m:
+                            fk = fk_m.group(1)
+                        grid_refs.append({
+                            "field_name": fname,
+                            "controller": ctrl,
+                            "foreign_key": fk
+                        })
+                    elif style in {"AutoComplete", "Lookup"}:
+                        lookup_refs.append({
+                            "field_name": fname,
+                            "controller": ctrl
+                        })
+                
+                # Trích xuất fields thô
+                fields.append({
+                    "name": fname,
+                    "line_start": raw_content[:fm.start()].count('\n') + 1,
+                    "line_end": raw_content[:fm.end()].count('\n') + 1,
+                    "snippet": fm.group(0),
+                    "header_v": "",
+                    "header_e": "",
+                    "type": None,
+                    "external": False
+                })
+                
+            # Trích xuất table và code từ root tag thô
+            root_match = re.search(r'<dir\s+[^>]*table\s*=\s*["\']([^"\']+)["\']', raw_content, re.IGNORECASE)
+            if not root_match:
+                root_match = re.search(r'<grid\s+[^>]*table\s*=\s*["\']([^"\']+)["\']', raw_content, re.IGNORECASE)
+            if root_match:
+                table = root_match.group(1)
+                
+            code_match = re.search(r'code\s*=\s*["\']([^"\']+)["\']', raw_content, re.IGNORECASE)
+            if code_match:
+                code_field = code_match.group(1)
         
         return {
             "file_path": str(file_path),
             "relative_path": os.path.relpath(file_path, self.controllers_root),
             "folder_type": folder_type,
             "folder_subtype": folder_subtype,
-            "xml_root_tag": "",
+            "xml_root_tag": folder_type.lower() if folder_type.lower() in {"dir", "grid", "filter", "report", "lookup", "form"} else "",
             "xml_namespace": "",
-            "table": None,
-            "code_field": None,
+            "table": table,
+            "code_field": code_field,
             "title_v": "",
             "title_e": "",
             "entities": system_entities,
             "param_entities": list(set(param_entities)),
-            "fields": [],
-            "grid_refs": [],
-            "lookup_refs": [],
-            "sql_blocks": [],
-            "js_blocks": [],
+            "fields": fields,
+            "grid_refs": grid_refs,
+            "lookup_refs": lookup_refs,
+            "sql_blocks": sql_blocks,
+            "js_blocks": js_blocks,
             "file_size": len(raw_content),
             "error": error_msg
         }

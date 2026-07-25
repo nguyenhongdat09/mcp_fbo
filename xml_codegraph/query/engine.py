@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import unicodedata
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
@@ -147,6 +148,52 @@ def _xml_availability_payload(node: GraphNode) -> dict:
         )
     }
 
+def ensure_fresh_readonly_store(db_path: Path, graph_dir: Path) -> KuzuIndexStore:
+    """Reopen RO store if kuzu mtime/size changed since last open."""
+    graph_dir_key = str(graph_dir.resolve())
+    db_key = str(db_path.resolve())
+    
+    try:
+        if db_path.is_file():
+            current_mtime = db_path.stat().st_mtime
+        else:
+            current_mtime = max(f.stat().st_mtime for f in db_path.iterdir() if f.is_file())
+    except Exception:
+        current_mtime = 0.0
+
+    needs_reopen = False
+    if graph_dir_key not in _graph_cache or graph_dir_key not in _store_cache:
+        needs_reopen = True
+    else:
+        cached_mtime, _ = _graph_cache[graph_dir_key]
+        if cached_mtime != current_mtime:
+            needs_reopen = True
+
+    if needs_reopen:
+        _safe_log(f"[CodeGraph] Kuzu mtime changed or not cached -> reopening read-only store")
+        from xml_codegraph.storage.kuzu_index import close_cached_database
+        close_cached_database(db_path)
+        
+        # Xóa cache cũ
+        _store_cache.pop(graph_dir_key, None)
+        _graph_cache.pop(graph_dir_key, None)
+        
+        # Xóa reference bên mcp_tools để query_radar cũng phải lấy mới
+        try:
+            import sys
+            if 'xml_codegraph.mcp_tools' in sys.modules:
+                mt = sys.modules['xml_codegraph.mcp_tools']
+                mt._kuzu_stores.pop(db_key, None)
+        except Exception:
+            pass
+
+        # Tạo mới
+        new_store = KuzuIndexStore(db_path, read_only=True)
+        _store_cache[graph_dir_key] = new_store
+        _graph_cache[graph_dir_key] = (current_mtime, new_store.load_graph())
+        
+    return _store_cache[graph_dir_key]
+
 def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs) -> Dict[str, Any]:
     """
     HÀM TRUY VẤN DUY NHẤT cho XML CodeGraph.
@@ -186,55 +233,33 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
         _safe_log("[CodeGraph] Auto-build finished.")
         _graph_cache.pop(str(graph_dir), None)
         _last_sync_times[str(graph_dir)] = time.time()
-    else:
-        # Tự động đồng bộ gia tăng nếu đã quá 5 phút kể từ lần kiểm tra cuối
-        import time
+    elif os.environ.get("FBOGRAPH_AUTO_SYNC", "").strip() == "1":
+        # Chỉ sync gia tăng khi bật FBOGRAPH_AUTO_SYNC=1 (tránh lock khi chỉ query read-only)
         graph_dir_key = str(graph_dir)
         now = time.time()
         if now - _last_sync_times.get(graph_dir_key, 0.0) > 300.0:  # 5 phút
             _safe_log(f"[CodeGraph] Auto-syncing graph (incremental) for {graph_dir_key}...")
             from xml_codegraph.builder.graph_builder import build_and_save_graph
-            # Giải phóng handle đọc trước khi ghi để tránh lock database
             _store_cache.pop(graph_dir_key, None)
             _graph_cache.pop(graph_dir_key, None)
-            
-            # Xóa cache in-memory Kuzu index để kết nối ghi chạy được
+
             from xml_codegraph.storage.kuzu_index import _db_instances
             kuzu_db_path = graph_dir / "kuzu"
             cache_key = str(kuzu_db_path).replace("\\", "/").lower()
             _db_instances.pop(cache_key, None)
-            
+
             try:
                 build_and_save_graph(controllers_dir, graph_dir)
                 _last_sync_times[graph_dir_key] = now
                 _safe_log("[CodeGraph] Auto-sync finished.")
             except Exception as e:
                 _safe_log(f"[CodeGraph] Auto-sync failed: {e}")
+                _last_sync_times[graph_dir_key] = now
 
 
-    # 2. Load Graph và Kuzu Index (ưu tiên cache in-memory)
-    graph_dir_key = str(graph_dir)
-    try:
-        if db_path.is_file():
-            current_mtime = db_path.stat().st_mtime
-        else:
-            current_mtime = max(f.stat().st_mtime for f in db_path.iterdir() if f.is_file())
-    except Exception:
-        current_mtime = 0.0
-
-    if graph_dir_key not in _store_cache:
-        _store_cache[graph_dir_key] = KuzuIndexStore(db_path, read_only=True)
-    kuzu_store = _store_cache[graph_dir_key]
-
-    if graph_dir_key in _graph_cache:
-        cached_mtime, graph = _graph_cache[graph_dir_key]
-        if cached_mtime != current_mtime:
-            # Kuzu index thay đổi -> reload graph
-            graph = kuzu_store.load_graph()
-            _graph_cache[graph_dir_key] = (current_mtime, graph)
-    else:
-        graph = kuzu_store.load_graph()
-        _graph_cache[graph_dir_key] = (current_mtime, graph)
+    # 2. Load Graph và Kuzu Index (ưu tiên cache in-memory, auto reopen nếu mtime đổi)
+    kuzu_store = ensure_fresh_readonly_store(db_path, graph_dir)
+    _, graph = _graph_cache[str(graph_dir)]
 
     # 3. Phân nhánh xử lý các kiểu query
     query_type = query_type.lower().strip()

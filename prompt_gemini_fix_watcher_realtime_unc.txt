@@ -1,0 +1,280 @@
+# PROMPT CHO GEMINI — Fix Watcher realtime: rebuild NGAY đúng 1 file vừa sửa
+
+Bạn được giao nhiệm vụ **tự khảo sát codebase**, rồi sửa để khi ai đó chỉnh XML/ENT/TXT/F thì Kuzu **cập nhật ngay đúng file đó** (incremental), không rebuild cả DB, và **query MCP sau đó phải thấy dữ liệu mới**.
+
+Repo: `E:\mcp_fbo`
+
+Đây là vòng tiếp theo sau `prompt_gemini_fix_watcher.txt` + `prompt_gemini_fix_watcher_v2.txt`.  
+**Một phần đã code** (incremental 1 file, RO→RW reopen cùng process) nhưng **thực tế vẫn fail**. Đừng tuyên bố “đã xong” nếu chưa reproduce được case thật bên dưới.
+
+---
+
+## 1) BẰNG CHỨNG THỰC TẾ (BANYAN SP228 — 2026-07-22)
+
+### Repro
+
+Project Controllers trên **UNC**:
+
+```text
+\\172.168.5.14\CustomerPro\FBO\BANYANFBO\SP228\App_Data\Controllers
+```
+
+Kuzu local:
+
+```text
+C:\KuzuDB\XFwxNzIuMTY4LjUuMTRcQ3VzdG9tZXJQcm9cRkJPXEJBTllBTkZCT1xTUDIyOA==\.fbograph\kuzu
+```
+
+1. File `Grid\CPDetail.xml` **trước đó** có:
+
+```javascript
+case '30':
+  g.showForm('CPOSTranFilter');
+  break;
+```
+
+2. Kuzu đã index đúng:
+   - `js_text` chứa `CPOSTranFilter` / `case '30'`
+   - Cạnh `RETRIEVE_DATA_SOURCE`: `Grid\CPDetail.xml` → `Filter\CPOSTranFilter.xml`
+   - `navigate CPDetail` liệt kê `CPOSTranFilter` trong `retrieve_sources`
+
+3. User **xóa** đoạn `case '30'` / `CPOSTranFilter` trên đĩa.
+   - Grep file: **không còn** `CPOSTranFilter` / `case '30'`
+   - Chỉ còn retrieve `10`/`20` (`CPInvoiceFilter`, `CPRequestFilter`)
+
+4. Query Kuzu / MCP **ngay sau đó**:
+   - `js_text` **vẫn còn** `CPOSTranFilter` + `case '30'`
+   - Cạnh `RETRIEVE_DATA_SOURCE` → `Filter\CPOSTranFilter.xml` **vẫn còn**
+   - `navigate CPDetail` vẫn liệt kê `CPOSTranFilter`
+
+5. Gọi tay `incremental_update_file(CPDetail.xml, ...)` từ process khác:
+
+```text
+IO exception: Could not set lock on file : C:\KuzuDB\...\kuzu
+updated: None
+```
+
+Trên máy có **nhiều** process `fastbusiness_mcp.exe` đang chạy (quan sát thấy 3 process).
+
+### Kết luận triệu chứng
+
+- **Ý đồ kiến trúc đúng**: chỉ rebuild 1 file (`incremental_update_file` + `update_single_node`).
+- **Realtime fail**: sau khi sửa file, index không đổi → agent/MCP đọc dữ liệu cũ.
+- Không phải thiếu “full rebuild”; thiếu **detect event + ghi được + invalidate cache đọc**.
+
+---
+
+## 2) YÊU CẦU CỐT LÕI (KHÔNG ĐƯỢC HIỂU SAI)
+
+### Bắt buộc
+
+1. Khi file trong scope Controllers thay đổi (create/modify/delete/rename):
+   - **Chỉ** incremental đúng file đó (và pairing `.xml`/`.f` nếu đã có).
+   - **CẤM** `build_and_save_graph` / `sync_graph` full DB cho mỗi event sửa 1 file.
+2. Sau khi incremental thành công, MCP query tiếp theo (cùng process) **phải** thấy:
+   - `js_text` / fields / edges outbound của file đó đã đổi theo đĩa.
+3. Controllers nằm trên **UNC network path** vẫn phải nhận được thay đổi (case Banyan thật).
+4. MCP đã mở Kuzu `read_only=True` trước đó vẫn phải cho watcher **ghi được** (cùng process) mà không bắt user restart Cursor.
+5. Log rõ ràng: detect event → close RO → write → invalidate → success/fail (không nuốt lỗi).
+
+### Không được
+
+- Rebuild cả project mỗi lần save.
+- Chỉ “pass unit test local temp folder” mà bỏ qua UNC.
+- Báo thành công khi `incremental_update_file` trả `None` vì lock.
+- Bắt user tắt MCP thủ công như giải pháp chính (có thể là fallback tạm, không phải DoD).
+
+---
+
+## 3) PHÂN TÍCH NGUYÊN NHÂN (CẦN TỰ XÁC MINH — ĐÃ CÓ MANH MỐI)
+
+Hãy đọc code rồi **chứng minh/bác bỏ** từng giả thuyết bằng log/test:
+
+### G1) Watchdog Observer mặc định không tin cậy trên UNC
+
+`start_watcher` dùng `watchdog.observers.Observer` (Windows: ReadDirectoryChangesW).  
+Trên `\\server\share\...` event modify **thường không tới**.
+
+→ Cần **PollingObserver** (hoặc hybrid: local=Observer, UNC/network=PollingObserver).
+
+### G2) Nhiều process MCP cùng giữ lock file Kuzu
+
+Nhiều `fastbusiness_mcp.exe` mở cùng `C:\KuzuDB\...\kuzu` → writer không set lock được.
+
+→ Trong cùng 1 process: close RO trước write (đã có một phần).  
+→ Cross-process: giảm số connection giữ lâu / document 1 MCP instance; nếu có thể, writer retry + log process lock; không được im lặng fail.
+
+### G3) Thứ tự close/write/invalidate chưa đủ chặt
+
+Hiện watcher gọi `incremental_update_file` rồi mới `invalidate_project_cache`.  
+`incremental_update_file` dựa vào reopen RO→RW trong `KuzuIndexStore.__init__`.
+
+Yêu cầu: **trước khi write**, chủ động:
+
+1. Invalidate `_store_cache` / `_graph_cache` / `_kuzu_stores` / engine caches
+2. `close_cached_database(db_path)` + GC nếu cần
+3. Mở `read_only=False`
+4. `update_single_node`
+5. Invalidate lại caches đọc để query sau không dùng graph cũ trong RAM
+
+### G4) Watcher chỉ start sau query MCP đầu tiên
+
+`start_watcher_for_project` trong `mcp_tools.get_kuzu_store`.  
+Nếu chưa từng query project → không watch.
+
+→ Giữ hành vi lazy-start OK, nhưng khi đã start phải hoạt động; log rõ “watcher started for UNC path X with PollingObserver”.
+
+### G5) In-memory graph cache stale
+
+Dù DB đã ghi, `xml_graph_query` / MCP có thể trả `_graph_cache` cũ nếu không invalidate.
+
+→ Sau incremental thành công bắt buộc clear cache đọc của project đó.
+
+---
+
+## 4) THIẾT KẾ CẦN IMPLEMENT
+
+### 4.1 Chọn Observer theo path
+
+Trong `xml_codegraph/service/watcher.py` (và chỗ `start_watcher`):
+
+```text
+Nếu controllers_root là UNC (\\\\server\share) hoặc network drive:
+    dùng PollingObserver (interval hợp lý, ví dụ 1–2s, có thể config)
+Else:
+    dùng Observer mặc định (hoặc Polling nếu config ép)
+```
+
+- Debounce per-file giữ nguyên (tránh storm).
+- Vẫn chỉ schedule các `get_graph_scan_roots` (Dir/Grid/Filter/…).
+- Log: `Using PollingObserver interval=Xs for UNC path ...`
+
+Có thể thêm config (tách khỏi `fbograph` storage nếu cần), ví dụ:
+
+```yaml
+watcher:
+  polling_forced: 0          # 1 = luôn poll
+  polling_interval_sec: 1.5  # dùng khi UNC hoặc forced
+```
+
+Nếu thêm config: **đừng nhét vào** block `fbograph.kuzu_db_base`. Block riêng `watcher:` hoặc `extract_options` nếu team đã có convention — ưu tiên block `watcher:`.
+
+### 4.2 API write an toàn (single-file)
+
+Tạo/chuẩn hóa helper dùng chung cho watcher + incremental, kiểu:
+
+```python
+def run_incremental_write(file_path, controllers_root, graph_dir) -> Optional[GraphNode]:
+    # 1) acquire per-db lock
+    # 2) invalidate + close_cached_database
+    # 3) incremental_update_file / delete_node_by_path
+    # 4) invalidate caches again
+    # 5) return node or raise/log failure clearly
+```
+
+`GraphUpdateHandler.on_any_event` phải gọi helper này — không full rebuild.
+
+### 4.3 Giữ nguyên semantics incremental
+
+Đọc và giữ đúng:
+
+- `incremental_update_file` — re-parse 1 file, rebuild outbound edges của node đó, backup/restore inbound nếu đang làm vậy
+- `delete_node_by_path` — delete/rename
+- Pairing `.xml` / `.f` hiện có trong watcher
+
+**Không** đổi sang rebuild toàn Controllers.
+
+### 4.4 Connection / lock (bổ sung trên nền v2)
+
+Đã có: cache `_db_instances` kèm `read_only`, reopen khi mismatch.  
+
+Bổ sung bắt buộc:
+
+- Trước write: close + invalidate **proactive** (không chỉ dựa mismatch lúc `__init__`)
+- Per-db `RLock` bao trùm cả close→open→update (query thread không đọc giữa chừng)
+- Nếu open write fail vì lock: **retry ngắn có backoff** + log rõ; cuối cùng log ERROR (không giả success)
+- Sau write success: reader query sau mở lại RO từ data mới
+
+### 4.5 Multi-process (thực dụng)
+
+Không cần IPC phức tạp ngay, nhưng phải:
+
+1. Log khi không lấy được lock (kèm path DB).
+2. Tránh mở thêm writer từ process lạ nếu có thể phát hiện.
+3. Trong docstring/README ngắn hoặc log startup: khuyến nghị **1 instance MCP** / project.
+4. Nếu có chỗ spawn nhiều `fastbusiness_mcp` vô tình — tìm và giảm (không phá MCP Cursor config của user nếu không chắc).
+
+---
+
+## 5) FILE NÊN ĐỌC / SỬA
+
+Đọc trước:
+
+- `prompt_gemini_fix_watcher.txt`
+- `prompt_gemini_fix_watcher_v2.txt`
+- `xml_codegraph/service/watcher.py`
+- `xml_codegraph/builder/graph_builder.py` (`incremental_update_file`, `delete_node_by_path`)
+- `xml_codegraph/storage/kuzu_index.py` (`KuzuIndexStore`, `close_cached_database`, `_db_instances`)
+- `xml_codegraph/mcp_tools.py` (`start_watcher_for_project`, `get_kuzu_store`)
+- `xml_codegraph/query/engine.py` (caches)
+- `xml_codegraph/tests/test_watcher_advanced.py`
+- `xml_codegraph/service/daemon.py` (nếu vẫn dùng)
+
+Sửa tối thiểu, đúng scope realtime incremental.
+
+---
+
+## 6) TEST / DEFINITION OF DONE
+
+### Unit / integration (local temp — bắt buộc)
+
+Mở rộng `test_watcher_advanced.py` hoặc file mới:
+
+1. **RO rồi write rồi đọc lại** (cùng process):  
+   MCP-style `KuzuIndexStore(read_only=True)` → sửa file → handler/incremental → query thấy edge/`js_text` đổi.
+2. **Xóa `showForm('XFilter')` → mất `RETRIEVE_DATA_SOURCE`** tới XFilter (giống case CPDetail).
+3. **Polling path**: ép dùng PollingObserver (hoặc fake UNC detection) vẫn cập nhật trong vài giây.
+4. **Không full rebuild**: mock/spy đảm bảo `build_and_save_graph` / `sync_graph` **không** được gọi khi 1 file modify.
+5. Giữ các test T5/T6 hiện có (create/modify/rename/delete, 2 file trong debounce).
+
+### Manual / evidence (Banyan nếu truy cập được)
+
+Trên SP228:
+
+1. Đảm bảo MCP đang chạy, đã query 1 lần để start watcher.
+2. Xóa hoặc thêm lại tạm `showForm('CPOSTranFilter')` trong `Grid\CPDetail.xml`.
+3. Đợi ≤ vài giây (polling interval).
+4. `query_radar` / navigate: cạnh/`js_text` **đổi theo file**.
+5. Nếu fail: log phải chỉ ra lock/observer — không im lặng.
+
+### DoD checklist
+
+- [ ] UNC Controllers được watch bằng PollingObserver (hoặc tương đương tin cậy)
+- [ ] Sửa 1 file → chỉ incremental file đó
+- [ ] Cùng process: query RO → edit → watcher write → query thấy mới **không cần restart MCP**
+- [ ] Xóa retrieve `showForm` → mất cạnh `RETRIEVE_DATA_SOURCE` tương ứng
+- [ ] Cache MCP/engine không trả graph cũ sau update
+- [ ] Lock fail → log ERROR rõ, không báo success giả
+- [ ] Test tự động cover RO→write→read + mất edge retrieve
+- [ ] Không phá `extract_options.shared_include` / full build CLI
+
+---
+
+## 7) PHẠM VI KHÔNG LÀM
+
+- Không đổi schema Kuzu
+- Không bật lại `SHARED_INCLUDE`
+- Không chuyển sang msgpack/zstd
+- Không yêu cầu rebuild full project như workaround chính
+- Không “sửa bằng cách bảo user luôn chạy fbograph init sau mỗi edit”
+
+---
+
+## 8) CÁCH BÁO CÁO KHI XONG
+
+1. Diff các file đã sửa + lý do từng điểm (UNC polling, close-before-write, cache).
+2. Lệnh chạy test + kết quả.
+3. Nếu test được trên Banyan UNC: mô tả bước + trước/sau query `CPOSTranFilter`.
+4. Nêu hạn chế còn lại (ví dụ multi-process MCP vẫn cần 1 instance) — trung thực.
+
+Hết prompt. Hãy khảo sát → implement → chạy test → báo cáo evidence, đặc biệt case “xóa showForm thì mất edge ngay”.

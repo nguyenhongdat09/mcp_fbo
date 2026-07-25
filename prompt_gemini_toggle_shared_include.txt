@@ -1,0 +1,225 @@
+# PROMPT CHO GEMINI — Bật/tắt SHARED_INCLUDE qua config (không xóa code)
+
+Bạn được giao nhiệm vụ **tự khảo sát codebase**, rồi sửa logic BUILD graph để **có thể tắt (turn off) việc tạo cạnh `SHARED_INCLUDE`** bằng cấu hình.
+
+**KHÔNG xóa hẳn logic SHARED_INCLUDE.**  
+Chỉ **gate bằng config**: mặc định tắt; sau này bật lại được mà không phải revert code.
+
+Repo: `E:\mcp_fbo`
+
+---
+
+## 1) BỐI CẢNH / VÌ SAO LÀM
+
+Trên DB thật (~60MB, ~6888 node):
+
+- Tổng edges ≈ 1.45 triệu
+- `SHARED_INCLUDE` ≈ 1.44 triệu (~99%)
+- Cạnh nghiệp vụ còn lại chỉ ~14k
+
+`SHARED_INCLUDE` là cạnh **suy diễn** (clique O(n²)): nếu nhiều controller cùng `ENTITY_INCLUDE` một file, builder tạo cạnh giữa mọi cặp controller.
+
+Với workflow agent hiện tại (flat + đọc XML + navigate Grid/Lookup/Retrieve), `SHARED_INCLUDE` gần như không cần.  
+Muốn giảm dung lượng DB / noise khi query → **tắt khi build**.  
+Vẫn giữ code để sau này bật lại bằng config.
+
+`ENTITY_INCLUDE` / `PARAM_ENTITY_USE` **GIỮ NGUYÊN** (không tắt theo flag này).
+
+---
+
+## 2) YÊU CẦU CẤU HÌNH (BẮT BUỘC ĐÚNG SHAPE)
+
+Sửa `config.yaml` — thêm block **riêng**, **KHÔNG gộp vào `fbograph:`**.
+
+### ĐÚNG — làm dạng này:
+
+```yaml
+# FastBusiness MCP Server
+
+server:
+  name: "fastbusiness-mcp"
+  version: "2.0.0"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Tùy chọn khi extract/build graph
+extract_options:
+  shared_include: 0
+
+# Cấu hình lưu trữ Kuzu DB cục bộ
+fbograph:
+  kuzu_db_base: "C:/KuzuDB"
+  user_multi_db_yn: 1
+```
+
+### SAI — không được làm:
+
+```yaml
+fbograph:
+  kuzu_db_base: "C:/KuzuDB"
+  user_multi_db_yn: 1
+  shared_include: 0          # ❌ KHÔNG nhét vào đây
+  extract_options: ...       # ❌ KHÔNG gộp vào fbograph
+```
+
+### Quy ước giá trị
+
+| `extract_options.shared_include` | Ý nghĩa |
+|----------------------------------|----------|
+| `0` (mặc định) | **Không** tạo cạnh `SHARED_INCLUDE` khi build |
+| `1` | Tạo `SHARED_INCLUDE` như logic hiện tại |
+
+- Thiếu key / thiếu block `extract_options` → coi như `0` (tắt).
+- Chấp nhận `0/1`, `true/false`, `"0"/"1"` nếu parse an toàn; chuẩn hóa về int 0/1.
+
+---
+
+## 3) YÊU CẦU HÀNH VI BUILD
+
+Khi build graph (full rebuild), đọc flag rồi quyết định có chạy block tạo `SHARED_INCLUDE` hay không.
+
+Các đường vào build phải cùng đọc 1 nguồn config:
+
+1. `xml_codegraph/build_kuzu_projects.py` (`fbograph init` / `fbograph <path>`)
+2. `fastbusiness_mcp.exe` / entry build tương đương (nếu có gọi chung `cmd_build` / `build_and_save_graph`)
+3. Mọi path gọi `GraphBuilder.build()` / `build_and_save_graph` / incremental nếu có tái tạo `SHARED_INCLUDE`
+
+### Kỳ vọng log khi build
+
+- `shared_include=0`: in rõ kiểu  
+  `[CodeGraph] extract_options.shared_include=0 → skip SHARED_INCLUDE edges`
+- `shared_include=1`:  
+  `[CodeGraph] extract_options.shared_include=1 → build SHARED_INCLUDE edges`
+
+### Logic tạo cạnh (giữ nguyên khi bật)
+
+Hiện tại trong `graph_builder.py` (~2.8):
+
+```python
+# 2.8 Phân tích mối quan hệ dùng chung (SHARED_INCLUDE)
+shared_includes = {}
+for edge in graph.edges:
+    if edge.edge_type == EdgeType.ENTITY_INCLUDE:
+        shared_includes.setdefault(edge.target_id, []).append(edge.source_id)
+
+for include_id, controllers in shared_includes.items():
+    if len(controllers) > 1:
+        for c1 in controllers:
+            for c2 in controllers:
+                if c1 != c2:
+                    add_rewrite_edge(c1, c2, EdgeType.SHARED_INCLUDE, {"shared_resource_id": include_id})
+```
+
+→ Bọc bằng `if shared_include_enabled: ...`  
+→ **Không xóa** hàm/enum/`EdgeType.SHARED_INCLUDE` / mô tả radar.
+
+### Incremental / watcher
+
+Nếu `incremental_update_file` cũng tạo/rebuild `SHARED_INCLUDE`, phải tôn trọng cùng flag.  
+Khi flag=0: không tạo mới `SHARED_INCLUDE`; không cần migrate xóa cạnh cũ trong DB cũ (rebuild full sẽ clear). Full rebuild (overwrite) vẫn là cách sạch để DB bỏ hết `SHARED_INCLUDE` cũ.
+
+---
+
+## 4) CÁCH ĐỌC CONFIG (GỢI Ý TRIỂN KHAI)
+
+Tái sử dụng pattern tìm `config.yaml` sẵn có trong `xml_codegraph/utils/path_helper.py`
+(`_find_config_file`, frozen exe, CWD, package root…).
+
+Thêm helper kiểu:
+
+```python
+def get_extract_shared_include_yn() -> int:
+    """
+    Đọc extract_options.shared_include từ config.yaml.
+    Mặc định = 0 (tắt SHARED_INCLUDE).
+    Ưu tiên (nếu muốn): env FBOGRAPH_SHARED_INCLUDE (0|1) > config.yaml > 0
+    """
+```
+
+**Bắt buộc:**
+
+- Đọc từ top-level `extract_options.shared_include`
+- **Không** đọc từ `fbograph.shared_include`
+- Cache được (giống `resolve_kuzu_db_base` / `get_user_multi_db_yn`) + `reset_config_caches()` clear luôn cache mới
+
+Truyền flag vào `GraphBuilder` (constructor / tham số `build()`) hoặc đọc helper ngay trong bước 2.8 — miễn **một nguồn sự thật**, mọi entry build đều nhất quán.
+
+---
+
+## 5) QUERY / MCP / DOCS
+
+Khi `shared_include=0`:
+
+- `dependencies` / `impact` / `get_related_nodes` vẫn chạy; không còn (hoặc gần như không còn) cạnh type `SHARED_INCLUDE`.
+- `ENTITY_INCLUDE` vẫn đủ để suy “ai dùng chung include” nếu cần sau này.
+- Cập nhật nhẹ note trong `query_radar` schema / `mcp_tools` nếu đang nói “SHARED_INCLUDE chiếm ~99%” — ghi thêm: phụ thuộc `extract_options.shared_include`.
+- Filter sẵn có `include_shared=False` trong MCP **giữ nguyên** (vẫn hữu ích khi user bật lại flag=1).
+
+**Không** đổi schema Kuzu (vẫn có `Rel.edge_type` STRING; giá trị `SHARED_INCLUDE` vẫn hợp lệ khi bật).
+
+---
+
+## 6) TEST / XÁC MINH
+
+Thêm hoặc cập nhật test tối thiểu:
+
+1. `shared_include=0` → sau `build()`, không có edge `edge_type == SHARED_INCLUDE` (hoặc count=0).
+2. `shared_include=1` → vẫn tạo `SHARED_INCLUDE` khi ≥2 controller cùng `ENTITY_INCLUDE` một target (case nhỏ trong temp Controllers).
+3. Thiếu `extract_options` trong yaml → mặc định tắt (count SHARED=0).
+4. Đảm bảo không đọc nhầm key nằm dưới `fbograph:`.
+
+Nếu có thể, verify trên project lớn sau rebuild:
+
+```cypher
+MATCH ()-[r:Rel {edge_type:'SHARED_INCLUDE'}]->() RETURN count(r)
+```
+
+- Flag 0 → `0`
+- Flag 1 → số lớn như trước
+
+So sánh kích thước thư mục `.fbograph`/`kuzu` trước/sau (kỳ vọng giảm rõ khi tắt).
+
+---
+
+## 7) FILE NÊN ĐỌC / SỬA
+
+Đọc trước:
+
+- `config.yaml`
+- `xml_codegraph/utils/path_helper.py` (pattern đọc config)
+- `xml_codegraph/builder/graph_builder.py` (block 2.8 SHARED_INCLUDE + incremental)
+- `xml_codegraph/build_kuzu_projects.py`
+- `xml_codegraph/rules/edges_rules.py`
+- `xml_codegraph/query/engine.py` (impact dùng SHARED_INCLUDE)
+- `xml_codegraph/mcp_tools.py`
+- Entry `.exe` / `run_server.py` / `mcp_server.py` / `fastbusiness_mcp` nếu có lệnh build
+
+Sửa tối thiểu, đúng scope. Không refactor lớn ngoài gate config.
+
+---
+
+## 8) DEFINITION OF DONE
+
+- [ ] `config.yaml` có `extract_options.shared_include` **tách riêng**, không nằm trong `fbograph`
+- [ ] Mặc định `0` = không tạo `SHARED_INCLUDE`
+- [ ] `1` = tạo như cũ
+- [ ] `fbograph init` / `build_kuzu_projects.py` / `.exe` build đều tôn trọng flag
+- [ ] Code tạo SHARED_INCLUDE vẫn còn (chỉ bị skip khi tắt)
+- [ ] `ENTITY_INCLUDE` / cạnh nghiệp vụ khác không bị ảnh hưởng
+- [ ] Có log khi build cho biết flag đang dùng
+- [ ] Có test unit cho on/off/default
+- [ ] Không đổi `kuzu_db_base` / `user_multi_db_yn` semantics
+
+---
+
+## 9) PHẠM VI KHÔNG LÀM
+
+- Không xóa `EdgeType.SHARED_INCLUDE`
+- Không đổi sang msgpack / nén zstd / bỏ Kuzu
+- Không tắt `ENTITY_INCLUDE`
+- Không gộp `extract_options` vào block `fbograph`
+- Không đổi mặc định multi-db / path `C:/KuzuDB`
+
+Hết prompt. Hãy khảo sát → implement → chạy test → báo cáo diff + cách bật/tắt bằng config.

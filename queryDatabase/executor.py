@@ -64,6 +64,12 @@ def format_pyodbc_error(exc: Exception) -> str:
     return "\n".join(parts) if parts else "Unknown SQL error"
 
 
+def _is_driver_missing_error(exc: Exception) -> bool:
+    """Kiểm tra xem lỗi có phải do chưa cài ODBC Driver hay không (IM002)."""
+    msg = str(exc).lower()
+    return "im002" in msg or "data source name not found" in msg or "no default driver" in msg
+
+
 def _build_connection_string(parsed: dict[str, str]) -> str:
     server = parsed.get("server", "")
     database = parsed.get("database", "")
@@ -91,14 +97,20 @@ def _build_connection_string(parsed: dict[str, str]) -> str:
         try:
             import pyodbc
 
-            conn = pyodbc.connect(conn_str, timeout=30)
+            conn = pyodbc.connect(conn_str, timeout=5)
             conn.close()
             return conn_str
         except Exception as exc:
             last_error = exc
-            continue
+            if _is_driver_missing_error(exc):
+                continue
+            raise ConnectionError(
+                f"Không kết nối được SQL Server (database '{database}'): {format_pyodbc_error(exc)}"
+            ) from exc
 
-    raise ConnectionError(f"Không kết nối được SQL Server: {last_error}")
+    raise ConnectionError(
+        f"Không kết nối được SQL Server (database '{database}'): {last_error}"
+    )
 
 
 def execute_query(

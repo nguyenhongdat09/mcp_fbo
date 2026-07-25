@@ -1,0 +1,241 @@
+# PROMPT CHO GEMINI — Fix MCP đọc Kuzu stale sau watcher incremental
+
+Bạn đã sửa watcher (PollingObserver UNC + `run_incremental_write`).  
+**Disk đã cập nhật đúng**, nhưng **MCP query vẫn trả data cũ**. Đây là vòng fix tiếp theo — bắt buộc reproduce evidence dưới đây.
+
+Repo: `E:\mcp_fbo`
+
+Đọc trước:
+
+- `prompt_gemini_fix_watcher_realtime_unc.txt`
+- `xml_codegraph/mcp_tools.py` (`get_kuzu_store`, `mcp_query_radar`, `start_watcher_for_project`)
+- `xml_codegraph/query/engine.py` (`_store_cache`, `_graph_cache`, mtime check)
+- `xml_codegraph/service/watcher.py` (`run_incremental_write`, `invalidate_project_cache`)
+- `xml_codegraph/builder/graph_builder.py` (`incremental_update_file` — nuốt exception)
+- `xml_codegraph/storage/kuzu_index.py` (`close_cached_database`, `_db_instances`)
+
+---
+
+## 1) BẰNG CHỨNG THỰC TẾ (BANYAN SP228 — sau khi bạn đã sửa watcher)
+
+Project:
+
+```text
+\\172.168.5.14\CustomerPro\FBO\BANYANFBO\SP228\App_Data\Controllers\Grid\CPDetail.xml
+Kuzu: C:\KuzuDB\...\BANYANFBO\SP228\.fbograph\kuzu
+```
+
+### Repro
+
+1. User xóa trong `CPDetail.xml`:
+
+```javascript
+case '30':
+  g.showForm('CPOSTranFilter');
+  break;
+```
+
+2. File đĩa: **không còn** `CPOSTranFilter` / `case '30'`.
+
+3. Mở Kuzu **read_only mới bằng Python** (process sạch):
+
+```text
+disk_js_has = False
+disk_edge (CPDetail -> CPOSTranFilter) = 0
+```
+
+→ **Watcher đã ghi đúng xuống disk.**
+
+4. Cùng lúc, Cursor gọi MCP `query_radar` / `get_related_nodes`:
+
+```text
+js CONTAINS 'CPOSTranFilter' = True
+edge count = 1
+navigate vẫn liệt kê Filter\CPOSTranFilter.xml
+```
+
+→ **MCP process đang serve query đọc connection/cache cũ**, không phải disk chưa update.
+
+5. Máy quan sát có **nhiều** `fastbusiness_mcp.exe` (ví dụ 3 process) cùng lúc.
+
+### Kết luận triệu chứng
+
+| Layer | Trạng thái |
+|-------|------------|
+| XML file | Đã xóa |
+| Kuzu file trên đĩa | Đã mất cạnh/js |
+| MCP tool query | Vẫn còn (STALE) |
+
+Đừng sửa kiểu “rebuild full” hoặc “bảo user restart Cursor” như DoD chính.
+
+---
+
+## 2) BA LỖI CẦN SỬA (BẮT BUỘC)
+
+### Lỗi A — `get_kuzu_store` / MCP query không reopen khi DB đổi
+
+`mcp_query_radar` gọi:
+
+```python
+store = get_kuzu_store(reference_file)
+results = store.execute_cypher(cypher_query)
+```
+
+`get_kuzu_store` cache mãi `KuzuIndexStore(read_only=True)`.  
+Khi watcher (cùng hoặc khác thread) đã ghi disk + invalidate, **hoặc** disk bị process khác cập nhật, query MCP vẫn dùng connection RO cũ → Cypher thấy snapshot cũ.
+
+`xml_graph_query` có check mtime để reload `_graph_cache`, nhưng:
+
+- Reload vẫn qua **cùng store/connection RO cũ** → `load_graph()` / `execute_cypher` vẫn có thể stale.
+- `mcp_query_radar` **bỏ qua** luôn nhánh mtime đó.
+
+**Yêu cầu:**
+
+Trước mọi read MCP / engine:
+
+1. Lấy `mtime` (và ideally size) của file/dir `kuzu`.
+2. Nếu khác lần mở store trước → `close_cached_database` + xóa `_kuzu_stores` / `_store_cache` / `_graph_cache` cho project đó → mở lại `read_only=True`.
+3. Áp dụng cho:
+   - `get_kuzu_store`
+   - `mcp_query_radar` / mọi tool đọc Kuzu
+   - `xml_graph_query` (không chỉ đổi graph in-memory; phải reconnect store nếu mtime đổi)
+
+Gợi ý API:
+
+```python
+def ensure_fresh_readonly_store(db_path: Path, graph_dir: Path) -> KuzuIndexStore:
+    """Reopen RO store if kuzu mtime/size changed since last open."""
+```
+
+Log ngắn khi reopen: `[CodeGraph] Kuzu mtime changed → reopen read-only store`.
+
+### Lỗi B — Nhiều process MCP giữ RO lock / cache riêng
+
+Có nhiều `fastbusiness_mcp.exe` → watcher process A update disk; query process B không biết → stale.
+
+**Yêu cầu thực dụng (không cần IPC phức tạp ngay):**
+
+1. Khi start MCP / start watcher: log PID + db_path + “recommend single MCP instance per machine for same KuzuDB”.
+2. Reader: **mtime-based reopen** (Lỗi A) đủ để process B thấy data mới **sau khi** disk đổi, miễn là không giữ snapshot mãi.
+3. Writer: trước write vẫn `invalidate` + `close` trong process writer; retry lock (Lỗi C).
+4. Nếu phát hiện không lấy được write lock sau retries: log ERROR rõ (PID/path), không giả success.
+5. Rà `run_server.py` / spec / chỗ spawn MCP — tránh tự spawn thêm instance vô ích (chỉ sửa nếu chắc chắn).
+
+Không được: bắt buộc user kill process như giải pháp duy nhất trong DoD.  
+Được: document + log cảnh báo multi-instance.
+
+### Lỗi C — Retry lock không chạy vì nuốt exception
+
+Trong `incremental_update_file` / `delete_node_by_path`:
+
+```python
+except Exception as e:
+    print(...)
+    return None
+```
+
+Trong khi `run_incremental_write` chỉ retry khi **exception bubble**.
+
+Evidence: log chỉ có `incremental_update_file error: Could not set lock` rồi `write_result None` — **không** có `Attempt 1/5: Lock conflict`.
+
+**Yêu cầu:**
+
+Cách 1 (ưu tiên): với lỗi lock/IO → **re-raise** từ `incremental_update_file` / `delete_node_by_path` để `run_incremental_write` retry.
+
+Cách 2: `run_incremental_write` nếu `node is None` và log/err gần nhất chứa lock → coi như fail và retry (kém sạch hơn).
+
+Không được: `return None` rồi vẫn `invalidate` và coi như xong im lặng.
+
+Sau hết retries: `ERROR: Failed to write ... after N retries` (đã có) — giữ.
+
+---
+
+## 3) HÀNH VI MONG MUỐN SAU FIX
+
+Cùng kịch bản Banyan:
+
+1. MCP đang chạy, đã query 1 lần (watcher started).
+2. User xóa `showForm('CPOSTranFilter')` trong `CPDetail.xml`.
+3. Watcher incremental ghi disk (≤ vài giây với PollingObserver).
+4. MCP `query_radar` ngay sau đó:
+
+```cypher
+MATCH (n:XmlFile) WHERE n.relative_path = 'Grid\\CPDetail.xml'
+RETURN n.js_text CONTAINS 'CPOSTranFilter'
+-- False
+
+MATCH (a)-[r:Rel {edge_type:'RETRIEVE_DATA_SOURCE'}]->(b)
+WHERE a.relative_path='Grid\\CPDetail.xml' AND b.relative_path='Filter\\CPOSTranFilter.xml'
+RETURN count(r)
+-- 0
+```
+
+5. `get_related_nodes(CPDetail)` **không** còn `CPOSTranFilter` trong `retrieve_sources`.
+
+6. Không cần restart Cursor/MCP để thấy kết quả (cùng process hoặc process khác đọc lại sau mtime change).
+
+---
+
+## 4) TEST BẮT BUỘC
+
+Thêm/sửa test (không phụ thuộc UNC thật nếu khó):
+
+### T8 — mtime reopen store
+
+1. Tạo temp DB, insert node có `js` chứa `CPOSTranFilter` + edge retrieve.
+2. `store_ro = get_kuzu_store` / `KuzuIndexStore(read_only=True)` + query thấy có.
+3. Process/thread khác (hoặc cùng process): `run_incremental_write` sửa file làm mất showForm → disk edge=0.
+4. **Không** gọi invalidate thủ công phía reader nếu API tự detect mtime — query lại qua `get_kuzu_store` / `mcp_query_radar` path → phải thấy 0.
+5. Assert có reopen (mtime khác / store object khác / log).
+
+### T9 — lock error triggers retry
+
+1. Mock / monkeypatch `incremental_update_file` lần 1–2 raise IO lock, lần 3 success.
+2. `run_incremental_write` phải retry và success.
+3. Hoặc: patch để lần đầu nuốt kiểu cũ không còn xảy ra — assert exception lock bubble.
+
+### T10 — radar path không stale
+
+Gọi đường giống `mcp_query_radar` (execute_cypher qua get_kuzu_store) sau incremental → data mới.
+
+Giữ `test_watcher_advanced` T1–T7 pass.
+
+Chạy:
+
+```text
+python -m unittest xml_codegraph.tests.test_watcher_advanced -v
+```
+
+(+ file test mới nếu tách).
+
+---
+
+## 5) PHẠM VI KHÔNG LÀM
+
+- Không full rebuild mỗi query/edit
+- Không đổi schema Kuzu
+- Không đụng `extract_options.shared_include`
+- Không chuyển sang DB khác
+- Không coi “kill hết fastbusiness_mcp” là DoD
+
+---
+
+## 6) DEFINITION OF DONE
+
+- [ ] `get_kuzu_store` / engine / radar **reopen RO khi kuzu mtime đổi**
+- [ ] Sau watcher update disk, MCP query (cùng hoặc khác process trên cùng máy) thấy data mới **không restart**
+- [ ] Lock error bubble + `run_incremental_write` retry thật sự (có log Attempt N/5)
+- [ ] Log cảnh báo multi MCP instance (PID)
+- [ ] Test T8/T9/T10 (hoặc tương đương) pass + T1–T7 pass
+- [ ] Báo cáo: evidence trước/sau trên case CPDetail nếu truy cập được UNC
+
+---
+
+## 7) CÁCH BÁO CÁO
+
+1. Diff + giải thích từng lỗi A/B/C.
+2. Kết quả unittest.
+3. Nếu test Banyan: bảng File / Disk Kuzu / MCP query trước-sau xóa `CPOSTranFilter`.
+4. Hạn chế còn lại (nếu có) — nói thật.
+
+Hết prompt. Khảo sát → implement → test → evidence. Tập trung **MCP đọc stale**, không làm lại PollingObserver từ đầu trừ khi bị regress.

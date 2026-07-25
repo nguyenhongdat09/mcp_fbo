@@ -40,6 +40,8 @@ class GraphNode:
     source_extension: str = ".xml"      # ".xml" | ".f"
     paired_f_path: Optional[str] = None # "Grid\\CPTax.f" nếu node từ .f
     needs_xml: bool = False             # True khi chỉ có .f, không có .xml readable
+    canonical_path: str = ""            # Đường dẫn canonical của logical controller (ví dụ: Grid\CPDetail.xml)
+    alias_of: str = ""                  # Node ID của canonical node đại diện cho controller này
 
 
 @dataclass

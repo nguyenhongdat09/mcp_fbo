@@ -18,11 +18,12 @@ def test_app_data_path_resolution():
 
         web_config.write_text(
             """
+            <appSettings>
+              <add key="sysDatabaseName" value="AMERICAN_FBISP2422_S" />
+            </appSettings>
             <connectionStrings>
               <add name="appConnectionString"
-                   connectionString="Data Source=SERVER01;Initial Catalog=FBO_App;User ID=sa;Password=secret" />
-              <add name="sysConnectionString"
-                   connectionString="Data Source=SERVER01;Initial Catalog=FBO_Sys;User ID=sa;Password=secret" />
+                   connectionString="Data Source=SERVER01;Initial Catalog=AMERICAN_FBISP2422_S;User ID=sa;Password=secret" />
             </connectionStrings>
             """,
             encoding="utf-8",
@@ -32,12 +33,33 @@ def test_app_data_path_resolution():
         result = find_connection_by_path(str(xml_path), "app")
         assert result["success"], result
         assert result["project_root"] == str(root)
-        assert "Data Source=SERVER01" in result["connection_string"]
-        assert result["parsed"]["database"] == "FBO_A"
+        assert result["parsed"]["database"] == "AMERICAN_FBISP2422_A"
 
-        all_result = find_connection_by_path(str(xml_path), "all")
-        assert all_result["success"]
-        assert set(all_result["connections"]) == {"app", "sys"}
+        sys_result = find_connection_by_path(str(xml_path), "sys")
+        assert sys_result["success"]
+        assert sys_result["parsed"]["database"] == "AMERICAN_FBISP2422_S"
+
+        # Test case _Sys -> _App
+        web_config.write_text(
+            """
+            <appSettings>
+              <add key="sysDatabaseName" value="AMERICAN_FBISP2422_Sys" />
+            </appSettings>
+            <connectionStrings>
+              <add name="appConnectionString"
+                   connectionString="Data Source=SERVER01;Initial Catalog=AMERICAN_FBISP2422_Sys;User ID=sa;Password=secret" />
+            </connectionStrings>
+            """,
+            encoding="utf-8",
+        )
+
+        result_sys = find_connection_by_path(str(xml_path), "app")
+        assert result_sys["success"]
+        assert result_sys["parsed"]["database"] == "AMERICAN_FBISP2422_App"
+
+        sys_result2 = find_connection_by_path(str(xml_path), "sys")
+        assert sys_result2["success"]
+        assert sys_result2["parsed"]["database"] == "AMERICAN_FBISP2422_Sys"
 
         print("OK: find_connection_by_path tests passed")
 

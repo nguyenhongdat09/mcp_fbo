@@ -67,16 +67,21 @@ def start_watcher_for_project(reference_file: str):
     try:
         helper = ProjectPathHelper(reference_file)
         project_root = str(helper.get_project_root().resolve())
-        if project_root in _watched_projects:
-            return
-
-        _watched_projects.add(project_root)
         controllers_dir = helper.get_controllers_path()
         graph_dir = helper.get_graph_dir()
 
+        from xml_codegraph.utils.path_helper import is_db_owner
+        if not is_db_owner(controllers_dir, graph_dir):
+            sys.stderr.write(f"[FboCodeGraph MCP] user_multi_db_yn=0: Watcher disabled for {controllers_dir} because it is not owner of Kuzu DB ({graph_dir.parent.name})\n")
+            return
+
+        _watched_projects.add(project_root)
+
         def watcher_thread():
             try:
-                sys.stderr.write(f"[FboCodeGraph MCP] Starting file watcher thread for {controllers_dir}\n")
+                import os
+                sys.stderr.write(f"[FboCodeGraph MCP] Starting file watcher thread for {controllers_dir} (PID: {os.getpid()})\n")
+                sys.stderr.write(f"[FboCodeGraph MCP] WARNING: Recommend using a single MCP instance per machine for same KuzuDB to avoid lock conflicts.\n")
                 start_watcher(controllers_dir, graph_dir)
             except Exception as e:
                 sys.stderr.write(f"[FboCodeGraph MCP] Watcher thread failed: {e}\n")
@@ -93,14 +98,9 @@ def get_kuzu_store(reference_file: str):
     graph_dir = helper.get_graph_dir().resolve()
     db_path = (graph_dir / "kuzu").resolve()
     db_key = str(db_path)
-
-    # Tai su dung store neu xml_graph_query da mo (tranh build 2 lan)
-    from xml_codegraph.query import engine as qe
-
     graph_key = str(graph_dir)
-    if graph_key in qe._store_cache:
-        _kuzu_stores[db_key] = qe._store_cache[graph_key]
-        return _kuzu_stores[db_key]
+
+    from xml_codegraph.query import engine as qe
 
     # Tự động đồng bộ gia tăng nếu đã quá 5 phút
     import time
@@ -108,24 +108,128 @@ def get_kuzu_store(reference_file: str):
     if now - qe._last_sync_times.get(graph_key, 0.0) > 300.0:
         # Gọi xml_graph_query với target rỗng / dummy để kích hoạt kiểm tra/đồng bộ tự động
         try:
-            xml_graph_query("search", "", reference_file, limit=1)
+            qe.xml_graph_query("search", "", reference_file, limit=1)
         except Exception:
             pass
 
-    if db_key not in _kuzu_stores or graph_key not in qe._store_cache:
-        if not _kuzu_db_ready(db_path):
-            _ensure_graph_built(reference_file)
-        start_watcher_for_project(reference_file)
-        _kuzu_stores[db_key] = KuzuIndexStore(db_path, read_only=True)
-        qe._store_cache[graph_key] = _kuzu_stores[db_key]
+    if not _kuzu_db_ready(db_path):
+        _ensure_graph_built(reference_file)
+    start_watcher_for_project(reference_file)
 
-    return qe._store_cache[graph_key]
+    # Luon kiem tra mtime cua KuzuDB va reopen neu can thiet
+    store = qe.ensure_fresh_readonly_store(db_path, graph_dir)
+    _kuzu_stores[db_key] = store
+    return store
 
 
 
 # Tool 1
-def mcp_query_radar(cypher_query: str, reference_file: str) -> str:
+def _get_radar_schema(store: KuzuIndexStore) -> dict:
+    """Doc schema Kuzu live va bo sung quy tac nghiep vu de agent viet Cypher."""
+    from xml_codegraph.rules.edges_rules import EDGE_DESCRIPTIONS, EdgeType
+
+    tables = store.execute_cypher("CALL show_tables() RETURN *")
+    node_info = store.execute_cypher("CALL table_info('XmlFile') RETURN *")
+    rel_info = store.execute_cypher("CALL table_info('Rel') RETURN *")
+    live_edge_rows = store.execute_cypher(
+        """
+        MATCH (:XmlFile)-[r:Rel]->(:XmlFile)
+        RETURN DISTINCT r.edge_type AS edge_type
+        ORDER BY edge_type
+        """
+    )
+    live_edge_types = {row["edge_type"] for row in live_edge_rows}
+
+    node_columns = {row["name"]: row["type"] for row in node_info}
+    rel_columns = {row["name"]: row["type"] for row in rel_info}
+    edge_types = {}
+    for edge_type in EdgeType:
+        edge_types[edge_type.value] = {
+            "description": EDGE_DESCRIPTIONS.get(edge_type, ""),
+            "present_in_database": edge_type.value in live_edge_types,
+        }
+
+    return {
+        "mode": "schema",
+        "source": "Live Kuzu schema + FBO edge semantics",
+        "tables": tables,
+        "node_table": {
+            "name": "XmlFile",
+            "primary_key": "node_id",
+            "columns": node_columns,
+        },
+        "relationship_table": {
+            "name": "Rel",
+            "from": "XmlFile",
+            "to": "XmlFile",
+            "columns": rel_columns,
+        },
+        "edge_types": edge_types,
+        "rules": [
+            "Kuzu chi co relationship table :Rel; loai nghiep vu nam trong r.edge_type.",
+            "Dung MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile), khong dung label Neo4j [:GRID_MASTER_DETAIL].",
+            "Luon filter r.edge_type va them LIMIT khi query relationship (SHARED_INCLUDE phu thuoc extract_options.shared_include).",
+            "relative_path dung backslash, vi du Dir\\\\CPTran.xml.",
+            "Dung js_text CONTAINS 'HandlerName' de tim JavaScript; dung size(string), khong dung length(string).",
+            "canonical_path/alias_of gom nhieu file vat ly ve mot logical controller.",
+        ],
+        "examples": [
+            {
+                "name": "Master voucher -> detail grid",
+                "cypher": (
+                    "MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile) "
+                    "WHERE a.relative_path = 'Dir\\\\CPTran.xml' "
+                    "AND r.edge_type = 'GRID_MASTER_DETAIL' "
+                    "RETURN a.relative_path, b.relative_path, r.meta LIMIT 20"
+                ),
+            },
+            {
+                "name": "Reverse lookup: ai goi RequestFilter",
+                "cypher": (
+                    "MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile) "
+                    "WHERE b.relative_path CONTAINS 'RequestFilter' "
+                    "AND r.edge_type = 'RETRIEVE_DATA_SOURCE' "
+                    "RETURN a.relative_path, b.relative_path, r.meta LIMIT 20"
+                ),
+            },
+            {
+                "name": "Chuoi 2 cap voucher -> detail -> filter",
+                "cypher": (
+                    "MATCH (a:XmlFile)-[r1:Rel]->(b:XmlFile)-[r2:Rel]->(c:XmlFile) "
+                    "WHERE r1.edge_type = 'GRID_MASTER_DETAIL' "
+                    "AND r2.edge_type = 'RETRIEVE_DATA_SOURCE' "
+                    "RETURN a.relative_path, b.relative_path, c.relative_path LIMIT 20"
+                ),
+            },
+        ],
+    }
+
+
+def mcp_query_radar(
+    cypher_query: str,
+    reference_file: str,
+    mode: str = "query",
+) -> str:
     try:
+        normalized_mode = (mode or "query").strip().lower()
+        if normalized_mode not in {"query", "schema"}:
+            return json.dumps(
+                {"error": "mode phai la 'query' hoac 'schema'"},
+                indent=2,
+                ensure_ascii=False,
+            )
+
+        store = get_kuzu_store(reference_file)
+        if normalized_mode == "schema":
+            return json.dumps(_get_radar_schema(store), indent=2, ensure_ascii=False)
+
+        if not (cypher_query or "").strip():
+            return json.dumps(
+                {"error": "cypher_query la bat buoc khi mode='query'"},
+                indent=2,
+                ensure_ascii=False,
+            )
+
         is_rel_query = "-" in cypher_query and "MATCH" in cypher_query.upper()
         has_limit = "LIMIT" in cypher_query.upper()
         has_edge_filter = "EDGE_TYPE" in cypher_query.upper()
@@ -138,7 +242,6 @@ def mcp_query_radar(cypher_query: str, reference_file: str) -> str:
                 "Automatically applied LIMIT 50 to prevent context window overflow."
             )
 
-        store = get_kuzu_store(reference_file)
         results = store.execute_cypher(cypher_query)
 
         if warning:
@@ -211,7 +314,7 @@ def mcp_query_node_details(target: str, reference_file: str, view: str = "contex
 
 
 # Tool 5
-def mcp_read_local_file(file_path: str, reference_file: str) -> str:
+def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 1) -> str:
     try:
         helper = ProjectPathHelper(reference_file)
         project_root = helper.get_project_root()
@@ -234,9 +337,16 @@ def mcp_read_local_file(file_path: str, reference_file: str) -> str:
         if not p.exists():
             return f"Loi: File khong ton tai: {file_path}"
 
-        from xml_codegraph.parsers.xml_parser import read_file_content
+        from xml_codegraph.parsers.xml_parser import read_file_content, read_flat_file_content
 
-        content = read_file_content(p)
+        if read_option == 2:
+            try:
+                content = read_flat_file_content(p)
+            except Exception as e:
+                # Fallback to original content or display error
+                return f"Loi khi doc flat XML: {str(e)}\n\nNoidung goc:\n{read_file_content(p)}"
+        else:
+            content = read_file_content(p)
         return content
     except Exception as e:
         return f"Loi doc file: {str(e)}"

@@ -45,7 +45,17 @@ def handle_client(conn, helper: ProjectPathHelper):
         target = msg.get("target")
         ref_file = msg.get("ref_file")
         kwargs = msg.get("kwargs", {})
-        result = xml_graph_query(query_type, target, ref_file, **kwargs)
+        
+        if query_type == "radar":
+            from xml_codegraph.mcp_tools import mcp_query_radar
+            raw_res = mcp_query_radar(target, ref_file)
+            try:
+                result = json.loads(raw_res)
+            except Exception:
+                result = {"output": raw_res}
+        else:
+            result = xml_graph_query(query_type, target, ref_file, **kwargs)
+            
         conn.send(json.dumps(result, ensure_ascii=False))
     except Exception as e:
         try:

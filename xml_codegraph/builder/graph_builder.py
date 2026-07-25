@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 from typing import Dict, List, Set, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
+import time
 
 from xml_codegraph.core.schema import GraphNode, GraphEdge, XmlGraph
 from xml_codegraph.rules.edges_rules import EdgeType
@@ -10,7 +11,7 @@ from xml_codegraph.parsers.xml_parser import XmlControllerParser, is_encrypted_f
 from xml_codegraph.parsers.sql_parser import SqlBlockParser
 from xml_codegraph.parsers.js_parser import JsBlockParser
 from xml_codegraph.storage.kuzu_index import KuzuIndexStore
-from xml_codegraph.utils.path_helper import get_graph_scan_roots, is_graph_scope_relative_path
+from xml_codegraph.utils.path_helper import get_graph_scan_roots, is_graph_scope_relative_path, get_extract_shared_include_yn
 
 def generate_node_id(relative_path: str) -> str:
     """Tạo ID duy nhất dựa trên đường dẫn tương đối (đã chuẩn hóa)."""
@@ -25,22 +26,43 @@ def detect_controller_type(folder_type: str, xml_root_tag: str, xml_namespace: s
         return xml_root_tag.strip()
     return "include"
 
+def normalize_controller_name(stem: str) -> str:
+    """Chuẩn hóa stem của file (tên không kèm extension) loại bỏ các backup/copy/date suffix."""
+    import re
+    name = stem.strip()
+    # Loại bỏ suffix dạng " - Copy", " - backup", " - old", " (1)", etc.
+    name = re.compile(r'\s*-\s*(copy|backup|old|temp|bk|new|copy\s*\(\d+\)|\(\d+\)).*$', re.IGNORECASE).sub('', name)
+    # Loại bỏ "_(bk|backup|old|temp|new|copy).*$"
+    name = re.compile(r'_(bk|backup|old|temp|new|copy).*$', re.IGNORECASE).sub('', name)
+    # Loại bỏ các khoảng trắng kèm ngoặc đơn số ở cuối, ví dụ " (1)" hoặc " (2)"
+    name = re.compile(r'\s*\(\d+\)$').sub('', name)
+    return name
+
 def find_node_by_controller_name(graph: XmlGraph, controller_name: str) -> Optional[GraphNode]:
-    """Tìm GraphNode có tên file khớp với controller_name (không phân biệt hoa thường)."""
+    """Tìm Canonical GraphNode khớp với controller_name (không phân biệt hoa thường)."""
     controller_lower = controller_name.lower().strip()
     
-    # 1. Thử các đường dẫn tương đối trực tiếp trước
+    # 1. Thử các đường dẫn tương đối trực tiếp trước, lấy đúng canonical node
     for folder in ["grid", "dir", "filter", "lookup", "report", "form"]:
         candidate_rel = f"{folder}/{controller_lower}.xml"
         node_id = graph.node_by_path.get(candidate_rel)
         if node_id:
-            return graph.nodes[node_id]
+            node = graph.nodes[node_id]
+            if getattr(node, "alias_of", None) and node.alias_of in graph.nodes:
+                return graph.nodes[node.alias_of]
+            return node
             
-    # 2. Quét toàn bộ node, ưu tiên thư mục grid và dir trước
+    # 2. Quét toàn bộ node, ưu tiên Canonical Nodes của grid và dir
     candidates = []
     for node in graph.nodes.values():
-        basename = Path(node.relative_path).stem.lower()
-        if basename == controller_lower:
+        alias_of = getattr(node, "alias_of", None)
+        # Chỉ xét Canonical Nodes
+        if alias_of and alias_of != node.node_id:
+            continue
+        
+        stem = Path(node.relative_path).stem
+        norm_name = normalize_controller_name(stem).lower()
+        if norm_name == controller_lower:
             candidates.append(node)
             
     if candidates:
@@ -54,15 +76,115 @@ def find_node_by_controller_name(graph: XmlGraph, controller_name: str) -> Optio
         candidates.sort(key=sort_priority)
         return candidates[0]
             
+    # 3. Fallback: Nếu không tìm thấy trong Canonical Nodes, quét toàn bộ
+    for node in graph.nodes.values():
+        stem = Path(node.relative_path).stem
+        norm_name = normalize_controller_name(stem).lower()
+        if norm_name == controller_lower:
+            alias_of = getattr(node, "alias_of", None)
+            if alias_of and alias_of in graph.nodes:
+                return graph.nodes[alias_of]
+            return node
+            
     return None
 
 
+def assign_canonical_metadata(graph: XmlGraph):
+    """
+    Phân tích và gán canonical_path, alias_of cho toàn bộ node trong đồ thị.
+    Tự động chọn Canonical Node duy nhất cho mỗi nhóm logical controller.
+    """
+    import re
+    
+    # 1. Nhóm các node vật lý theo logical key (logical_folder_type, normalized_name)
+    groups = {}
+    
+    standard_folders = {"dir", "grid", "filter", "report", "lookup", "form"}
+    existing_standard_controllers = set()
+    for node in graph.nodes.values():
+        f_type_lower = node.folder_type.lower()
+        if f_type_lower in standard_folders:
+            stem = Path(node.relative_path).stem
+            norm_name = normalize_controller_name(stem).lower()
+            existing_standard_controllers.add((f_type_lower, norm_name))
+
+    for node in graph.nodes.values():
+        stem = Path(node.relative_path).stem
+        norm_name = normalize_controller_name(stem)
+        
+        rel_parts = Path(node.relative_path.replace("\\", "/")).parts
+        f_type = node.folder_type
+        f_subtype = node.folder_subtype
+        
+        logical_f_type = f_type
+        if f_type.lower() == "templates" or f_subtype.lower() == "upload":
+            norm_name_lower = norm_name.lower()
+            if ("grid", norm_name_lower) in existing_standard_controllers:
+                logical_f_type = "Grid"
+            elif ("dir", norm_name_lower) in existing_standard_controllers:
+                logical_f_type = "Dir"
+            else:
+                logical_f_type = "Grid"
+        elif f_subtype.lower() == "fields" or "config/fields" in node.relative_path.replace("\\", "/").lower():
+            if len(rel_parts) > 1 and rel_parts[0].lower() in standard_folders:
+                logical_f_type = rel_parts[0]
+            else:
+                logical_f_type = "Grid"
+        else:
+            if f_type.lower() in standard_folders:
+                logical_f_type = f_type
+            else:
+                logical_f_type = "Grid"
+                
+        logical_f_type = logical_f_type.capitalize()
+        canonical_rel_path = f"{logical_f_type}\\{norm_name}.xml"
+        key = (logical_f_type.lower(), norm_name.lower())
+        groups.setdefault(key, []).append((canonical_rel_path, node))
+
+    # 2. Với mỗi nhóm, chọn Canonical Node duy nhất
+    for key, group_items in groups.items():
+        canonical_rel_path = group_items[0][0]
+        nodes_in_group = [item[1] for item in group_items]
+        
+        selected_node = None
+        
+        # Tiêu chí 1: File chính xác trùng khớp canonical_rel_path và không encrypted
+        for node in nodes_in_group:
+            if node.relative_path.replace("/", "\\").lower() == canonical_rel_path.lower():
+                if not getattr(node, "is_encrypted", False) and not getattr(node, "needs_xml", False):
+                    selected_node = node
+                    break
+        
+        # Tiêu chí 2: File chính xác trùng khớp canonical_rel_path (kể cả encrypted)
+        if not selected_node:
+            for node in nodes_in_group:
+                if node.relative_path.replace("/", "\\").lower() == canonical_rel_path.lower():
+                    selected_node = node
+                    break
+                    
+        # Tiêu chí 3: Bản copy hoặc backup không encrypted (để kế thừa code)
+        if not selected_node:
+            for node in nodes_in_group:
+                if not getattr(node, "is_encrypted", False) and not getattr(node, "needs_xml", False):
+                    selected_node = node
+                    break
+                    
+        # Tiêu chí 4: Chọn node đầu tiên trong group
+        if not selected_node:
+            selected_node = nodes_in_group[0]
+            
+        for node in nodes_in_group:
+            node.canonical_path = canonical_rel_path
+            node.alias_of = selected_node.node_id
+
+
 class GraphBuilder:
-    def __init__(self, controllers_root: Path, cache_path: Optional[Path] = None):
+    def __init__(self, controllers_root: Path, cache_path: Optional[Path] = None, shared_include: Optional[int] = None):
         self.controllers_root = Path(controllers_root).resolve()
         self.xml_parser = XmlControllerParser(self.controllers_root)
         self.sql_parser = SqlBlockParser()
         self.js_parser = JsBlockParser()
+        self.shared_include = shared_include if shared_include is not None else get_extract_shared_include_yn()
         
         # Nap cache do thi cu de chay so sanh incremental (tu Kuzu)
         self.old_graph = None
@@ -74,6 +196,7 @@ class GraphBuilder:
 
     def build(self) -> XmlGraph:
         """Duyệt Dir, Grid, Filter, Report và Templates/Upload để xây dựng Graph."""
+        t_walk = time.perf_counter()
         graph = XmlGraph()
         
         file_extensions = {".xml", ".ent", ".txt", ".f"}
@@ -121,8 +244,11 @@ class GraphBuilder:
                         cached_node = node
             
             if cached_node and is_graph_scope_relative_path(rel_path):
-                # File không đổi -> dùng lại dữ liệu cũ từ cache
-                graph.add_node(cached_node)
+                # File flat <!--C--> từng bị cache sai (encrypted + js rỗng) -> parse lại
+                if getattr(cached_node, "is_encrypted", False) and not cached_node.js_blocks:
+                    files_to_parse.append(file_path)
+                else:
+                    graph.add_node(cached_node)
             else:
                 # File mới hoặc đã thay đổi -> cần parse lại
                 files_to_parse.append(file_path)
@@ -215,7 +341,9 @@ class GraphBuilder:
                 )
             except Exception as e:
                 print(f"[CodeGraph] Skip build error: {path}. Detail: {e}")
-                return None
+        
+        print(f"[TIMING] walk+stat: {time.perf_counter()-t_walk:.2f}s | {len(all_files)} files")
+        t_parse = time.perf_counter()
 
         # Parse song song su dung ThreadPoolExecutor
         if files_to_parse:
@@ -227,32 +355,53 @@ class GraphBuilder:
                     if node:
                         graph.add_node(node)
 
+        print(f"[TIMING] parse: {time.perf_counter()-t_parse:.2f}s | {len(files_to_parse)} files parsed")
+        t_edges = time.perf_counter()
+
         # Bước 2: Thiết lập mối liên kết (Edges)
-        # Quét lần thứ 2 để map ID của các thực thể phụ thuộc
+        # Phân tích và gán canonical metadata trước tiên
+        assign_canonical_metadata(graph)
+
+        def add_rewrite_edge(src_id: str, dst_id: str, edge_type: str, meta: dict):
+            # Lấy canonical_id của source node
+            src_node = graph.nodes.get(src_id)
+            canonical_src_id = src_node.alias_of if (src_node and src_node.alias_of) else src_id
+            
+            # Lấy canonical_id của target node (nếu target_id là node tồn tại trong graph)
+            dst_node = graph.nodes.get(dst_id)
+            canonical_dst_id = dst_node.alias_of if (dst_node and dst_node.alias_of) else dst_id
+            
+            # Tránh self-loop vô nghĩa
+            if canonical_src_id == canonical_dst_id:
+                return
+                
+            # Sao chép và lưu thông tin vật lý gốc vào meta để phục vụ việc debug và incremental clean
+            meta_copy = meta.copy()
+            if src_node:
+                meta_copy["parsed_from_source"] = src_node.relative_path
+            if dst_node and dst_node.node_id != canonical_dst_id:
+                meta_copy["parsed_from_target"] = dst_node.relative_path
+                
+            edge = GraphEdge(
+                source_id=canonical_src_id,
+                target_id=canonical_dst_id,
+                edge_type=edge_type,
+                meta=meta_copy
+            )
+            graph.add_edge(edge)
+
+        # Quét để tạo các mối quan hệ
         for source_id, node in graph.nodes.items():
             # 2.1 Mối quan hệ SYSTEM Entity Include
-            # Ví dụ: <!ENTITY XMLWhenVoucherInit SYSTEM "..\Include\XML\WhenVoucherInit.xml">
             for ent in node.entities:
                 target_rel_path = ent["relative_path"].replace("\\", "/").lower()
                 target_id = graph.node_by_path.get(target_rel_path)
                 
                 if target_id:
-                    # Tạo cạnh Entity Include
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=target_id,
-                        edge_type=EdgeType.ENTITY_INCLUDE,
-                        meta={"entity_name": ent["name"]}
-                    )
-                    graph.add_edge(edge)
-                else:
-                    # Nếu target không tồn tại (có thể là file ngoài thư mục Controllers)
-                    pass
+                    add_rewrite_edge(source_id, target_id, EdgeType.ENTITY_INCLUDE, {"entity_name": ent["name"]})
 
             # 2.2 Mối quan hệ Parameter Entity Use
-            # Ví dụ: %Invoice; (kế thừa các quy tắc từ Invoice.ent)
             for p_ent_name in node.param_entities:
-                # Tìm xem entity name này có được khai báo SYSTEM ở đâu trong file này không
                 matched_ent_path = None
                 for ent in node.entities:
                     if ent["name"] == p_ent_name:
@@ -262,67 +411,32 @@ class GraphBuilder:
                 if matched_ent_path:
                     target_id = graph.node_by_path.get(matched_ent_path)
                     if target_id:
-                        edge = GraphEdge(
-                            source_id=source_id,
-                            target_id=target_id,
-                            edge_type=EdgeType.PARAM_ENTITY_USE,
-                            meta={"param_entity": p_ent_name}
-                        )
-                        graph.add_edge(edge)
+                        add_rewrite_edge(source_id, target_id, EdgeType.PARAM_ENTITY_USE, {"param_entity": p_ent_name})
 
             # 2.3 Phân tích các khối SQL CDATA bên trong XML
             for sql_block in node.sql_blocks:
                 parsed_sql = self.sql_parser.parse(sql_block["content"])
                 
-                # Cạnh liên kết với DB Table (SQL_TABLE_USE)
                 for table in parsed_sql["tables"]:
-                    # Tạo quan hệ tượng trưng từ controller đến tên bảng
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=table, # target_id là tên bảng (dạng chuỗi)
-                        edge_type=EdgeType.SQL_TABLE_USE,
-                        meta={"line": sql_block["line"]}
-                    )
-                    graph.add_edge(edge)
+                    add_rewrite_edge(source_id, table, EdgeType.SQL_TABLE_USE, {"line": sql_block["line"]})
 
-                # Cạnh liên kết với Stored Procedure (SQL_PROC_CALL)
                 for proc in parsed_sql["stored_procedures"]:
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=proc, # target_id là tên proc (dạng chuỗi)
-                        edge_type=EdgeType.SQL_PROC_CALL,
-                        meta={"line": sql_block["line"]}
-                    )
-                    graph.add_edge(edge)
+                    add_rewrite_edge(source_id, proc, EdgeType.SQL_PROC_CALL, {"line": sql_block["line"]})
 
             # 2.4 Phân tích các khối JS CDATA bên trong XML
             for js_block in node.js_blocks:
                 parsed_js = self.js_parser.parse(js_block["content"])
                 
-                # Quét các client fields được JS tương tác
                 for field in parsed_js["client_fields"]:
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=field, # liên kết với trường cụ thể
-                        edge_type=EdgeType.JS_FUNC_CALL,
-                        meta={"line": js_block["line"], "js_action": "field_access"}
-                    )
-                    graph.add_edge(edge)
+                    add_rewrite_edge(source_id, field, EdgeType.JS_FUNC_CALL, {"line": js_block["line"], "js_action": "field_access"})
 
                 # 2.5 Phân tích các cuộc gọi g.showForm
                 show_form_calls = parsed_js.get("show_form_calls", [])
                 for target_form in show_form_calls:
                     target_node = find_node_by_controller_name(graph, target_form)
                     if target_node:
-                        edge = GraphEdge(
-                            source_id=source_id,
-                            target_id=target_node.node_id,
-                            edge_type=EdgeType.RETRIEVE_DATA_SOURCE,
-                            meta={"line": js_block["line"], "form": target_form}
-                        )
-                        graph.add_edge(edge)
+                        add_rewrite_edge(source_id, target_node.node_id, EdgeType.RETRIEVE_DATA_SOURCE, {"line": js_block["line"], "form": target_form})
                     
-                    # Cắt chuỗi lấy từ "Filter" trở về trước
                     if target_form.endswith("Filter"):
                         prefix = target_form[:-6]
                         suffixes = [
@@ -336,26 +450,24 @@ class GraphBuilder:
                             candidate_name = f"{prefix}{suffix}"
                             candidate_node = find_node_by_controller_name(graph, candidate_name)
                             if candidate_node:
-                                edge = GraphEdge(
-                                    source_id=source_id,
-                                    target_id=candidate_node.node_id,
-                                    edge_type=EdgeType.RETRIEVE_DATA_SOURCE,
-                                    meta={"line": js_block["line"], "relation": f"derived_{suffix}", "source_form": target_form}
+                                add_rewrite_edge(
+                                    source_id,
+                                    candidate_node.node_id,
+                                    EdgeType.RETRIEVE_DATA_SOURCE,
+                                    {"line": js_block["line"], "relation": f"derived_{suffix}", "source_form": target_form}
                                 )
-                                graph.add_edge(edge)
 
             # 2.6 Mối quan hệ Master -> Detail Grid
             for grid_ref in getattr(node, "grid_refs", []):
                 detail_controller = grid_ref["controller"]
                 target_node = find_node_by_controller_name(graph, detail_controller)
                 if target_node:
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=target_node.node_id,
-                        edge_type=EdgeType.GRID_MASTER_DETAIL,
-                        meta={"field_name": grid_ref["field_name"], "foreign_key": grid_ref.get("foreign_key")}
+                    add_rewrite_edge(
+                        source_id,
+                        target_node.node_id,
+                        EdgeType.GRID_MASTER_DETAIL,
+                        {"field_name": grid_ref["field_name"], "foreign_key": grid_ref.get("foreign_key")}
                     )
-                    graph.add_edge(edge)
                 else:
                     print(f"[CodeGraph Builder Warning] Missing controller '{detail_controller}' for Grid '{grid_ref['field_name']}' in '{node.relative_path}'")
 
@@ -364,17 +476,14 @@ class GraphBuilder:
                 lookup_controller = lookup_ref["controller"]
                 target_node = find_node_by_controller_name(graph, lookup_controller)
                 if target_node:
-                    edge = GraphEdge(
-                        source_id=source_id,
-                        target_id=target_node.node_id,
-                        edge_type=EdgeType.LOOKUP_REFERENCE,
-                        meta={"field_name": lookup_ref["field_name"]}
+                    add_rewrite_edge(
+                        source_id,
+                        target_node.node_id,
+                        EdgeType.LOOKUP_REFERENCE,
+                        {"field_name": lookup_ref["field_name"]}
                     )
-                    graph.add_edge(edge)
 
-        # 2.7b Detect GRID_MASTER_DETAIL from JS pattern: f.getItem("dXX") / f.getItem("rXX")
-        # This is how FBO references detail Grids from Dir controller JS code.
-        # Example: f.getItem("d11") in CPTran.xml -> CPDetail, f.getItem("r30") -> GLTax
+        # 2.7b Detect GRID_MASTER_DETAIL từ JS pattern: f.getItem("dXX") / f.getItem("rXX")
         import re as _re
         _GET_ITEM_PATTERN = _re.compile(
             r'(?:f|form|parentForm)\.getItem\s*\(\s*["\']([dr]\d+)["\']\s*\)',
@@ -394,50 +503,50 @@ class GraphBuilder:
                         if tnode.controller_type in GRID_TYPES and tnode.code_field == item_id:
                             target_node = tnode
                             break
-                    if target_node and target_node.node_id != source_id:
-                        existing_targets = {
-                            (e.target_id, e.edge_type)
-                            for e in graph.edges_from.get(source_id, [])
-                        }
-                        key = (target_node.node_id, EdgeType.GRID_MASTER_DETAIL)
-                        if key not in existing_targets:
-                            graph.add_edge(GraphEdge(
-                                source_id=source_id,
-                                target_id=target_node.node_id,
-                                edge_type=EdgeType.GRID_MASTER_DETAIL,
-                                meta={'field_name': item_id, 'detected_from': 'js_getItem'}
-                            ))
+                    if target_node:
+                        canonical_src_id = node.alias_of if node.alias_of else source_id
+                        canonical_dst_id = target_node.alias_of if target_node.alias_of else target_node.node_id
+                        if canonical_src_id != canonical_dst_id:
+                            existing_targets = {
+                                (e.target_id, e.edge_type)
+                                for e in graph.edges_from.get(canonical_src_id, [])
+                            }
+                            key = (canonical_dst_id, EdgeType.GRID_MASTER_DETAIL)
+                            if key not in existing_targets:
+                                add_rewrite_edge(
+                                    source_id,
+                                    target_node.node_id,
+                                    EdgeType.GRID_MASTER_DETAIL,
+                                    {'field_name': item_id, 'detected_from': 'js_getItem'}
+                                )
 
-        # 2.8 Ph\u00e2n t\u00edch m\u1ed1i quan h\u1ec7 d\u00f9ng chung (SHARED_INCLUDE)
-        # N\u1ebfu hai Controller c\u00f9ng include m\u1ed9t file th\u1ef1c th\u1ec3 (v\u00ed d\u1ee5: CheckLockedDate.txt)
-        # Ch\u00fang ta s\u1ebd t\u1ef1 \u0111\u1ed9ng nh\u00f3m ch\u00fang l\u1ea1i \u0111\u1ec3 d\u1ec5 ph\u1ee5c v\u1ee5 vi\u1ec7c ph\u00e2n t\u00edch \u1ea3nh h\u01b0\u1edfng ch\u00e9o
-        shared_includes: Dict[str, List[str]] = {} # include_node_id -> list of controller_node_ids
+        # 2.8 Phân tích mối quan hệ dùng chung (SHARED_INCLUDE)
+        if self.shared_include == 1:
+            print("[CodeGraph] extract_options.shared_include=1 -> build SHARED_INCLUDE edges")
+            shared_includes = {}
+            for edge in graph.edges:
+                if edge.edge_type == EdgeType.ENTITY_INCLUDE:
+                    shared_includes.setdefault(edge.target_id, []).append(edge.source_id)
 
-        for edge in graph.edges:
-            if edge.edge_type == EdgeType.ENTITY_INCLUDE:
-                shared_includes.setdefault(edge.target_id, []).append(edge.source_id)
-
-        for include_id, controllers in shared_includes.items():
-            if len(controllers) > 1:
-                # Có trên 2 controller cùng dùng chung file này
-                for c1 in controllers:
-                    for c2 in controllers:
-                        if c1 != c2:
-                            edge = GraphEdge(
-                                source_id=c1,
-                                target_id=c2,
-                                edge_type=EdgeType.SHARED_INCLUDE,
-                                meta={"shared_resource_id": include_id}
-                            )
-                            graph.add_edge(edge)
+            for include_id, controllers in shared_includes.items():
+                if len(controllers) > 1:
+                    for c1 in controllers:
+                        for c2 in controllers:
+                            if c1 != c2:
+                                add_rewrite_edge(c1, c2, EdgeType.SHARED_INCLUDE, {"shared_resource_id": include_id})
+        else:
+            print("[CodeGraph] extract_options.shared_include=0 -> skip SHARED_INCLUDE edges")
 
         # 2.9 Phân tích mối quan hệ Companion Files (các file cùng tên ở các folder khác nhau)
-        basename_groups: Dict[str, List[str]] = {} # basename -> list of node_ids
+        basename_groups = {} # basename -> list of canonical_node_ids
         for node_id, node in graph.nodes.items():
+            # Chỉ xét các Canonical Nodes để tránh trùng lặp companion làm nhiễu đồ thị
+            if node.alias_of and node.alias_of != node.node_id:
+                continue
             basename = Path(node.relative_path).name.lower()
             if "." in basename:
                 basename = basename.split(".")[0]
-            basename_groups.setdefault(basename, []).append(node_id)
+            basename_groups.setdefault(basename, []).append(node.node_id)
             
         for basename, node_ids in basename_groups.items():
             if len(node_ids) > 1:
@@ -445,22 +554,10 @@ class GraphBuilder:
                     for j in range(i + 1, len(node_ids)):
                         id1 = node_ids[i]
                         id2 = node_ids[j]
-                        # Thêm cạnh hai chiều
-                        edge1 = GraphEdge(
-                            source_id=id1,
-                            target_id=id2,
-                            edge_type=EdgeType.COMPANION_FILE,
-                            meta={"basename": basename}
-                        )
-                        edge2 = GraphEdge(
-                            source_id=id2,
-                            target_id=id1,
-                            edge_type=EdgeType.COMPANION_FILE,
-                            meta={"basename": basename}
-                        )
-                        graph.add_edge(edge1)
-                        graph.add_edge(edge2)
+                        add_rewrite_edge(id1, id2, EdgeType.COMPANION_FILE, {"basename": basename})
+                        add_rewrite_edge(id2, id1, EdgeType.COMPANION_FILE, {"basename": basename})
 
+        print(f"[TIMING] edges: {time.perf_counter()-t_edges:.2f}s")
         return graph
 
 def build_and_save_graph(controllers_dir: Path, output_dir: Path) -> XmlGraph:
@@ -474,8 +571,10 @@ def build_and_save_graph(controllers_dir: Path, output_dir: Path) -> XmlGraph:
     builder = GraphBuilder(controllers_dir, cache_path=db_path)
     graph = builder.build()
 
+    t_kuzu = time.perf_counter()
     kuzu_store = KuzuIndexStore(db_path)
     kuzu_store.sync_graph(graph)
+    print(f"[TIMING] kuzu write: {time.perf_counter()-t_kuzu:.2f}s")
 
     return graph
 
@@ -514,6 +613,45 @@ def incremental_update_file(file_path: Path, controllers_root: Path, db_path: Pa
         controller_type = detect_controller_type(
             data["folder_type"], data["xml_root_tag"], data["xml_namespace"]
         )
+
+        # Tự xác định canonical_path và alias_of tĩnh cho file đơn lẻ
+        stem = Path(data["relative_path"]).stem
+        norm_name = normalize_controller_name(stem)
+        
+        f_type = data["folder_type"]
+        f_subtype = data["folder_subtype"]
+        rel_parts = Path(data["relative_path"].replace("\\", "/")).parts
+        
+        logical_f_type = f_type
+        standard_folders = {"dir", "grid", "filter", "report", "lookup", "form"}
+        if f_type.lower() == "templates" or f_subtype.lower() == "upload":
+            grid_candidate = controllers_root / "Grid" / f"{norm_name}.xml"
+            dir_candidate = controllers_root / "Dir" / f"{norm_name}.xml"
+            if grid_candidate.is_file():
+                logical_f_type = "Grid"
+            elif dir_candidate.is_file():
+                logical_f_type = "Dir"
+            else:
+                logical_f_type = "Grid"
+        elif f_subtype.lower() == "fields" or "config/fields" in data["relative_path"].replace("\\", "/").lower():
+            if len(rel_parts) > 1 and rel_parts[0].lower() in standard_folders:
+                logical_f_type = rel_parts[0]
+            else:
+                logical_f_type = "Grid"
+        else:
+            if f_type.lower() in standard_folders:
+                logical_f_type = f_type
+            else:
+                logical_f_type = "Grid"
+                
+        logical_f_type = logical_f_type.capitalize()
+        canonical_rel_path = f"{logical_f_type}\\{norm_name}.xml"
+        
+        alias_node_id = node_id
+        canonical_file_path = controllers_root / logical_f_type / f"{norm_name}.xml"
+        if canonical_file_path.is_file():
+            alias_node_id = generate_node_id(f"{logical_f_type}/{norm_name}.xml")
+
         node = GraphNode(
             node_id         = node_id,
             file_path       = data["file_path"],
@@ -537,21 +675,212 @@ def incremental_update_file(file_path: Path, controllers_root: Path, db_path: Pa
             file_size       = data["file_size"],
             last_modified   = os.path.getmtime(file_path),
             is_encrypted    = encrypted,
+            canonical_path  = canonical_rel_path,
+            alias_of        = alias_node_id,
         )
 
-        # Tao edges chi cho node nay (khong co full graph nen chi lam SQL/JS/entity edges)
+        # Tao edges chi cho node nay (tinh toan day du ca edges nghiep vu bang cach query Kuzu DB)
         edges: List[GraphEdge] = []
+        kuzu_store = KuzuIndexStore(db_path)
+        conn = kuzu_store.conn
+
+        # Helper tim canonical node bang controller name qua DB
+        def find_canonical_node_db(ctrl_name: str) -> Optional[str]:
+            ctrl_lower = ctrl_name.lower().strip()
+            # 1. Thu cac folder chinh
+            for folder in ["grid", "dir", "filter", "lookup", "report", "form"]:
+                cand = f"{folder}/{ctrl_lower}.xml"
+                res = conn.execute("MATCH (n:XmlFile) WHERE lcase(n.relative_path) = $path RETURN n.node_id, n.alias_of", {"path": cand.replace("/", "\\")})
+                if res.has_next():
+                    row = res.get_next()
+                    return row[1] if row[1] else row[0]
+            # 2. Quet toan bo de tim stem
+            res = conn.execute("MATCH (n:XmlFile) RETURN n.node_id, n.relative_path, n.alias_of")
+            candidates = []
+            while res.has_next():
+                row = res.get_next()
+                nid, rel_path, alias_of = row[0], row[1], row[2]
+                stem = Path(rel_path).stem
+                if normalize_controller_name(stem).lower() == ctrl_lower:
+                    candidates.append((nid, rel_path, alias_of))
+            if candidates:
+                canonical_cands = []
+                for nid, rel_path, alias_of in candidates:
+                    if not alias_of or alias_of == nid:
+                        canonical_cands.append((nid, rel_path))
+                if not canonical_cands:
+                    first_alias = candidates[0][2]
+                    return first_alias if first_alias else candidates[0][0]
+                def sort_priority(item):
+                    rp = item[1].replace("\\", "/").lower()
+                    if "grid/" in rp: return 0
+                    if "dir/" in rp: return 1
+                    return 2
+                canonical_cands.sort(key=sort_priority)
+                return canonical_cands[0][0]
+            return None
+
+        # Helper tim node bang relative_path qua DB
+        def find_node_by_rel_path_db(rel_path: str) -> Optional[str]:
+            norm_path = rel_path.replace("/", "\\").lower()
+            res = conn.execute("MATCH (n:XmlFile) WHERE lcase(n.relative_path) = $path RETURN n.node_id", {"path": norm_path})
+            if res.has_next():
+                return res.get_next()[0]
+            return None
+
+        # 1. SQL Edges
         for sql_block in node.sql_blocks:
             parsed = sql_parser.parse(sql_block["content"])
             for tbl in parsed.get("tables", []):
-                edges.append(GraphEdge(node_id, tbl, EdgeType.SQL_TABLE_USE, {"line": sql_block["line"]}))
+                edges.append(GraphEdge(node.alias_of, tbl, EdgeType.SQL_TABLE_USE, {"line": sql_block["line"], "parsed_from_source": node.relative_path}))
             for proc in parsed.get("stored_procedures", []):
-                edges.append(GraphEdge(node_id, proc, EdgeType.SQL_PROC_CALL, {"line": sql_block["line"]}))
+                edges.append(GraphEdge(node.alias_of, proc, EdgeType.SQL_PROC_CALL, {"line": sql_block["line"], "parsed_from_source": node.relative_path}))
 
-        kuzu_store = KuzuIndexStore(db_path)
+        # 2. JS Func Call & showForm
+        for js_block in node.js_blocks:
+            parsed_js = js_parser.parse(js_block["content"])
+            for field in parsed_js.get("client_fields", []):
+                edges.append(GraphEdge(node.alias_of, field, EdgeType.JS_FUNC_CALL, {"line": js_block["line"], "js_action": "field_access", "parsed_from_source": node.relative_path}))
+                
+            show_form_calls = parsed_js.get("show_form_calls", [])
+            for target_form in show_form_calls:
+                target_id = find_canonical_node_db(target_form)
+                if target_id:
+                    edges.append(GraphEdge(node.alias_of, target_id, EdgeType.RETRIEVE_DATA_SOURCE, {"line": js_block["line"], "form": target_form, "parsed_from_source": node.relative_path}))
+                if target_form.endswith("Filter"):
+                    prefix = target_form[:-6]
+                    suffixes = [
+                        ("Grid", "Grid"), ("MultiGrid", "Grid"),
+                        ("Form", "Form"), ("MultiForm", "Form"),
+                        ("Lookup", "Lookup")
+                    ]
+                    for suffix, folder_name in suffixes:
+                        candidate_name = f"{prefix}{suffix}"
+                        candidate_id = find_canonical_node_db(candidate_name)
+                        if candidate_id:
+                            edges.append(GraphEdge(
+                                node.alias_of, candidate_id, EdgeType.RETRIEVE_DATA_SOURCE,
+                                {"line": js_block["line"], "relation": f"derived_{suffix}", "source_form": target_form, "parsed_from_source": node.relative_path}
+                            ))
+
+        # 3. Master-Detail Grid
+        for grid_ref in getattr(node, "grid_refs", []):
+            detail_controller = grid_ref["controller"]
+            target_id = find_canonical_node_db(detail_controller)
+            if target_id:
+                edges.append(GraphEdge(
+                    node.alias_of, target_id, EdgeType.GRID_MASTER_DETAIL,
+                    {"field_name": grid_ref["field_name"], "foreign_key": grid_ref.get("foreign_key"), "parsed_from_source": node.relative_path}
+                ))
+
+        # 4. Lookup reference
+        for lookup_ref in getattr(node, "lookup_refs", []):
+            lookup_controller = lookup_ref["controller"]
+            target_id = find_canonical_node_db(lookup_controller)
+            if target_id:
+                edges.append(GraphEdge(
+                    node.alias_of, target_id, EdgeType.LOOKUP_REFERENCE,
+                    {"field_name": lookup_ref["field_name"], "parsed_from_source": node.relative_path}
+                ))
+
+        # 5. Entity Include & Param Entity Use
+        for ent in node.entities:
+            target_rel_path = ent["relative_path"].replace("\\", "/").lower()
+            target_id = find_node_by_rel_path_db(target_rel_path)
+            if target_id:
+                edges.append(GraphEdge(node.alias_of, target_id, EdgeType.ENTITY_INCLUDE, {"entity_name": ent["name"], "parsed_from_source": node.relative_path}))
+
+        for p_ent_name in node.param_entities:
+            matched_ent_path = None
+            for ent in node.entities:
+                if ent["name"] == p_ent_name:
+                    matched_ent_path = ent["relative_path"].replace("\\", "/").lower()
+                    break
+            if matched_ent_path:
+                target_id = find_node_by_rel_path_db(matched_ent_path)
+                if target_id:
+                    edges.append(GraphEdge(node.alias_of, target_id, EdgeType.PARAM_ENTITY_USE, {"param_entity": p_ent_name, "parsed_from_source": node.relative_path}))
+
+        # 6. Grid Master-Detail from JS getItem
+        import re as _re
+        _GET_ITEM_PATTERN = _re.compile(
+            r'(?:f|form|parentForm)\.getItem\s*\(\s*["\']([dr]\d+)["\']\s*\)',
+            _re.IGNORECASE
+        )
+        if node.folder_type.lower() == "dir":
+            for js_block in node.js_blocks:
+                content = js_block.get('content', '')
+                found_items = set(_GET_ITEM_PATTERN.findall(content))
+                for item_id in found_items:
+                    res = conn.execute("MATCH (n:XmlFile) WHERE lcase(n.folder_type) = 'grid' AND n.code_field = $item RETURN n.node_id, n.alias_of", {"item": item_id})
+                    if res.has_next():
+                        row = res.get_next()
+                        target_id = row[1] if row[1] else row[0]
+                        edges.append(GraphEdge(
+                            node.alias_of, target_id, EdgeType.GRID_MASTER_DETAIL,
+                            {'field_name': item_id, 'detected_from': 'js_getItem', "parsed_from_source": node.relative_path}
+                        ))
+
+        # Update node vao Kuzu
         kuzu_store.update_single_node(node, edges)
         return node
 
     except Exception as e:
         print(f"[CodeGraph] incremental_update_file error for {file_path}: {e}")
+        if "lock" in str(e).lower() or "io exception" in str(e).lower():
+            raise e
+        return None
+
+def delete_node_by_path(controllers_root: Path, db_path: Path, file_path: Path) -> Optional[str]:
+    """Xoa hoan toan node khoi Kuzu DB khi file bi xoa vat ly, va tai danh gia lai Canonical Group."""
+    try:
+        controllers_root = Path(controllers_root).resolve()
+        file_path = Path(file_path).resolve()
+        
+        rel_path = os.path.relpath(file_path, controllers_root)
+        node_id = generate_node_id(rel_path)
+        
+        kuzu_store = KuzuIndexStore(db_path)
+        conn = kuzu_store.conn
+        
+        # 1. Lay thong tin cua node sap xoa phuc vu viec re-evaluate canonical group va backup canh
+        res = conn.execute("MATCH (n:XmlFile {node_id: $nid}) RETURN n.folder_type, n.relative_path", {"nid": node_id})
+        folder_type = None
+        relative_path = None
+        if res.has_next():
+            row = res.get_next()
+            folder_type, relative_path = row[0], row[1]
+            
+        backup_inbound = []
+        backup_outbound = []
+        if folder_type and relative_path:
+            import json
+            # Backup inbound edges
+            res_in = conn.execute("MATCH (src:XmlFile)-[r:Rel]->(dst:XmlFile {node_id: $nid}) RETURN src.node_id, r.edge_type, r.meta", {"nid": node_id})
+            while res_in.has_next():
+                row_in = res_in.get_next()
+                backup_inbound.append({"src_id": row_in[0], "edge_type": row_in[1], "meta": json.loads(row_in[2] or "{}")})
+            # Backup outbound edges
+            res_out = conn.execute("MATCH (src:XmlFile {node_id: $nid})-[r:Rel]->(dst:XmlFile) RETURN dst.node_id, r.edge_type, r.meta", {"nid": node_id})
+            while res_out.has_next():
+                row_out = res_out.get_next()
+                backup_outbound.append({"dst_id": row_out[0], "edge_type": row_out[1], "meta": json.loads(row_out[2] or "{}")})
+            
+        # 2. Thuc hien xoa node khoi Kuzu DB
+        conn.execute("MATCH (n:XmlFile {node_id: $nid}) DETACH DELETE n", {"nid": node_id})
+        print(f"[CodeGraph] Detached & deleted physical node {node_id} ({rel_path})")
+        
+        # 3. Re-evaluate canonical group neu node bi xoa co ton tai truoc do
+        if folder_type and relative_path:
+            stem = Path(relative_path).stem
+            normalized_name = normalize_controller_name(stem)
+            
+            from xml_codegraph.storage.kuzu_index import reevaluate_canonical_group_on_delete
+            reevaluate_canonical_group_on_delete(conn, controllers_root, folder_type, normalized_name, node_id, backup_inbound, backup_outbound)
+            
+        return rel_path
+    except Exception as e:
+        print(f"[CodeGraph] delete_node_by_path error for {file_path}: {e}")
+        if "lock" in str(e).lower() or "io exception" in str(e).lower():
+            raise e
         return None

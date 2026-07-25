@@ -7,3 +7,16 @@ server:
 logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+ 
+   
+
+# Tùy chọn khi extract/build graph
+extract_options:
+  shared_include: 0
+
+# Cấu hình lưu trữ Kuzu DB cục bộ
+fbograph:
+  kuzu_db_base: "C:/KuzuDB"
+  user_multi_db_yn: 1
+
+

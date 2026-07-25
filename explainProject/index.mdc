@@ -1,0 +1,58 @@
+# FastBusiness FBO MCP & CodeGraph - Cẩm Nang Bản Đồ Dự Án
+
+Tài liệu này đóng vai trò là **Mục Lục Chỉ Mục (Index)** liên kết đến toàn bộ các tài liệu kỹ thuật chi tiết của hệ thống `mcp_fbo`. Dựa vào đây, các lập trình viên hoặc AI Agent tiếp theo có thể dễ dàng tra cứu nhanh vai trò của từng tệp tin và từng phân hệ trong dự án.
+
+---
+
+## 🗺️ Bản Đồ Tài Liệu Chi Tiết (Documentation Map)
+
+Hãy bấm vào từng chuyên đề dưới đây để xem giải thích chi tiết:
+
+1. 🚀 **[Tổng Quan Dự Án & Cơ Chế Hoạt Động](file:///e:/mcp_fbo/explainProject/overview.md)**
+   * Giới thiệu tổng quan về mục tiêu dự án.
+   * Cách thiết lập môi trường và luồng khởi chạy MCP Server (`mcp_server.py`, `fastbusiness_mcp/server.py`).
+   * Sơ đồ hoạt động dạng Mermaid trực quan.
+
+2. 🔌 **[Phân Hệ FastBusiness CSDL & Helper Tools](file:///e:/mcp_fbo/explainProject/01_mcp_server.md)**
+   * Dò và phân giải connection string tự động từ `Web.config` của dự án FBO khách.
+   * Thiết lập và thực thi SQL Server Query trực tuyến thông qua MCP.
+   * Công cụ chèn tự động logic JavaScript/XML clientScript.
+   * **[Chi tiết Helper Tools (xml_snippet_tool, code_assistant_tool)](file:///e:/mcp_fbo/explainProject/01a_helper_tools.md)**: Chi tiết giải thuật chèn clientScript, onChange, onFocus vào XML CDATA, và tra cứu API form/grid.
+
+3. 🏗️ **[Kiến Trúc CodeGraph & Kùzu Graph DB](file:///e:/mcp_fbo/explainProject/02_codegraph_architecture.md)**
+   * Tại sao sử dụng Kùzu Graph DB (Nhúng, hiệu năng cao, tối ưu RAM).
+   * Quy trình quét và phân tích mã nguồn XML từ các thư mục Controllers.
+   * Cơ chế xây dựng đồ thị tăng dần (Incremental Build) dựa trên metadata của file (`mtime`, `size`).
+   * **[Chi tiết Storage Layer (kuzu_index.py)](file:///e:/mcp_fbo/explainProject/02a_kuzu_storage.md)**: Giải pháp xử lý đa kết nối đĩa nhúng (process-lock prevention), giải pháp truy cập DB trên ổ đĩa mạng UNC, cơ chế Bulk Load CSV.
+
+4. 🔍 **[Bộ Phân Tích Cú Pháp XML/SQL/JS & Rules](file:///e:/mcp_fbo/explainProject/03_parsers_and_rules.md)**
+   * Phân tích DTD Entity và đưa XML về dạng phẳng (flat XML) bằng `lxml.etree`.
+   * Giải mã định dạng văn bản tiếng Việt cũ `Windows-1258`.
+   * Trích xuất JS Block và SQL Block bằng các parser regex chuyên biệt.
+   * Quy tắc sinh liên kết Cạnh trong đồ thị (Master-Detail, Lookup, Companion...).
+
+5. 🕒 **[Cơ Chế Tìm Kiếm Đồng Nghĩa & Watch Service](file:///e:/mcp_fbo/explainProject/04_query_and_watcher.md)**
+   * Bản đồ đồng nghĩa tiếng Việt (Synonyms Map) tối ưu hóa truy vấn ngôn ngữ tự nhiên.
+   * Khử dấu tiếng Việt tự động.
+   * **[Chi tiết Watcher Service (watcher.py)](file:///e:/mcp_fbo/explainProject/04a_realtime_watcher.md)**: Bộ lọc sự kiện đa tầng (Directory, Extension, Path exclusions), giải thuật chống rung (Debounce) khi ghi file liên tục, cơ chế cập nhật gia tăng (Incremental updates).
+
+---
+
+## 📁 Tra Cứu Vai Trò Từng File Trong Dự Án (File Registry)
+
+Dưới đây là bảng ánh xạ nhanh vai trò của từng tệp tin cốt lõi trong source code:
+
+| Tệp tin | Vai trò chính |
+| :--- | :--- |
+| **`mcp_server.py`** | Điểm chạy chính của FboCodeGraph MCP Server, đăng ký các MCP Tools phục vụ CodeGraph. |
+| **`fastbusiness_mcp/server.py`** | Điểm chạy chính của FastBusiness MCP Server, xử lý kết nối CSDL và các tác vụ XML Snippet. |
+| **`xml_codegraph/builder/graph_builder.py`** | Quản lý logic build/update đồ thị, chạy các bộ parse song song và ghi kết quả vào Kùzu DB. |
+| **`xml_codegraph/core/schema.py`** | Định nghĩa cấu trúc dữ liệu của Node, Edge và toàn bộ Graph. |
+| **`xml_codegraph/parsers/xml_parser.py`** | Giải mã `Windows-1258`, gộp thực thể DTD/Entity, phân tích cấu trúc XML chính. |
+| **`xml_codegraph/parsers/sql_parser.py`** | Tách và phân tích các bảng dữ liệu xuất hiện trong các đoạn SQL thô. |
+| **`xml_codegraph/parsers/js_parser.py`** | Tách và phân tích các hàm, các API giao diện được gọi trong mã script client. |
+| **`xml_codegraph/rules/edges_rules.py`** | Thiết lập luật tạo cạnh nối giữa các file (như companion, lookup, master-detail). |
+| **`xml_codegraph/query/engine.py`** | Xử lý truy vấn đồ thị Cypher, mở rộng từ khóa bằng Synonyms, khử dấu tiếng Việt. |
+| **`xml_codegraph/storage/kuzu_index.py`** | Kết nối trực tiếp vào Kùzu DB, thực thi câu lệnh Cypher, lưu trữ đồ thị. |
+| **`xml_codegraph/service/watcher.py`** | Giám sát tệp tin XML thay đổi bằng `watchdog` để trigger cập nhật gia tăng. |
+| **`xml_graph_cli.py`** | CLI tool dùng để test/query đồ thị trực tiếp qua terminal của nhà phát triển. |

@@ -53,8 +53,35 @@ from fastbusiness_mcp.config_paths import ensure_frozen_working_directory
 
 ensure_frozen_working_directory()
 
-# Now import and run the main server
-from fastbusiness_mcp.server import main
+
+def _print_build_help() -> None:
+    print("=== FastBusiness MCP — rebuild Kuzu (không cần source) ===")
+    print("Sử dụng:")
+    print('  fastbusiness_mcp.exe build "<path_xml_1>" ["<path_xml_2>" ...]')
+    print("  fastbusiness_mcp.exe build --help")
+    print("")
+    print("PowerShell (cd và lệnh phải tách dòng):")
+    print("  cd E:\\fastbusiness_mcp")
+    print('  .\\fastbusiness_mcp.exe build "\\\\server\\share\\...\\Dir\\AITran.xml"')
+    print("")
+    print("Không có tham số build → chạy MCP server như bình thường.")
+
+
+def _run_build_cli(paths: list[str]) -> int:
+    from xml_codegraph.build_kuzu_projects import cmd_build
+
+    return cmd_build(paths, overwrite=True)
+
 
 if __name__ == "__main__":
+    # Mode A: rebuild Kuzu hàng loạt trên máy chỉ có dist (không cần source)
+    if len(sys.argv) >= 2 and sys.argv[1].lower() == "build":
+        build_args = sys.argv[2:]
+        if not build_args or build_args[0] in ("-h", "--help", "/?"):
+            _print_build_help()
+            sys.exit(0 if build_args else 1)
+        sys.exit(_run_build_cli(build_args))
+
+    from fastbusiness_mcp.server import main
+
     main()

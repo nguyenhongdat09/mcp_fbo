@@ -257,6 +257,7 @@ imports:
  &#8226;   <a href="#heapq">heapq</a>
  &#8226;   <a href="#io">io</a>
  &#8226;   <a href="#keyword">keyword</a>
+ &#8226;   <a href="#kuzu">kuzu</a>
  &#8226;   <a href="#linecache">linecache</a>
  &#8226;   <a href="#locale">locale</a>
  &#8226;   <a href="#lxml">lxml</a>
@@ -297,6 +298,20 @@ imports:
  &#8226;   <a href="#types">types</a>
  &#8226;   <a href="#warnings">warnings</a>
  &#8226;   <a href="#weakref">weakref</a>
+ &#8226;   <a href="#xml_codegraph">xml_codegraph</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.core.schema">xml_codegraph.core.schema</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.parsers.js_parser">xml_codegraph.parsers.js_parser</a>
+ &#8226;   <a href="#xml_codegraph.parsers.sql_parser">xml_codegraph.parsers.sql_parser</a>
+ &#8226;   <a href="#xml_codegraph.parsers.xml_parser">xml_codegraph.parsers.xml_parser</a>
+ &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.rules.edges_rules">xml_codegraph.rules.edges_rules</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
  &#8226;   <a href="#yaml">yaml</a>
 
   </div>
@@ -3849,6 +3864,7 @@ imported by:
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#unittest.main">unittest.main</a>
  &#8226;   <a href="#uuid">uuid</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#zipfile">zipfile</a>
 
   </div>
@@ -5401,6 +5417,7 @@ imported by:
  &#8226;   <a href="#starlette.middleware.sessions">starlette.middleware.sessions</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
  &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
  &#8226;   <a href="#yaml.representer">yaml.representer</a>
@@ -6924,6 +6941,7 @@ imported by:
  &#8226;   <a href="#kuzu.async_connection">kuzu.async_connection</a>
  &#8226;   <a href="#setuptools._distutils.command.build_ext">setuptools._distutils.command.build_ext</a>
  &#8226;   <a href="#uvicorn.middleware.wsgi">uvicorn.middleware.wsgi</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
  &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
 
   </div>
@@ -11624,6 +11642,7 @@ imported by:
  &#8226;   <a href="#watchdog.observers.winapi">watchdog.observers.winapi</a>
  &#8226;   <a href="#watchdog.tricks">watchdog.tricks</a>
  &#8226;   <a href="#watchdog.utils.echo">watchdog.utils.echo</a>
+ &#8226;   <a href="#xml_codegraph.parsers.xml_parser">xml_codegraph.parsers.xml_parser</a>
  &#8226;   <a href="#zoneinfo._zoneinfo">zoneinfo._zoneinfo</a>
 
   </div>
@@ -11641,6 +11660,7 @@ imports:
 imported by:
     <a href="#_posixsubprocess">_posixsubprocess</a>
  &#8226;   <a href="#weakref">weakref</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
 
@@ -12140,6 +12160,7 @@ imported by:
  &#8226;   <a href="#urllib.request">urllib.request</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
 
   </div>
@@ -14270,7 +14291,6 @@ imports:
  &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib._bootstrap">importlib._bootstrap</a>
  &#8226;   <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
- &#8226;   <a href="#importlib.machinery">importlib.machinery</a>
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#warnings">warnings</a>
 
@@ -14419,7 +14439,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#ctypes.util">ctypes.util</a>
- &#8226;   <a href="#importlib">importlib</a>
  &#8226;   <a href="#importlib.abc">importlib.abc</a>
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#packaging.tags">packaging.tags</a>
@@ -15265,8 +15284,10 @@ imported by:
  &#8226;   <a href="#starlette.responses">starlette.responses</a>
  &#8226;   <a href="#starlette.websockets">starlette.websockets</a>
  &#8226;   <a href="#uvicorn.config">uvicorn.config</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
 
   </div>
@@ -15722,6 +15743,7 @@ imported by:
  &#8226;   <a href="#kuzu.torch_geometric_graph_store">kuzu.torch_geometric_graph_store</a>
  &#8226;   <a href="#kuzu.torch_geometric_result_converter">kuzu.torch_geometric_result_converter</a>
  &#8226;   <a href="#kuzu.types">kuzu.types</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
 
   </div>
@@ -19722,6 +19744,7 @@ imported by:
  &#8226;   <a href="#multiprocessing.process">multiprocessing.process</a>
  &#8226;   <a href="#multiprocessing.queues">multiprocessing.queues</a>
  &#8226;   <a href="#multiprocessing.resource_sharer">multiprocessing.resource_sharer</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
 
   </div>
 
@@ -20837,9 +20860,12 @@ imported by:
  &#8226;   <a href="#webbrowser">webbrowser</a>
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
  &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.parsers.xml_parser">xml_codegraph.parsers.xml_parser</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
@@ -21371,10 +21397,12 @@ imported by:
  &#8226;   <a href="#uvicorn.supervisors.watchfilesreload">uvicorn.supervisors.watchfilesreload</a>
  &#8226;   <a href="#watchdog.observers.api">watchdog.observers.api</a>
  &#8226;   <a href="#watchdog.utils.patterns">watchdog.utils.patterns</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
  &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.parsers.xml_parser">xml_codegraph.parsers.xml_parser</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
@@ -38828,6 +38856,7 @@ imported by:
  &#8226;   <a href="#tempfile">tempfile</a>
  &#8226;   <a href="#uuid">uuid</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#zipfile">zipfile</a>
 
@@ -40154,6 +40183,7 @@ imported by:
  &#8226;   <a href="#watchdog.tricks">watchdog.tricks</a>
  &#8226;   <a href="#watchdog.utils.process_watcher">watchdog.utils.process_watcher</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
 
   </div>
 
@@ -40459,8 +40489,11 @@ imported by:
  &#8226;   <a href="#xml.parsers.expat">xml.parsers.expat</a>
  &#8226;   <a href="#xml.sax">xml.sax</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
  &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
  &#8226;   <a href="#zipfile">zipfile</a>
@@ -40716,6 +40749,9 @@ imported by:
  &#8226;   <a href="#watchdog.utils.event_debouncer">watchdog.utils.event_debouncer</a>
  &#8226;   <a href="#webbrowser">webbrowser</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#zipfile">zipfile</a>
 
   </div>
@@ -40791,8 +40827,10 @@ imported by:
  &#8226;   <a href="#watchdog.observers.read_directory_changes">watchdog.observers.read_directory_changes</a>
  &#8226;   <a href="#watchdog.tricks">watchdog.tricks</a>
  &#8226;   <a href="#watchdog.utils.delayed_queue">watchdog.utils.delayed_queue</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xmlrpc.client">xmlrpc.client</a>
@@ -44198,6 +44236,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#watchdog.observers">watchdog.observers</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
 
@@ -44940,17 +44979,50 @@ imported by:
   <a name="xml_codegraph"></a>
   <a target="code" href="-" type="text/plain"><tt>xml_codegraph</tt></a>
 <span class="moduletype">NamespacePackage</span>  <div class="import">
+imports:
+    <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+
+  </div>
+  <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder">xml_codegraph.builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
+ &#8226;   <a href="#xml_codegraph.builder">xml_codegraph.builder</a>
  &#8226;   <a href="#xml_codegraph.core">xml_codegraph.core</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.parsers">xml_codegraph.parsers</a>
  &#8226;   <a href="#xml_codegraph.query">xml_codegraph.query</a>
  &#8226;   <a href="#xml_codegraph.rules">xml_codegraph.rules</a>
  &#8226;   <a href="#xml_codegraph.service">xml_codegraph.service</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
  &#8226;   <a href="#xml_codegraph.storage">xml_codegraph.storage</a>
  &#8226;   <a href="#xml_codegraph.utils">xml_codegraph.utils</a>
  &#8226;   <a href="#xml_codegraph.visual">xml_codegraph.visual</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="xml_codegraph.build_kuzu_projects"></a>
+  <a target="code" href="///E:/mcp_fbo/xml_codegraph/build_kuzu_projects.py" type="text/plain"><tt>xml_codegraph.build_kuzu_projects</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#concurrent.futures">concurrent.futures</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#shutil">shutil</a>
+ &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#xml_codegraph">xml_codegraph</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -44979,9 +45051,11 @@ imported by:
 imports:
     <a href="#concurrent.futures">concurrent.futures</a>
  &#8226;   <a href="#hashlib">hashlib</a>
+ &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
  &#8226;   <a href="#re">re</a>
+ &#8226;   <a href="#time">time</a>
  &#8226;   <a href="#typing">typing</a>
  &#8226;   <a href="#xml_codegraph.builder">xml_codegraph.builder</a>
  &#8226;   <a href="#xml_codegraph.core.schema">xml_codegraph.core.schema</a>
@@ -44995,9 +45069,12 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
 
   </div>
 
@@ -45031,7 +45108,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xml_codegraph.visual.visualizer">xml_codegraph.visual.visualizer</a>
@@ -45046,6 +45124,7 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#json">json</a>
+ &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
  &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#threading">threading</a>
@@ -45055,6 +45134,7 @@ imports:
  &#8226;   <a href="#xml_codegraph.parsers.xml_parser">xml_codegraph.parsers.xml_parser</a>
  &#8226;   <a href="#xml_codegraph.query">xml_codegraph.query</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.rules.edges_rules">xml_codegraph.rules.edges_rules</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
@@ -45063,6 +45143,10 @@ imports:
   <div class="import">
 imported by:
     <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph">xml_codegraph</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
 
@@ -45099,7 +45183,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
 
   </div>
 
@@ -45118,7 +45203,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
 
   </div>
@@ -45130,7 +45216,8 @@ imported by:
   <a target="code" href="///E:/mcp_fbo/xml_codegraph/parsers/xml_parser.py" type="text/plain"><tt>xml_codegraph.parsers.xml_parser</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#lxml">lxml</a>
+    <a href="#functools">functools</a>
+ &#8226;   <a href="#lxml">lxml</a>
  &#8226;   <a href="#lxml.etree">lxml.etree</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
@@ -45142,7 +45229,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
 
   </div>
@@ -45155,12 +45243,14 @@ imported by:
 <span class="moduletype">NamespacePackage</span>  <div class="import">
 imports:
     <a href="#xml_codegraph">xml_codegraph</a>
+ &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
 
   </div>
   <div class="import">
 imported by:
     <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
 
@@ -45190,7 +45280,11 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.query">xml_codegraph.query</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
 
@@ -45224,7 +45318,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
  &#8226;   <a href="#xml_codegraph.visual.visualizer">xml_codegraph.visual.visualizer</a>
 
@@ -45260,7 +45356,38 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+    <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="xml_codegraph.service.daemon"></a>
+  <a target="code" href="///E:/mcp_fbo/xml_codegraph/service/daemon.py" type="text/plain"><tt>xml_codegraph.service.daemon</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#argparse">argparse</a>
+ &#8226;   <a href="#hashlib">hashlib</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#multiprocessing.connection">multiprocessing.connection</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#threading">threading</a>
+ &#8226;   <a href="#time">time</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service">xml_codegraph.service</a>
+ &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -45271,20 +45398,30 @@ imported by:
   <a target="code" href="///E:/mcp_fbo/xml_codegraph/service/watcher.py" type="text/plain"><tt>xml_codegraph.service.watcher</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#os">os</a>
+    <a href="#gc">gc</a>
+ &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#time">time</a>
  &#8226;   <a href="#watchdog.events">watchdog.events</a>
  &#8226;   <a href="#watchdog.observers">watchdog.observers</a>
+ &#8226;   <a href="#watchdog.observers.polling">watchdog.observers.polling</a>
+ &#8226;   <a href="#xml_codegraph">xml_codegraph</a>
  &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.query">xml_codegraph.query</a>
+ &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
  &#8226;   <a href="#xml_codegraph.service">xml_codegraph.service</a>
+ &#8226;   <a href="#xml_codegraph.storage">xml_codegraph.storage</a>
  &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
 
   </div>
 
@@ -45300,7 +45437,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
+    <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
 
   </div>
 
@@ -45321,17 +45459,23 @@ imports:
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#tempfile">tempfile</a>
+ &#8226;   <a href="#threading">threading</a>
  &#8226;   <a href="#time">time</a>
  &#8226;   <a href="#typing">typing</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.core.schema">xml_codegraph.core.schema</a>
  &#8226;   <a href="#xml_codegraph.storage">xml_codegraph.storage</a>
+ &#8226;   <a href="#zlib">zlib</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
@@ -45359,17 +45503,23 @@ imported by:
   <a target="code" href="///E:/mcp_fbo/xml_codegraph/utils/path_helper.py" type="text/plain"><tt>xml_codegraph.utils.path_helper</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#os">os</a>
+    <a href="#base64">base64</a>
+ &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#sys">sys</a>
  &#8226;   <a href="#typing">typing</a>
  &#8226;   <a href="#xml_codegraph.utils">xml_codegraph.utils</a>
+ &#8226;   <a href="#yaml">yaml</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
+    <a href="#run_server.py">run_server.py</a>
+ &#8226;   <a href="#xml_codegraph.build_kuzu_projects">xml_codegraph.build_kuzu_projects</a>
+ &#8226;   <a href="#xml_codegraph.builder.graph_builder">xml_codegraph.builder.graph_builder</a>
  &#8226;   <a href="#xml_codegraph.mcp_tools">xml_codegraph.mcp_tools</a>
  &#8226;   <a href="#xml_codegraph.query.engine">xml_codegraph.query.engine</a>
+ &#8226;   <a href="#xml_codegraph.service.daemon">xml_codegraph.service.daemon</a>
  &#8226;   <a href="#xml_codegraph.service.watcher">xml_codegraph.service.watcher</a>
 
   </div>
@@ -45473,6 +45623,7 @@ imported by:
  &#8226;   <a href="#queryDatabase.query_resolver">queryDatabase.query_resolver</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#uvicorn.config">uvicorn.config</a>
+ &#8226;   <a href="#xml_codegraph.utils.path_helper">xml_codegraph.utils.path_helper</a>
  &#8226;   <a href="#yaml._yaml">yaml._yaml</a>
  &#8226;   <a href="#yaml.composer">yaml.composer</a>
  &#8226;   <a href="#yaml.constructor">yaml.constructor</a>
@@ -45961,6 +46112,7 @@ imported by:
  &#8226;   <a href="#setuptools._vendor.backports.tarfile">setuptools._vendor.backports.tarfile</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#tarfile">tarfile</a>
+ &#8226;   <a href="#xml_codegraph.storage.kuzu_index">xml_codegraph.storage.kuzu_index</a>
  &#8226;   <a href="#zipfile">zipfile</a>
  &#8226;   <a href="#zipimport">zipimport</a>
 

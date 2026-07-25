@@ -64,11 +64,15 @@ def get_kuzu_store(reference_file: str):
     return _kuzu_stores[db_key]
 
 @mcp.tool()
-def query_radar(cypher_query: str, reference_file: str) -> str:
+def query_radar(reference_file: str, cypher_query: str = "", mode: str = "query") -> str:
     """
-    Thực thi câu lệnh Cypher tùy ý trên đồ thị Kùzu Graph DB (Radar tool).
+    Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
     Dành cho việc truy vấn nâng cao hoặc các trường hợp ad-hoc.
     Khuyến khích sử dụng search_nodes, get_related_nodes, query_node_details cho các câu hỏi FBO thông thường.
+
+    mode:
+    - query (mặc định): chạy cypher_query.
+    - schema: trả schema live XmlFile/Rel, columns, edge_type, quy tắc và ví dụ.
 
     --- SCHEMA & QUY TẮC TRUY VẤN KÙZU ---
     1. Node Table:
@@ -99,26 +103,9 @@ def query_radar(cypher_query: str, reference_file: str) -> str:
     RETURN b.relative_path, b.needs_xml, b.source_extension
     LIMIT 20
     """
-    try:
-        # Guardrail check: MATCH Rel không LIMIT/không filter edge_type -> tự động LIMIT 50 + Warning
-        import re
-        is_rel_query = "-" in cypher_query and "MATCH" in cypher_query.upper()
-        has_limit = "LIMIT" in cypher_query.upper()
-        has_edge_filter = "EDGE_TYPE" in cypher_query.upper()
-        
-        warning = None
-        if is_rel_query and not has_limit and not has_edge_filter:
-            cypher_query = cypher_query.rstrip().rstrip(';') + " LIMIT 50"
-            warning = "Warning: Query MATCHes relationships without LIMIT or edge_type filter. Automatically applied LIMIT 50 to prevent context window overflow."
-            
-        store = get_kuzu_store(reference_file)
-        results = store.execute_cypher(cypher_query)
-        
-        if warning:
-            return json.dumps({"warning": warning, "results": results}, indent=2, ensure_ascii=False)
-        return json.dumps(results, indent=2, ensure_ascii=False)
-    except Exception as e:
-        return f"Lỗi thực thi Cypher: {str(e)}"
+    from xml_codegraph.mcp_tools import mcp_query_radar
+
+    return mcp_query_radar(cypher_query, reference_file, mode)
 
 @mcp.tool()
 def search_nodes(query: str, reference_file: str, match_type: str = "all", folder_filter: str = None, limit: int = 20) -> str:

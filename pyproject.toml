@@ -24,6 +24,7 @@ dev = [
 
 [project.scripts]
 fastbusiness-mcp = "fastbusiness_mcp.server:main"
+fbograph = "xml_codegraph.build_kuzu_projects:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

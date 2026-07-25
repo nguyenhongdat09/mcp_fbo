@@ -113,9 +113,13 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                 ),
                 Tool(
                     name="query_radar",
-                    description="""Thực thi câu lệnh Cypher tùy ý trên đồ thị Kùzu Graph DB (Radar tool).
+                    description="""Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
 Dành cho việc truy vấn nâng cao hoặc các trường hợp ad-hoc.
 Khuyến khích sử dụng search_nodes, get_related_nodes, query_node_details cho các câu hỏi FBO thông thường.
+
+mode:
+- query (mặc định): chạy cypher_query.
+- schema: trả schema live XmlFile/Rel, toàn bộ columns, giải thích edge_type, quy tắc và ví dụ Cypher. Agent nên gọi mode=schema khi chưa biết cấu trúc DB.
 
 --- SCHEMA & QUY TẮC TRUY VẤN KÙZU ---
 1. Node Table:
@@ -153,14 +157,21 @@ LIMIT 20""",
                         "properties": {
                             "cypher_query": {
                                 "type": "string",
-                                "description": "Cypher query to execute",
+                                "description": "Cypher cần chạy; bắt buộc khi mode=query, có thể để rỗng khi mode=schema",
+                                "default": "",
+                            },
+                            "mode": {
+                                "type": "string",
+                                "enum": ["query", "schema"],
+                                "description": "query=chạy Cypher; schema=trả schema live + hướng dẫn",
+                                "default": "query",
                             },
                             "reference_file": {
                                 "type": "string",
                                 "description": "Any XML file path in the project to resolve paths",
                             },
                         },
-                        "required": ["cypher_query", "reference_file"],
+                        "required": ["reference_file"],
                     },
                 ),
                 Tool(
@@ -261,6 +272,12 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                                 "type": "string",
                                 "description": "Any XML file path in the project to resolve paths",
                             },
+                            "read_option": {
+                                "type": "integer",
+                                "description": "1: Đọc theo nội dung gốc (mặc định), 2: Đọc theo nội dung flat sau khi resolve entities/includes",
+                                "default": 1,
+                                "enum": [1, 2],
+                            },
                         },
                         "required": ["file_path", "reference_file"],
                     },
@@ -292,9 +309,10 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                     return [TextContent(type="text", text=format_entity_result(result))]
 
                 elif name == "query_radar":
-                    cypher_query = arguments["cypher_query"]
+                    cypher_query = arguments.get("cypher_query", "")
                     reference_file = arguments["reference_file"]
-                    res = mcp_query_radar(cypher_query, reference_file)
+                    mode = arguments.get("mode", "query")
+                    res = mcp_query_radar(cypher_query, reference_file, mode)
                     return [TextContent(type="text", text=res)]
 
                 elif name == "search_nodes":
@@ -324,7 +342,8 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                 elif name == "read_local_file":
                     file_path = arguments["file_path"]
                     reference_file = arguments["reference_file"]
-                    res = mcp_read_local_file(file_path, reference_file)
+                    read_option = int(arguments.get("read_option", 1))
+                    res = mcp_read_local_file(file_path, reference_file, read_option)
                     return [TextContent(type="text", text=res)]
 
                 else:

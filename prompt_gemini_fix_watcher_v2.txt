@@ -1,0 +1,446 @@
+# PROMPT V2 CHO GEMINI — Sửa các lỗi còn lại của Watcher / Incremental Kuzu
+
+Bạn đã sửa watcher ở vòng trước, nhưng kiểm tra thực tế cho thấy **chưa hoàn tất**.
+Hãy đọc code hiện tại và sửa đúng các lỗi bên dưới. Không chỉ sửa walkthrough.
+
+Repo:
+`E:\mcp_fbo`
+
+Đọc trước:
+- `prompt_gemini_fix_watcher.txt`
+- `test_kuzu_FBISP2422.txt`, mục 12
+- `xml_codegraph/storage/kuzu_index.py`
+- `xml_codegraph/builder/graph_builder.py`
+- `xml_codegraph/service/watcher.py`
+- `xml_codegraph/mcp_tools.py`
+- `xml_codegraph/query/engine.py`
+
+---
+
+## 1. BẰNG CHỨNG KIỂM TRA THỰC TẾ
+
+### Lỗi nghiêm trọng: watcher không ghi được nếu MCP đã mở Kuzu read-only
+
+Quy trình đã chạy:
+
+1. Query `mcp_query_radar` trước, khiến Kuzu được mở `read_only=True`.
+2. Gọi `incremental_update_file(CPDetail.xml, ...)`.
+3. Kết quả:
+
+```text
+[CodeGraph] incremental_update_file error for ...\Grid\CPDetail.xml:
+Connection exception: Cannot execute write operations in a read-only database!
+updated: None
+```
+
+Nguyên nhân trong `KuzuIndexStore.__init__`:
+
+```python
+cache_key = str(self.db_path).replace("\\", "/").lower()
+if cache_key not in _db_instances:
+    db = kuzu.Database(str(self.db_path), read_only=read_only)
+    conn = kuzu.Connection(db)
+    _db_instances[cache_key] = (db, conn)
+
+self.db, self.conn = _db_instances[cache_key]
+```
+
+`_db_instances` chỉ cache theo path, không phân biệt connection read-only/read-write.
+Nếu connection read-only được tạo trước, `KuzuIndexStore(db_path)` dùng cho watcher sẽ tái sử dụng connection read-only.
+
+Đây là case thực tế của Cursor MCP: MCP query trước, watcher chạy trong cùng process sau đó.
+
+### Lỗi Companion query
+
+Incremental update trong process sạch có chạy, nhưng log:
+
+```text
+[CodeGraph] Warning: failed to rebuild companion edges ...:
+Parser exception: Unknown operation '!='
+(you probably meant to use '<>', which is the operator for inequality testing.)
+```
+
+Query hiện tại dùng:
+
+```cypher
+AND n.node_id != $nid
+```
+
+Kuzu yêu cầu:
+
+```cypher
+AND n.node_id <> $nid
+```
+
+### Phần đã pass
+
+Khi chạy incremental trong process sạch, mở write connection trước:
+
+```text
+updated: Grid\CPDetail.xml js=5
+```
+
+Sau đó query 2 hop vẫn có:
+
+```text
+Dir\CPTran.xml -> Grid\CPDetail.xml -> Filter\CPRequestFilter.xml
+```
+
+Như vậy logic backup/restore inbound và recompute outbound đi đúng hướng; cần sửa lifecycle connection và các lỗi còn lại.
+
+---
+
+## 2. YÊU CẦU SỬA CONNECTION / LOCK
+
+### Mục tiêu bắt buộc
+
+Trong cùng một process:
+
+1. Mở/query Kuzu read-only trước.
+2. Sau đó watcher cập nhật file.
+3. Incremental update vẫn phải ghi được.
+4. Query tiếp theo phải đọc thấy dữ liệu mới.
+
+### Không được sửa kiểu giả
+
+- Không được chỉ `del _db_instances[key]` trong khi object DB/connection cũ vẫn còn reference.
+- Không được bắt exception rồi báo “thành công”.
+- Không được buộc người dùng restart Cursor/MCP.
+- Không được rebuild full sau mọi event.
+- Không được mở đồng thời read-only và read-write trên cùng DB theo cách gây lock.
+
+### Thiết kế khuyến nghị
+
+Hãy tạo API quản lý connection rõ ràng trong `kuzu_index.py`, ví dụ:
+
+```python
+def close_cached_database(db_path: Path) -> None:
+    ...
+
+def get_cached_database_mode(db_path: Path) -> Optional[str]:
+    ...
+```
+
+Hoặc thiết kế tương đương.
+
+Khi cần writer:
+
+1. Invalidate `_store_cache`, `_graph_cache`, `_kuzu_stores` có liên quan.
+2. Đóng/release connection read-only cũ an toàn.
+3. Mở lại DB bằng `read_only=False`.
+4. Thực hiện transaction/update.
+5. Sau update, reader sau đó được mở lại từ dữ liệu mới.
+
+Hãy kiểm tra API thực tế của package `kuzu` đang cài để close/release đúng (`Connection.close`, `Database.close`, hoặc giải phóng reference + GC nếu API không có).
+Không được đoán tên method.
+
+### Đồng bộ thread
+
+MCP query và watcher là các thread trong cùng process. Cần có lock per-database hoặc cơ chế single-owner:
+
+- Query không được dùng connection trong lúc writer đang thay mode/update.
+- Hai event watcher gần nhau không được tranh writer.
+- Lock chỉ theo từng DB/project, không khóa toàn bộ mọi project.
+- Dùng `threading.RLock`/Lock theo normalized db path hoặc thiết kế tương đương.
+
+---
+
+## 3. SỬA COMPANION
+
+Đổi toán tử Kuzu:
+
+```cypher
+n.node_id != $nid
+```
+
+thành:
+
+```cypher
+n.node_id <> $nid
+```
+
+Sau đó chạy query thực tế để xác nhận không còn warning.
+
+Ngoài ra kiểm tra:
+
+- Không tạo duplicate `COMPANION_FILE`.
+- Không companion nhầm các controller chỉ tình cờ cùng normalized basename nhưng sai logical folder/group.
+- Hai chiều phải nhất quán với full build hiện tại.
+
+---
+
+## 4. RÀ SOÁT CÁC LỖI CÒN LẠI
+
+### 4.1 Path separator trong `sort_priority`
+
+Code hiện tại kiểm tra:
+
+```python
+if "grid/" in rp:
+if "dir/" in rp:
+```
+
+Nhưng `relative_path` Kuzu dùng backslash (`Grid\CPDetail.xml`).
+Chuẩn hóa path trước khi so sánh:
+
+```python
+rp = rp.replace("\\", "/").lower()
+```
+
+Không phụ thuộc separator Windows.
+
+### 4.2 Alias update và duplicate edge
+
+Incremental của file alias có thể tạo edge với:
+
+```python
+source_id = node.alias_of
+```
+
+Nhưng `update_single_node` chỉ `DETACH DELETE` node vật lý `node.node_id`.
+Nếu `node.alias_of != node.node_id`, outgoing edge cũ của canonical không bị xóa, rồi edge mới được CREATE thêm — có nguy cơ duplicate/stale.
+
+Phải thiết kế rõ:
+
+- Node vật lý vẫn update properties theo `node_id`.
+- Edge nghiệp vụ được gắn canonical theo mô hình full build.
+- Khi recompute edge từ alias, chỉ thay đúng nhóm edge do physical source đó đóng góp, hoặc rebuild deterministic cho canonical group.
+- Không xóa nhầm edge do alias khác/canonical source khác đóng góp.
+- Không tạo duplicate edge sau khi save cùng file nhiều lần.
+
+Nếu schema `Rel` hiện không lưu `parsed_from_source`, hãy dùng meta hoặc bổ sung cách xác định ownership nhất quán với `add_rewrite_edge` full build.
+
+### 4.3 Inbound restore không duplicate self/inbound-outbound
+
+Nếu có edge self-loop hoặc edge vừa là outgoing của canonical source và inbound vào node được replace, backup + recreate outbound + restore inbound có thể duplicate.
+
+Trước khi CREATE edge:
+
+- Dedupe theo `(source_id, target_id, edge_type, meta/ownership phù hợp)`.
+- Save cùng file 3 lần không làm tăng số edge.
+
+### 4.4 Delete / move canonical hoặc alias
+
+Khi xóa/rename:
+
+- Xóa node cũ.
+- Re-evaluate canonical identity của logical group.
+- Nếu canonical node bị xóa nhưng còn alias readable, phải chọn canonical mới và rewrite/rebuild edge liên quan.
+- Không để `alias_of` của node còn sống trỏ tới node đã xóa.
+- Không để inbound edge biến mất vĩnh viễn khi rename controller.
+
+### 4.5 Cache MCP
+
+`mcp_tools.start_watcher_for_project` hiện gọi:
+
+```python
+start_watcher(controllers_dir, graph_dir)
+```
+
+không truyền `on_node_updated`.
+
+`invalidate_project_cache()` cần xử lý đủ:
+
+- `query.engine._store_cache`
+- `query.engine._graph_cache`
+- `query.engine._last_sync_times` nếu cần
+- `mcp_tools._kuzu_stores`
+- `storage.kuzu_index._db_instances`
+
+Không để `_kuzu_stores` giữ lại store/connection cũ sau invalidate.
+
+Tránh import cycle; có thể dùng callback được truyền từ `mcp_tools` hoặc một connection manager chung.
+
+### 4.6 `.f`
+
+Watcher hiện chỉ nhận `.xml/.ent/.txt`, full build có `.f`.
+Hãy quyết định và triển khai nhất quán:
+
+- Nếu `.f` cần được index: watcher phải nghe `.f`, xử lý pairing `.xml/.f` đúng như full build.
+- Nếu cố ý không watch `.f`: ghi rõ lý do và acceptance; không tuyên bố “mọi file” được cập nhật.
+
+Ưu tiên hỗ trợ `.f` để graph phản ánh file mới/xóa/rename.
+
+---
+
+## 5. ACCEPTANCE TEST BẮT BUỘC
+
+Không chỉ viết hướng dẫn. Hãy tự chạy và đưa output tóm tắt PASS/FAIL.
+
+```powershell
+cd E:\mcp_fbo
+.\venv\Scripts\Activate.ps1
+$REF = "\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261\App_Data\Controllers\Grid\CPDetail.xml"
+```
+
+### T0 — Baseline
+
+```powershell
+python xml_codegraph\build_kuzu_projects.py $REF
+```
+
+### T1 — Read-first rồi write trong cùng process (bug quan trọng nhất)
+
+Viết test Python tự động:
+
+1. `KuzuIndexStore(db_path, read_only=True)` hoặc gọi `mcp_query_radar`.
+2. Query baseline.
+3. Gọi `incremental_update_file(Grid\CPDetail.xml, ...)`.
+4. Assert trả về node, không phải `None`.
+5. Query lại và assert chuỗi:
+
+```text
+Dir\CPTran.xml -> Grid\CPDetail.xml -> Filter\CPRequestFilter.xml
+```
+
+Không được có:
+
+```text
+Cannot execute write operations in a read-only database
+Could not set lock
+```
+
+### T2 — Save cùng file 3 lần không duplicate edge
+
+Gọi incremental `CPDetail.xml` 3 lần.
+
+Đếm chính xác:
+
+```cypher
+MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile)
+WHERE a.relative_path = 'Grid\\CPDetail.xml'
+  AND b.relative_path = 'Filter\\CPRequestFilter.xml'
+  AND r.edge_type = 'RETRIEVE_DATA_SOURCE'
+RETURN count(*) AS edge_count
+```
+
+Kỳ vọng: `edge_count = 1`.
+
+Đếm inbound CPTran → CPDetail:
+
+```cypher
+MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile)
+WHERE a.relative_path = 'Dir\\CPTran.xml'
+  AND b.relative_path = 'Grid\\CPDetail.xml'
+  AND r.edge_type = 'GRID_MASTER_DETAIL'
+RETURN count(*) AS edge_count
+```
+
+Kỳ vọng: `edge_count = 1`.
+
+### T3 — Companion query
+
+Incremental một canonical controller.
+
+Kỳ vọng:
+
+- Không còn warning `Unknown operation '!='`.
+- Không duplicate companion sau 3 lần save.
+
+### T4 — Add / delete
+
+Dùng file XML test hợp lệ, không dùng file trống nếu parser yêu cầu XML hợp lệ.
+
+- Add → node tồn tại.
+- Delete → node không còn.
+- Không còn edge trỏ tới node đã xóa.
+
+### T5 — Rename / move
+
+- Path cũ không còn.
+- Path mới tồn tại.
+- Không có dangling `alias_of`.
+- Edge liên quan đúng sau rename.
+
+### T6 — Hai file trong dưới 1 giây
+
+- Cả hai event được xử lý.
+- Không drop do debounce global.
+- Không lock conflict giữa hai writer event.
+
+### T7 — MCP cache freshness
+
+Trong cùng process MCP:
+
+1. Search/navigate để load `_graph_cache`.
+2. Incremental update.
+3. Search/navigate lại.
+4. Assert thấy dữ liệu mới, không cần restart process.
+
+### T8 — Full build regression
+
+Rebuild full, sau đó chạy:
+
+```powershell
+python xml_graph_cli.py query -t dependents "CPRequestFilter" --ref $REF --direct
+```
+
+và Cypher 2 cấp.
+
+Kỳ vọng vẫn có:
+
+```text
+Dir\CPTran.xml -> Grid\CPDetail.xml -> Filter\CPRequestFilter.xml
+```
+
+---
+
+## 6. TEST TỰ ĐỘNG
+
+Không để toàn bộ verification là thao tác tay.
+
+Thêm test regression phù hợp, tối thiểu:
+
+- read-only connection mở trước rồi incremental write
+- idempotency: update 3 lần không duplicate
+- delete node
+- move/rename
+- per-file debounce
+- cache invalidation
+
+Nếu test dùng DB thật, tạo temp Kuzu DB và temp Controllers tree.
+Không sửa/xóa file nghiệp vụ thật trên share trong test tự động.
+
+---
+
+## 7. CẬP NHẬT TÀI LIỆU
+
+Sau khi test pass:
+
+- Cập nhật mục 12 trong `test_kuzu_FBISP2422.txt`.
+- Xóa các câu cũ mâu thuẫn, đặc biệt câu:
+
+```text
+neu [] -> do [SOT] mat edge
+```
+
+nếu edge đã thực sự được sửa.
+
+- Chỉ đánh `[OK]` cho mục đã có test/output.
+- Ghi rõ watcher hoạt động trong MCP, daemon, CLI watch và `--direct`.
+
+---
+
+## 8. DEFINITION OF DONE
+
+- [ ] Read-only query trước, watcher write sau trong cùng process: PASS
+- [ ] Không còn `Cannot execute write operations in a read-only database`
+- [ ] Không còn `Could not set lock`
+- [ ] Không còn warning `!=`
+- [ ] Save 3 lần không tăng số edge
+- [ ] CPTran → CPDetail → CPRequestFilter vẫn còn sau incremental
+- [ ] Add/delete/rename/move PASS
+- [ ] Canonical/alias không dangling, không duplicate
+- [ ] Cache MCP thấy dữ liệu mới
+- [ ] Multi-file event không drop
+- [ ] Full build regression PASS
+- [ ] Có test tự động, không chỉ walkthrough
+- [ ] `test_kuzu_FBISP2422.txt` phản ánh đúng hành vi đã test
+
+Khi trả lời, cung cấp:
+
+1. Root cause từng lỗi.
+2. Danh sách file và hàm đã sửa.
+3. Thiết kế connection lifecycle/locking.
+4. Kết quả T1–T8, ghi rõ PASS/FAIL và output chính.
+5. Rủi ro còn lại; không tuyên bố “triệt để” nếu chưa chạy đủ test.

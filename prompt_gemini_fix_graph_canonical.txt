@@ -1,0 +1,352 @@
+# PROMPT CHO GEMINI — Sửa logic BUILD GRAPH / CANONICAL IDENTITY (FBO CodeGraph)
+
+Bạn được giao nhiệm vụ **tự khảo sát codebase**, **tự suy luận các case tương tự**, rồi sửa logic build graph để Kuzu phản ánh đúng quan hệ nghiệp vụ FastBusiness.
+
+**KHÔNG chỉ vá đúng 1 case CPTran/CPDetail/CPRequestFilter.**  
+Hãy coi case đó là **bằng chứng (repro)** của một lớp lỗi lớn hơn về **identity của controller** và **tính nhất quán của edge**.
+
+---
+
+## 1) BỐI CẢNH HỆ THỐNG
+
+Repo: FastBusiness XML CodeGraph (mcp_fbo)
+
+Pipeline:
+```
+XML/ENT/TXT/F trong Controllers
+  -> parsers (xml_parser, js_parser, sql_parser)
+  -> GraphBuilder tạo nodes + edges
+  -> lưu Kuzu (bảng XmlFile, quan hệ Rel với property edge_type)
+  -> query qua xml_graph_cli / MCP
+```
+
+Kuzu schema:
+- Node: `XmlFile` (PK: node_id)
+- Rel: **chỉ** `:Rel`, loại quan hệ nằm ở `r.edge_type`
+- `relative_path` dùng backslash: `Dir\CPTran.xml`, `Grid\CPDetail.xml`
+
+Các edge nghiệp vụ quan trọng (không phải SHARED_INCLUDE):
+- `GRID_MASTER_DETAIL` — Dir voucher -> Grid detail
+- `RETRIEVE_DATA_SOURCE` — Grid/Detail -> Filter/Grid/Lookup/Form (retrieve)
+- `LOOKUP_REFERENCE` — field -> lookup controller
+- `COMPANION_FILE` — cùng controller ở folder khác (Dir/Grid/Filter/Report)
+- `ENTITY_INCLUDE`, `PARAM_ENTITY_USE`, `SQL_*`, `JS_FUNC_CALL`
+
+---
+
+## 2) TRIỆU CHỨNG ĐÃ QUAN SÁT (REPRO THẬT)
+
+Project: `\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261`
+
+```powershell
+$REF = "\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261\App_Data\Controllers\Grid\CPDetail.xml"
+```
+
+### A) Query 1 cấp có vẻ đúng
+```powershell
+python xml_graph_cli.py query -t dependents "CPRequestFilter" --ref $REF --direct
+```
+→ `Grid\CPDetail - Copy.xml` --RETRIEVE_DATA_SOURCE--> `Filter\CPRequestFilter.xml`
+
+### B) Query navigate từng phần có vẻ đúng
+```powershell
+python xml_graph_cli.py query -t navigate "CPTran" --ref $REF --direct
+# grid_details -> Grid\CPDetail.xml
+
+python xml_graph_cli.py query -t navigate "CPDetail" --ref $REF --direct
+# master_controllers -> Dir\CPTran.xml
+```
+
+### C) Nhưng chuỗi nhiều cấp BỊ GÃY
+```powershell
+python xml_graph_cli.py query -t radar "MATCH (voucher:XmlFile)-[r1:Rel]->(detail:XmlFile)-[r2:Rel]->(flt:XmlFile) WHERE flt.relative_path = 'Filter\\CPRequestFilter.xml' AND r1.edge_type = 'GRID_MASTER_DETAIL' AND r2.edge_type = 'RETRIEVE_DATA_SOURCE' RETURN voucher.relative_path, detail.relative_path, flt.relative_path LIMIT 10" --ref $REF --direct
+```
+→ `[]` (rỗng)
+
+**Kết luận triệu chứng:** graph có edge rời rạc, nhưng **không có chuỗi nghiệp vụ liên tục** qua cùng một logical controller trung gian.
+
+---
+
+## 3) YÊU CẦU CỐT LÕI (ĐỪNG HIỂU HẸP)
+
+Bạn phải thiết kế lại (hoặc bổ sung) lớp **logical controller identity** sao cho:
+
+1. Nhiều file vật lý có thể đại diện **cùng một controller nghiệp vụ**
+2. Các edge nghiệp vụ quan trọng phải **nhất quán** khi truy vết nhiều cấp
+3. Query 1 cấp (`dependents`, `navigate`) và query nhiều cấp (Cypher/radar) phải **cùng một mô hình**
+4. Giải pháp phải **generalize** cho nhiều voucher/grid/filter khác CPTran, không chỉ hardcode tên file
+
+**Đừng chỉ patch if path contains "CPDetail".**  
+Hãy tìm **quy tắc chung** của FastBusiness/FBO.
+
+---
+
+## 4) GIẢ THUYẾT BAN ĐẦU (CẦN TỰ XÁC MINH — CÓ THỂ ĐÚNG MỘT PHẦN)
+
+Các giả thuyết dưới đây là manh mối, **không phải chân lý**. Bạn phải đọc code và chứng minh/bác bỏ:
+
+### G1) Mỗi file vật lý = 1 node, không có canonical merge
+- `node_id` = hash(`relative_path`)
+- `Grid\CPDetail.xml` và `Grid\CPDetail - Copy.xml` là 2 node khác nhau
+
+### G2) Edge được gắn vào **node nguồn đang parse**, không qua canonical
+- `RETRIEVE_DATA_SOURCE` sinh từ `js_blocks` của file hiện tại
+- Nếu JS readable nằm ở Copy/Config/Fields/Templates, edge dính vào file đó
+
+### G3) `find_node_by_controller_name()` chỉ khớp stem chính xác
+- `"CPDetail"` không map `"CPDetail - Copy"`
+- Có thể chọn nhầm node khi nhiều candidate cùng tên gần giống
+
+### G4) `COMPANION_FILE` chỉ gộp **cùng basename khác folder**
+- Không gộp variant `Copy`, `Config\Fields`, `Templates\Upload`
+
+### G5) File encrypted / .f-only
+- Vẫn tạo node nhưng `js_blocks`/`grid_refs` có thể rỗng hoặc không parse được
+- Không có fallback đọc từ bản readable cùng controller
+
+### G6) `GRID_MASTER_DETAIL` có 2 đường detect
+- Từ `grid_refs` trong XML Dir
+- Từ JS `f.getItem("dXX")` match `code_field` trên Grid
+- Hai đường này có thể trỏ node khác nhau nếu canonical không thống nhất
+
+### G7) `incremental_update_file()` rebuild edge không đầy đủ
+- Chỉ SQL/entity edges cho node đơn lẻ
+- Có thể làm lệch graph khi watcher chạy
+
+### G8) `SHARED_INCLUDE` chiếm ~99% edges
+- Không liên quan trực tiếp bug chain, nhưng dễ che lỗi khi debug bằng Cypher không filter
+
+---
+
+## 5) CASE FAMILIES BẠN PHẢI TỰ SUY LUẬN VÀ XỬ LÝ
+
+Hãy đọc code + scan graph SP2261 để tìm thêm pattern. Ít nhất phải xem xét các họ case sau:
+
+### Family A — Companion đa folder (đã có COMPANION_FILE)
+- `Dir\X.xml` + `Grid\X.xml` + `Filter\X.xml` + `Report\X.xml`
+- Đây là **cùng controller**, khác vai trò UI
+
+### Family B — Variant / backup / copy trong cùng folder
+- `Grid\CPDetail.xml`
+- `Grid\CPDetail - Copy.xml`
+- Có thể còn: ` - backup`, ` - old`, `(1)`, v.v.
+- Cần quy tắc normalize stem
+
+### Family C — Readable config/template variants
+- `Grid\Config\Fields\CPDetail.xml`
+- `Templates\Upload\CPDetail.xml`
+- Có thể chứa JS/SQL readable trong khi file chính bị mã hóa
+
+### Family D — Encrypted XML / .f-only
+- `Grid\CPTax.xml` + `Grid\CPTax.f` (`needs_xml=true`)
+- `is_encrypted=true`, js không đọc được
+- Edge nghiệp vụ nên lấy từ đâu?
+
+### Family E — Master-detail Dir -> Grid
+- `CPTran` -> `CPDetail`, `CPTax`, `CPCharge`...
+- Qua `grid_refs` và/hoặc `f.getItem("d56")` + `code_field`
+
+### Family F — Retrieve detail -> filter/grid
+- `g.showForm('CPRequestFilter')`
+- Logic derive từ Filter sang Grid: `CPRequestFilter` -> thử `CPRequestGrid`, `CPRequestForm`, `CPRequestLookup`...
+- Edge `RETRIEVE_DATA_SOURCE` có thể trỏ Filter hoặc Grid derived
+
+### Family G — Lookup references
+- `ma_kh` -> `Customer`, `ma_nt` -> `Currency`
+- Cần đảm bảo resolve node đúng khi có alias/copy
+
+### Family H — Include/entity (đã có, nhưng đừng phá)
+- `ENTITY_INCLUDE`, `PARAM_ENTITY_USE`, `SHARED_INCLUDE`
+- Sửa canonical không được làm vỡ include graph
+
+### Family I — Incremental watcher update
+- File đổi 1 phần có thể làm graph lệch nếu không rebuild cross-node edges
+
+---
+
+## 6) HƯỚNG THIẾT KẾ — BẠN TỰ CHỌN (LINH HOẠT)
+
+Không bắt buộc implement đúng 1 cách. Chọn cách **tối thiểu nhưng đúng domain**:
+
+### Option 1 — Canonical node + alias map (khuyến nghị cân nhắc)
+- Mỗi logical controller có `canonical_node_id`
+- Physical files map về canonical qua alias rules
+- Edge nghiệp vụ gắn vào canonical (meta giữ `parsed_from`)
+
+### Option 2 — Edge rewrite / projection layer
+- Giữ physical nodes
+- Thêm bước post-process merge edges theo canonical key trước khi sync Kuzu
+
+### Option 3 — Virtual merge at query time (ít khuyến nghị)
+- Chỉ sửa query engine, không sửa builder
+- Chỉ dùng nếu không thể sửa builder sạch
+
+**Ưu tiên sửa ở builder** để Cypher/radar/dependents đều đúng.
+
+### Gợi ý quy tắc chọn canonical (có thể tinh chỉnh)
+Ưu tiên node readable đại diện controller:
+1. `Dir\X.xml` hoặc `Grid\X.xml` readable (tùy controller type)
+2. Không encrypted
+3. Không phải `Config/Fields`, `Templates/Upload`, không phải `Copy`
+4. Nếu chỉ có encrypted/.f → dùng node hiện có
+
+**Bạn phải tự đề xuất quy tắc hợp lý hơn nếu đọc code thấy pattern FBO khác.**
+
+---
+
+## 7) KHU VỰC CODE NÊN KHẢO SÁT (KHÔNG GIỚI HẠN)
+
+Bắt đầu từ đây, nhưng **được phép mở rộng** sang file khác nếu cần:
+
+| Khu vực | Vì sao |
+|---------|--------|
+| `xml_codegraph/builder/graph_builder.py` | Tạo nodes/edges, find_node_by_controller_name, companion, incremental |
+| `xml_codegraph/parsers/xml_parser.py` | grid_refs, lookup_refs, encrypted detect, entity resolve |
+| `xml_codegraph/parsers/js_parser.py` | showForm, client fields, helper calls |
+| `xml_codegraph/rules/edges_rules.py` | edge taxonomy |
+| `xml_codegraph/core/schema.py` | GraphNode fields |
+| `xml_codegraph/storage/kuzu_index.py` | sync/update node, có cần field canonical không |
+| `xml_codegraph/query/engine.py` | navigate/context/dependents có assume gì về node identity |
+| `xml_codegraph/service/watcher.py` | incremental update path |
+| `scripts/test_*.py` | test harness có sẵn |
+
+---
+
+## 8) QUY TRÌNH LÀM VIỆC BẮT BUỘC
+
+### Bước 1 — Tự khảo sát
+- Đọc builder + parsers
+- Liệt kê **tất cả chỗ tạo edge** liên quan GRID_MASTER_DETAIL / RETRIEVE_DATA_SOURCE / LOOKUP_REFERENCE
+- Liệt kê **tất cả chỗ resolve controller name -> node**
+
+### Bước 2 — Tự khám phá thêm case trên graph thật
+Rebuild SP2261 rồi chạy Cypher khám phá, ví dụ:
+
+```cypher
+-- Tìm mọi node có stem gần CPDetail
+MATCH (n:XmlFile)
+WHERE n.relative_path CONTAINS 'CPDetail'
+RETURN n.relative_path, n.is_encrypted, n.needs_xml, n.code_field
+LIMIT 50
+```
+
+```cypher
+-- Ai trỏ vào CPRequestFilter?
+MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile)
+WHERE b.relative_path CONTAINS 'CPRequestFilter'
+RETURN a.relative_path, r.edge_type, r.meta
+LIMIT 50
+```
+
+```cypher
+-- CPTran ra grid detail nào?
+MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile)
+WHERE a.relative_path = 'Dir\\CPTran.xml' AND r.edge_type = 'GRID_MASTER_DETAIL'
+RETURN b.relative_path, r.meta
+LIMIT 50
+```
+
+Tự tìm thêm pattern tương tự cho `CDTran`, `CPTax`, `Customer`, v.v.
+
+### Bước 3 — Đề xuất thiết kế ngắn
+Trước khi code nhiều, viết 5-10 dòng:
+- canonical key là gì
+- alias nào được merge
+- edge nào rewrite
+- edge nào giữ nguyên physical
+
+### Bước 4 — Implement tối thiểu
+- Không over-engineer
+- snake_case cho biến Python
+- Không phá Kuzu local path (`C:\KuzuDB\...`)
+- Không phá các query mode hiện có
+
+### Bước 5 — Viết/ cập nhật test
+- Ít nhất test script hoặc checklist command
+- Tham khảo: `scripts/test_all_use_cases.py`, `scripts/test_agent_cypher_traps.py`, `test_kuzu_reverse_lookup_SP2261.txt`
+
+---
+
+## 9) ACCEPTANCE CRITERIA (BẮT BUỘC)
+
+### Must-have — case repro CPTran chain
+```powershell
+$REF = "\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261\App_Data\Controllers\Grid\CPDetail.xml"
+
+# 1) dependents
+python xml_graph_cli.py query -t dependents "CPRequestFilter" --ref $REF --direct
+# source phải là logical CPDetail (ưu tiên Grid\CPDetail.xml), KHÔNG chỉ Copy
+
+# 2) Cypher 2 cấp KHÔNG được []
+python xml_graph_cli.py query -t radar "MATCH (voucher:XmlFile)-[r1:Rel]->(detail:XmlFile)-[r2:Rel]->(flt:XmlFile) WHERE flt.relative_path = 'Filter\\CPRequestFilter.xml' AND r1.edge_type = 'GRID_MASTER_DETAIL' AND r2.edge_type = 'RETRIEVE_DATA_SOURCE' RETURN voucher.relative_path AS cp_tran, detail.relative_path AS cp_detail, flt.relative_path AS cp_request_filter LIMIT 10" --ref $REF --direct
+# cp_tran=Dir\CPTran.xml, cp_detail=Grid\CPDetail.xml, cp_request_filter=Filter\CPRequestFilter.xml
+
+# 3) navigate CPTran vẫn có CPDetail
+python xml_graph_cli.py query -t navigate "CPTran" --ref $REF --direct
+```
+
+### Should-have — generalization (tự chọn thêm >= 3 case)
+Bạn phải tự tìm và chứng minh thêm, ví dụ:
+- `CDTran` chain tương tự (nếu có trong project)
+- Grid encrypted `.f` (`CPTax`) vẫn navigate đúng từ `CPTran`
+- `Dir\X` + `Filter\X` companion không bị merge sai thành cùng node vật lý
+- Lookup `Customer` dependents/dependencies không regress
+
+### Must-not-break
+- `search` synonym vẫn chạy (`gia ban`, `giay bao no`, ...)
+- `SHARED_INCLUDE` không làm nổ graph query mặc định
+- Build Kuzu vẫn lưu local `C:\KuzuDB\...`
+- Không hardcode riêng SP2261 path trong logic core (config/test path được phép)
+
+---
+
+## 10) CÂU HỎI BẠN PHẢI TỰ TRẢ LỜI TRONG BÁO CÁO
+
+1. Có bao nhiêu họ alias/variant đã xử lý?
+2. Canonical key được định nghĩa thế nào?
+3. Vì sao trước đây chain 2 cấp bị `[]`?
+4. Còn case nào tương tự ngoài CPDetail/CPRequestFilter không?
+5. Incremental watcher có cần sửa không? Sửa thế nào?
+6. Có cần thêm field schema Kuzu (`canonical_path`, `alias_of`) hay không?
+7. Trade-off đã chọn là gì? Vì sao không chọn cách khác?
+
+---
+
+## 11) OUTPUT MONG MUỐN
+
+Sau khi xong, trả về:
+
+1. **Root cause analysis** (theo case family, không chỉ 1 file)
+2. **Design decision** (canonical/alias rules)
+3. **Files changed** + tóm tắt diff
+4. **Commands đã chạy** + kết quả từng acceptance test
+5. **Additional cases discovered** (case bạn tự tìm thêm ngoài prompt)
+6. **Known limitations** (nếu còn edge case chưa cover)
+
+---
+
+## 12) RÀNG BUỘC CODE
+
+- Ưu tiên diff nhỏ, đúng domain
+- Comment ngắn chỉ ở chỗ logic alias/canonical không hiển nhiên
+- Không refactor lan man unrelated
+- Không đổi path_helper / kuzu local storage trừ khi thật sự cần
+- Test bằng rebuild full graph SP2261 trước khi kết luận
+
+```powershell
+python xml_codegraph/build_kuzu_projects.py "\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261\App_Data\Controllers\Grid\CPDetail.xml"
+```
+
+---
+
+## 13) TƯ DUY QUAN TRỌNG
+
+Đừng hỏi "sửa sao cho CPRequestFilter ra CPTran".  
+Hãy hỏi:
+
+> "FastBusiness có nhiều file vật lý cho cùng một controller logic.  
+> Graph hiện tại đang coi mỗi file là một node độc lập và gắn edge theo file parse được.  
+> Làm sao để mọi edge nghiệp vụ quan trọng cùng trỏ về một logical identity,  
+> để truy vết 1 cấp và nhiều cấp đều nhất quán?"
+
+Đó mới là bài toán cần giải.

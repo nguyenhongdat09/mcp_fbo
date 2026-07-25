@@ -90,8 +90,44 @@ def cmd_query(args):
         sys.stderr.write(f"Lỗi: File tham chiếu không tồn tại: {reference_file}\n")
         sys.exit(1)
 
-    # Chạy truy vấn thông qua daemon
-    result = query_via_daemon(args, reference_file)
+    helper = ProjectPathHelper(str(reference_file))
+    graph_dir = helper.get_graph_dir()
+    kuzu_path = helper.get_kuzu_path()
+    sys.stderr.write(f"[CodeGraph CLI] Project root : {helper.get_project_root()}\n")
+    sys.stderr.write(f"[CodeGraph CLI] Kuzu graph dir: {graph_dir}\n")
+    sys.stderr.write(f"[CodeGraph CLI] Kuzu DB file  : {kuzu_path}\n")
+    sys.stderr.flush()
+
+    if args.type == "radar":
+        from xml_codegraph.mcp_tools import mcp_query_radar
+        # Khi dùng radar, target chính là câu lệnh Cypher truyền vào
+        cypher_query = args.target
+        if not cypher_query or not cypher_query.strip():
+            sys.stderr.write("Lỗi: Câu lệnh Cypher không được để trống.\n")
+            sys.exit(1)
+            
+        if getattr(args, "direct", False):
+            # Chạy trực tiếp không qua daemon
+            raw_res = mcp_query_radar(cypher_query, str(reference_file))
+            try:
+                result = json.loads(raw_res)
+            except Exception:
+                result = {"output": raw_res}
+        else:
+            # Query thông qua daemon
+            result = query_via_daemon(args, reference_file)
+    else:
+        if getattr(args, "direct", False):
+            result = xml_graph_query(
+                args.type, args.target, str(reference_file),
+                folder_filter=getattr(args, "folder", None),
+                type_filter=getattr(args, "type_filter", None),
+                limit=getattr(args, "limit", 10),
+                compact=getattr(args, "compact", False),
+                match_type=getattr(args, "match_type", "all")
+            )
+        else:
+            result = query_via_daemon(args, reference_file)
     
     if args.type in {"visualize", "mermaid"} and "mermaid" in result:
         print("\n--- MÃ BIỂU ĐỒ MERMAID (Copy nội dung dưới đây và dán vào file Markdown) ---")
@@ -100,7 +136,11 @@ def cmd_query(args):
         print("```")
         print("------------------------------------------------------------------------\n")
     else:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        # Nếu output là chuỗi JSON thô (như khi lỗi từ mcp_query_radar trả về chuỗi text bình thường)
+        if isinstance(result, dict) or isinstance(result, list):
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            print(result)
 
 def cmd_watch(args):
     ref_file = Path(args.ref).resolve()
@@ -129,7 +169,7 @@ def main():
     parser_build.add_argument("--root", required=True, help="Đường dẫn thư mục Controllers")
     
     parser_query = subparsers.add_parser("query", help="Truy vấn thông tin graph")
-    parser_query.add_argument("-t", "--type", required=True, choices=["search", "context", "dependencies", "dependents", "entity", "impact", "use_case", "visualize", "mermaid", "blocks", "navigate"], help="Loại truy vấn")
+    parser_query.add_argument("-t", "--type", required=True, choices=["search", "context", "dependencies", "dependents", "entity", "impact", "use_case", "visualize", "mermaid", "blocks", "navigate", "radar"], help="Loại truy vấn")
     parser_query.add_argument("target", help="Đối tượng cần truy vấn (keyword, tên file, tên entity...)")
     parser_query.add_argument("--ref", required=True, help="Đường dẫn một file XML bất kỳ trong dự án để xác định ngữ cảnh")
     parser_query.add_argument("--folder", help="Lọc theo tên thư mục (ví dụ: Dir hoặc Dir,Grid)")
@@ -137,6 +177,7 @@ def main():
     parser_query.add_argument("--limit", type=int, default=10, help="Số kết quả tối đa trả về (mặc định: 10, tối đa khuyến nghị: 20)")
     parser_query.add_argument("--compact", action="store_true", help="Ẩn các thông tin chi tiết / XML snippet của fields")
     parser_query.add_argument("--match-type", dest="match_type", default="all", choices=["all", "code", "field", "file"], help="Lọc tìm kiếm theo loại khớp")
+    parser_query.add_argument("--direct", action="store_true", help="Bỏ qua daemon, query trực tiếp (khuyến nghị khi debug đường dẫn Kuzu)")
 
     parser_watch = subparsers.add_parser("watch", help="Khởi chạy Watchdog tự động cập nhật graph khi file thay đổi")
     parser_watch.add_argument("--ref", required=True, help="Đường dẫn một file XML bất kỳ trong dự án để xác định ngữ cảnh")
