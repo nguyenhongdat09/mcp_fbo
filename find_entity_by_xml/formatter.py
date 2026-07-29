@@ -65,6 +65,13 @@ def format_entity_result(result: dict[str, Any]) -> str:
                 source_file = item.get("source_file", "")
                 line = item.get("line", -1)
                 lines.append(f"Source: {source_file}:{line}")
+                
+                declared_file = item.get("declared_in_file", "")
+                declared_line = item.get("declared_line", -1)
+                system_file = item.get("system_file")
+                if system_file and declared_file:
+                    lines.append(f"Declared at: {declared_file}:{declared_line}")
+                
                 watch_files = item.get("watch_files") or []
                 if watch_files:
                     lines.append("Watch files:")

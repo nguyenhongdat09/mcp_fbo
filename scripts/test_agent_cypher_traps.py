@@ -38,8 +38,8 @@ def main() -> int:
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-    from xml_codegraph.storage.kuzu_index import KuzuIndexStore
-    from xml_codegraph.query.engine import xml_graph_query, expand_keyword
+    from xml_fbograph.storage.kuzu_index import KuzuIndexStore
+    from xml_fbograph.query.engine import xml_graph_query, expand_keyword
 
     path = LOCAL_KUZU if LOCAL_KUZU.exists() else (REF.parent.parent.parent / ".fbograph" / "kuzu")
     store = KuzuIndexStore(path, read_only=True)
@@ -510,7 +510,7 @@ def main() -> int:
             "",
             "### D. Không cần SQLite",
             "",
-            "- Mọi logic trên đã có trong `xml_codegraph/query/engine.py` + Kuzu",
+            "- Mọi logic trên đã có trong `xml_fbograph/query/engine.py` + Kuzu",
             "- Chỉ expose lại qua MCP tools",
             "",
             "## Acceptance",

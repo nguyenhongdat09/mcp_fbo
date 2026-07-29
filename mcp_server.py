@@ -10,11 +10,11 @@ except ImportError:
     print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
     sys.exit(1)
 
-mcp = FastMCP("FboCodeGraph")
+mcp = FastMCP("FboFBOGraph")
 
 sys.path.append(str(Path(__file__).parent.resolve()))
-from xml_codegraph.utils.path_helper import ProjectPathHelper
-from xml_codegraph.service.watcher import start_watcher
+from xml_fbograph.utils.path_helper import ProjectPathHelper
+from xml_fbograph.service.watcher import start_watcher
 
 # Caching connections và watcher
 _watched_projects = set()
@@ -36,16 +36,16 @@ def start_watcher_for_project(reference_file: str):
         # Callback cập nhật trực tiếp cache RAM nếu cần
         # Khi dùng Kuzu, watcher sẽ tự ghi thay đổi vào file Kuzu DB qua update_single_node
         def watcher_thread():
-            sys.stderr.write(f"[FboCodeGraph MCP] Starting file watcher thread for {controllers_dir}\n")
+            sys.stderr.write(f"[FboFBOGraph MCP] Starting file watcher thread for {controllers_dir}\n")
             try:
                 start_watcher(controllers_dir, graph_dir)
             except Exception as e:
-                sys.stderr.write(f"[FboCodeGraph MCP] Watcher thread failed: {e}\n")
+                sys.stderr.write(f"[FboFBOGraph MCP] Watcher thread failed: {e}\n")
 
         t = threading.Thread(target=watcher_thread, daemon=True)
         t.start()
     except Exception as e:
-        sys.stderr.write(f"[FboCodeGraph MCP] Error starting watcher: {e}\n")
+        sys.stderr.write(f"[FboFBOGraph MCP] Error starting watcher: {e}\n")
 
 def get_kuzu_store(reference_file: str):
     """Lấy hoặc khởi tạo kết nối Kùzu DB cho dự án."""
@@ -58,7 +58,7 @@ def get_kuzu_store(reference_file: str):
         # Tự động bật watcher cho project
         start_watcher_for_project(reference_file)
         
-        from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+        from xml_fbograph.storage.kuzu_index import KuzuIndexStore
         _kuzu_stores[db_key] = KuzuIndexStore(db_path, read_only=True)
         
     return _kuzu_stores[db_key]
@@ -103,7 +103,7 @@ def query_radar(reference_file: str, cypher_query: str = "", mode: str = "query"
     RETURN b.relative_path, b.needs_xml, b.source_extension
     LIMIT 20
     """
-    from xml_codegraph.mcp_tools import mcp_query_radar
+    from xml_fbograph.mcp_tools import mcp_query_radar
 
     return mcp_query_radar(cypher_query, reference_file, mode)
 
@@ -120,7 +120,7 @@ def search_nodes(query: str, reference_file: str, match_type: str = "all", folde
     limit: Số lượng kết quả tối đa trả về.
     """
     try:
-        from xml_codegraph.query.engine import xml_graph_query
+        from xml_fbograph.query.engine import xml_graph_query
         if not folder_filter:
             folder_filter = "Dir,Grid,Filter,Report,Lookup"
         res = xml_graph_query("search", query, reference_file, match_type=match_type, folder_filter=folder_filter, limit=limit)
@@ -139,7 +139,7 @@ def get_related_nodes(target: str, reference_file: str, mode: str = "navigate", 
     include_shared: Nếu True, sẽ bao gồm các quan hệ SHARED_INCLUDE (include dùng chung, rất nhiều). Mặc định False để tránh ngập token.
     """
     try:
-        from xml_codegraph.query.engine import xml_graph_query
+        from xml_fbograph.query.engine import xml_graph_query
         res = xml_graph_query(mode, target, reference_file)
         
         if not include_shared and isinstance(res, dict):
@@ -160,7 +160,7 @@ def query_node_details(target: str, reference_file: str, view: str = "context") 
     view: 'context' (mặc định: trả về các fields, tables, master detail, companion info và needs_xml), 'blocks' (trả về các khối SQL và JS thô bên trong file).
     """
     try:
-        from xml_codegraph.query.engine import xml_graph_query
+        from xml_fbograph.query.engine import xml_graph_query
         res = xml_graph_query(view, target, reference_file, compact=True)
         
         if isinstance(res, dict):
@@ -176,12 +176,13 @@ def query_node_details(target: str, reference_file: str, view: str = "context") 
         return f"Lỗi query_node_details: {str(e)}"
 
 @mcp.tool()
-def read_local_file(file_path: str, reference_file: str) -> str:
+def read_local_file(file_path: str, reference_file: str, opt: int = 1) -> str:
     """
     Đọc trực tiếp nội dung XML file vật lý từ ổ cứng để đảm bảo dữ liệu mới nhất (Kính lúp tool).
     Hỗ trợ tự động giải mã font Tiếng Việt Windows-1258.
     
     file_path: Có thể là đường dẫn tương đối (ví dụ: 'Dir/CPTran.xml') hoặc tuyệt đối.
+    opt: 1 (mặc định) trả về nội dung XML nguyên thủy. 2 trả về flat text đã expand entity.
     """
     try:
         helper = ProjectPathHelper(reference_file)
@@ -208,11 +209,16 @@ def read_local_file(file_path: str, reference_file: str) -> str:
             return f"Lỗi: File không tồn tại: {file_path}"
             
         # Sử dụng module parser chuẩn để decode windows-1258 chính xác tiếng Việt
-        from xml_codegraph.parsers.xml_parser import read_file_content
-        content = read_file_content(p)
+        from xml_fbograph.parsers.xml_parser import read_file_content
+        from find_entity_by_xml.facade import flat_xml
+        if opt == 2:
+            content = flat_xml(str(p))
+            if not content:
+                content = read_file_content(p)
+        else:
+            content = read_file_content(p)
         return content
     except Exception as e:
         return f"Lỗi đọc file: {str(e)}"
-
 if __name__ == "__main__":
     mcp.run()

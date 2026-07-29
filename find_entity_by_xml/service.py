@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .entity_cache import normalize_entity_name
-from .xml_entity_reader import EntityRecord, parse_xml_entities
+from .facade import resolve_entities
 
 
 _config: dict | None = None
@@ -33,22 +33,38 @@ def normalize_modes(mode: str | list[str] | None) -> set[str]:
     return result or {"content"}
 
 
-def _entity_to_content_dict(record: EntityRecord) -> dict[str, Any]:
+def _entity_to_content_dict(record: dict) -> dict[str, Any]:
+    content = record.get("value") or ""
+    if not content and record.get("sourceFile"):
+        from .entity_resolver import read_file_content
+        content = read_file_content(record.get("sourceFile")) or ""
     return {
-        "name": record.name,
+        "name": record.get("name"),
         "found": True,
-        "content": record.content,
+        "content": content,
     }
 
 
-def _entity_to_path_dict(record: EntityRecord) -> dict[str, Any]:
-    watch_files = [item.file for item in record.declarations]
+def _entity_to_path_dict(record: dict) -> dict[str, Any]:
+    declared_in_file = record.get("declaredInFile") or record.get("sourceFile") or ""
+    declared_line = record.get("line") or -1
+    source_file = record.get("sourceFile") or ""
+    
+    watch_set = set()
+    if declared_in_file:
+        watch_set.add(declared_in_file)
+    if source_file:
+        watch_set.add(source_file)
+        
     return {
-        "name": record.name,
-        "found": record.line > 0 and bool(record.source_file),
-        "source_file": record.source_file,
-        "line": record.line,
-        "watch_files": watch_files,
+        "name": record.get("name"),
+        "found": bool(declared_in_file),
+        "source_file": source_file,
+        "line": declared_line,
+        "declared_in_file": declared_in_file,
+        "declared_line": declared_line,
+        "system_file": record.get("systemUrl") or "",
+        "watch_files": list(watch_set),
     }
 
 
@@ -111,7 +127,12 @@ def get_xml_entities(
     normalized_names = [name for name in normalized_names if name]
 
     try:
-        all_entities = parse_xml_entities(xml_path, force_reload=force_reload)
+        res = resolve_entities(str(xml_path), force_reload=force_reload)
+        all_entities = {}
+        for name, ent in res["system_entities"].items():
+            ent_copy = ent.copy()
+            ent_copy["name"] = name
+            all_entities[name] = ent_copy
     except Exception as exc:
         return {
             "success": False,

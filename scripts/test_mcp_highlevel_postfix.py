@@ -49,7 +49,7 @@ def main() -> int:
 
     if not import_ok:
         # Fallback: test engine path tương đương tools
-        from xml_codegraph.query.engine import xml_graph_query
+        from xml_fbograph.query.engine import xml_graph_query
 
         def search_nodes(query, reference_file, match_type="all", folder_filter=None, limit=20):
             if not folder_filter:
@@ -151,7 +151,7 @@ def main() -> int:
 
     # 5) path normalize via execute_cypher / query_radar
     try:
-        from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+        from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 
         local = ROOT / "_tmp_kuzu"
         store = KuzuIndexStore(local if local.exists() else Path(REF).parents[2] / ".fbograph" / "kuzu", read_only=True)

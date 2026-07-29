@@ -248,6 +248,7 @@
   ('queryDatabase\\queries_config.yaml',
    'E:\\mcp_fbo\\queryDatabase\\queries_config.yaml',
    'DATA'),
+  ('rebuild_all.bat', 'E:\\mcp_fbo\\rebuild_all.bat', 'DATA'),
   ('rpds\\rpds.cp312-win_amd64.pyd',
    'E:\\mcp_fbo\\venv\\Lib\\site-packages\\rpds\\rpds.cp312-win_amd64.pyd',
    'EXTENSION'),

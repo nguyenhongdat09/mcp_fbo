@@ -79,7 +79,7 @@ class ReadOnlyKuzuStore:
 
     def __init__(self, db_path: Path):
         import kuzu
-        from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+        from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 
         self.db_path = Path(db_path)
         self.db = kuzu.Database(str(self.db_path), read_only=True)
@@ -135,8 +135,8 @@ def ensure_local_kuzu() -> Path:
 
 def prepare_engine_cache(store: ReadOnlyKuzuStore, graph) -> None:
     """Inject store+graph vào engine cache để tránh mở DB lần 2."""
-    from xml_codegraph.query import engine
-    from xml_codegraph.utils.path_helper import ProjectPathHelper
+    from xml_fbograph.query import engine
+    from xml_fbograph.utils.path_helper import ProjectPathHelper
 
     helper = ProjectPathHelper(REF)
     graph_dir = str(helper.get_graph_dir())
@@ -256,7 +256,7 @@ def suite_health(store: ReadOnlyKuzuStore) -> tuple[SuiteReport, Any]:
 # B. QUERY ENGINE (reuse cache)
 # ============================================================
 def suite_queries() -> SuiteReport:
-    from xml_codegraph.query.engine import xml_graph_query
+    from xml_fbograph.query.engine import xml_graph_query
 
     report = SuiteReport("B.query_engine")
 
@@ -374,7 +374,7 @@ def suite_queries() -> SuiteReport:
 
 
 def suite_tax() -> SuiteReport:
-    from xml_codegraph.query.engine import xml_graph_query
+    from xml_fbograph.query.engine import xml_graph_query
 
     report = SuiteReport("C.tax_flow")
 

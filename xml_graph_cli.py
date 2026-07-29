@@ -8,10 +8,12 @@ from multiprocessing.connection import Client
 
 sys.path.append(str(Path(__file__).parent.resolve()))
 
-from xml_codegraph.builder.graph_builder import build_and_save_graph
-from xml_codegraph.query.engine import xml_graph_query
-from xml_codegraph.utils.path_helper import ProjectPathHelper
-from xml_codegraph.service.daemon import get_pipe_name
+from xml_fbograph.builder.graph_builder import build_and_save_graph
+from xml_fbograph.build_kuzu_projects import cmd_rebuild_all
+from xml_fbograph.query.engine import xml_graph_query
+from xml_fbograph.utils.path_helper import ProjectPathHelper
+from xml_fbograph.service.daemon import get_pipe_name
+from xml_fbograph.storage.kuzu_index import reset_graph_dir
 
 def cmd_build(args):
     controllers_dir = Path(args.root).resolve()
@@ -24,11 +26,17 @@ def cmd_build(args):
     
     print(f"Bắt đầu xây dựng graph cho: {controllers_dir}")
     print(f"Phạm vi quét: Dir, Grid, Filter, Report, Templates/Upload")
-    print(f"Đầu ra graph sẽ được lưu tại: {graph_dir}")
-    
+    print(f"Đầu ra graph sẽ được lưu tại: {graph_dir}", flush=True)
+    print(flush=True)
+
+    if not reset_graph_dir(graph_dir):
+        print(f"Lỗi: Không thể xóa dữ liệu Kuzu cũ tại {graph_dir}.")
+        print("Vui lòng tắt các trình quản lý file hoặc tiến trình đang mở CSDL và thử lại.")
+        sys.exit(1)
+
     try:
         build_and_save_graph(controllers_dir, graph_dir)
-        print("Xây dựng XML CodeGraph thành công!")
+        print("Xây dựng XML FBOGraph thành công!")
     except Exception as e:
         print(f"Lỗi khi xây dựng graph: {e}")
         sys.exit(1)
@@ -59,10 +67,10 @@ def query_via_daemon(args, reference_file: Path) -> dict:
             return json.loads(res)
         except Exception:
             if attempt == 0:
-                sys.stderr.write("[CodeGraph CLI] Không tìm thấy Daemon đang chạy. Đang tự khởi chạy Daemon...\n")
+                sys.stderr.write("[FBOGraph CLI] Không tìm thấy Daemon đang chạy. Đang tự khởi chạy Daemon...\n")
                 sys.stderr.flush()
                 # Spawning daemon process in background
-                daemon_script = Path(__file__).parent / "xml_codegraph" / "service" / "daemon.py"
+                daemon_script = Path(__file__).parent / "xml_fbograph" / "service" / "daemon.py"
                 subprocess.Popen(
                     [sys.executable, str(daemon_script), "--ref", str(reference_file)],
                     creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
@@ -73,7 +81,7 @@ def query_via_daemon(args, reference_file: Path) -> dict:
                 time.sleep(1.2)  # Đợi daemon khởi động và bind Named Pipe
             else:
                 # Nếu lần 2 vẫn lỗi, fallback query trực tiếp trong process hiện tại
-                sys.stderr.write("[CodeGraph CLI] Fallback: Chạy query trực tiếp...\n")
+                sys.stderr.write("[FBOGraph CLI] Fallback: Chạy query trực tiếp...\n")
                 sys.stderr.flush()
                 return xml_graph_query(
                     args.type, args.target, str(reference_file),
@@ -93,13 +101,13 @@ def cmd_query(args):
     helper = ProjectPathHelper(str(reference_file))
     graph_dir = helper.get_graph_dir()
     kuzu_path = helper.get_kuzu_path()
-    sys.stderr.write(f"[CodeGraph CLI] Project root : {helper.get_project_root()}\n")
-    sys.stderr.write(f"[CodeGraph CLI] Kuzu graph dir: {graph_dir}\n")
-    sys.stderr.write(f"[CodeGraph CLI] Kuzu DB file  : {kuzu_path}\n")
+    sys.stderr.write(f"[FBOGraph CLI] Project root : {helper.get_project_root()}\n")
+    sys.stderr.write(f"[FBOGraph CLI] Kuzu graph dir: {graph_dir}\n")
+    sys.stderr.write(f"[FBOGraph CLI] Kuzu DB file  : {kuzu_path}\n")
     sys.stderr.flush()
 
     if args.type == "radar":
-        from xml_codegraph.mcp_tools import mcp_query_radar
+        from xml_fbograph.mcp_tools import mcp_query_radar
         # Khi dùng radar, target chính là câu lệnh Cypher truyền vào
         cypher_query = args.target
         if not cypher_query or not cypher_query.strip():
@@ -150,7 +158,7 @@ def cmd_watch(args):
     sys.stderr.write(f"Đang khởi chạy Watchdog giám sát: Dir, Grid, Filter, Report, Templates/Upload\n")
     sys.stderr.write(f"Thư mục Controllers: {controllers_dir}\n")
     sys.stderr.flush()
-    from xml_codegraph.service.watcher import start_watcher
+    from xml_fbograph.service.watcher import start_watcher
     start_watcher(controllers_dir, helper.get_graph_dir())
 
 def main():
@@ -162,11 +170,16 @@ def main():
     if hasattr(sys.stdin, "reconfigure"):
         sys.stdin.reconfigure(encoding="utf-8")
         
-    parser = argparse.ArgumentParser(description="XML CodeGraph CLI Tool")
+    parser = argparse.ArgumentParser(description="XML FBOGraph CLI Tool")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    parser_build = subparsers.add_parser("build", help="Xây dựng graph từ đầu")
+    parser_build = subparsers.add_parser("build", help="Xây dựng graph từ đầu cho một Controllers")
     parser_build.add_argument("--root", required=True, help="Đường dẫn thư mục Controllers")
+
+    subparsers.add_parser(
+        "rebuild",
+        help="Rebuild tất cả dự án đã có trong KuzuDB (đọc kuzu_db_base từ config.yaml)",
+    )
     
     parser_query = subparsers.add_parser("query", help="Truy vấn thông tin graph")
     parser_query.add_argument("-t", "--type", required=True, choices=["search", "context", "dependencies", "dependents", "entity", "impact", "use_case", "visualize", "mermaid", "blocks", "navigate", "radar"], help="Loại truy vấn")
@@ -186,6 +199,8 @@ def main():
 
     if args.command == "build":
         cmd_build(args)
+    elif args.command == "rebuild":
+        sys.exit(cmd_rebuild_all(overwrite=True))
     elif args.command == "query":
         cmd_query(args)
     elif args.command == "watch":

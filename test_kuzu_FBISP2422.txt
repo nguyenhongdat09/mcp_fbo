@@ -23,7 +23,7 @@
 
 1) KIEM TRA MAP DUONG DAN (path_helper)
 ---------------------------------------
-  python -c "from xml_codegraph.utils.path_helper import ProjectPathHelper; h=ProjectPathHelper(r'$REF'); print('project :', h.get_project_root()); print('graph   :', h.get_graph_dir()); print('kuzu    :', h.get_kuzu_path()); print('kuzu ok :', h.get_kuzu_path().is_file())"
+  python -c "from xml_fbograph.utils.path_helper import ProjectPathHelper; h=ProjectPathHelper(r'$REF'); print('project :', h.get_project_root()); print('graph   :', h.get_graph_dir()); print('kuzu    :', h.get_kuzu_path()); print('kuzu ok :', h.get_kuzu_path().is_file())"
 
   KY VONG:
   - graph   -> C:\KuzuDB\XFwxNzIuMTY4LjUuMTRcQ3VzdG9tZXJQcm9cRkJJXEFQVF9GQklcRkJJU1AyNDIy\.fbograph
@@ -33,7 +33,7 @@
 
 2) BUILD KUZU (neu chua co / muon build lai)
 --------------------------------------------
-  python xml_codegraph\build_kuzu_projects.py $REF
+  python xml_fbograph\build_kuzu_projects.py $REF
 
   KY VONG:
   - Graph Output Dir: C:\KuzuDB\...\ .fbograph
@@ -175,21 +175,21 @@
     -> Kuzu cap nhat theo (node + edge).
 
   Code lien quan:
-    xml_codegraph/service/watcher.py          (bat su kien file)
-    xml_codegraph/builder/graph_builder.py    (incremental_update_file)
-    xml_codegraph/storage/kuzu_index.py       (update_single_node)
-    xml_codegraph/mcp_tools.py                (start_watcher_for_project)
-    xml_codegraph/service/daemon.py           (watcher + hot-reload RAM)
+    xml_fbograph/service/watcher.py          (bat su kien file)
+    xml_fbograph/builder/graph_builder.py    (incremental_update_file)
+    xml_fbograph/storage/kuzu_index.py       (update_single_node)
+    xml_fbograph/mcp_tools.py                (start_watcher_for_project)
+    xml_fbograph/service/daemon.py           (watcher + hot-reload RAM)
     xml_graph_cli.py watch                    (chay watcher thu cong)
 
 
   A) KHI NAO WATCHER BAT
   ----------------------
-  1. MCP Cursor (user-fastbusiness-mcp / FboCodeGraph):
+  1. MCP Cursor (user-fastbusiness-mcp / FboFBOGraph):
      - Lan dau goi tool can Kuzu (search_nodes / get_related_nodes /
        query_node_details / query_radar / read_local_file qua get_kuzu_store)
      - start_watcher_for_project(ref) chay 1 lan / project (daemon thread)
-     - Log stderr: "[FboCodeGraph MCP] Starting file watcher thread for ..."
+     - Log stderr: "[FboFBOGraph MCP] Starting file watcher thread for ..."
      - Chi song khi process MCP con chay. Tat MCP / restart Cursor -> watcher dung.
 
   2. Daemon CLI (khong --direct):
@@ -278,7 +278,7 @@
   [ ] Test thu cong observer that: python xml_graph_cli.py watch --ref $REF
 
   Chay regression tu dong:
-    python -m xml_codegraph.tests.test_watcher_advanced
+    python -m xml_fbograph.tests.test_watcher_advanced
 
   KY VONG:
     Ran 6 tests
@@ -323,7 +323,7 @@
     - Loi goi cu mcp_query_radar(cypher_query, reference_file) van chay
 
   Regression:
-    python -m xml_codegraph.tests.test_radar_schema
+    python -m xml_fbograph.tests.test_radar_schema
 
   KY VONG:
     Ran 3 tests

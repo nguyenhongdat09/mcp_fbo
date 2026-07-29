@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from xml_codegraph.query.engine import xml_graph_query
+from xml_fbograph.query.engine import xml_graph_query
 
 REF = r"\\172.168.5.14\CustomerPro\FBO\PHELA\SP2261\App_Data\Controllers\Dir\CPTran.xml"
 

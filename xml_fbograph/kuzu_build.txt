@@ -1,0 +1,76 @@
+# =============================================================================
+# FastBusiness XML FBOGraph — Hướng dẫn build / rebuild KuzuDB
+# =============================================================================
+#
+# Cấu hình lưu Kuzu (config.yaml):
+#   fbograph:
+#     kuzu_db_base: "C:/KuzuDB"      # thư mục gốc chứa DB
+#     user_multi_db_yn: 1             # 1 = mỗi dự án 1 folder riêng
+#
+# Mỗi dự án được lưu tại:
+#   C:/KuzuDB/<base64(project_root)>/.fbograph/kuzu
+#
+# project_root = thư mục cha của App_Data (ví dụ \\server\...\FBISP229)
+# Tên folder = base64 url-safe của đường dẫn project root.
+#
+# =============================================================================
+
+
+# --- 1. Build MỘT dự án (dev, có source) ---
+
+cd E:\mcp_fbo
+
+# Cách A: xml_graph_cli (chỉ định thư mục Controllers)
+py xml_graph_cli.py build --root "\\172.168.5.14\CustomerPro\FBI\CNNB_FBI\FBISP229\App_Data\Controllers"
+
+# Cách B: build_kuzu_projects / fbograph (chỉ định file XML hoặc folder dự án)
+py xml_fbograph\build_kuzu_projects.py "\\172.168.5.14\CustomerPro\FBI\CNNB_FBI\FBISP229"
+fbograph "\\172.168.5.14\CustomerPro\FBI\CNNB_FBI\FBISP229\App_Data\Controllers\Dir\GLTran.xml"
+
+
+# --- 2. Rebuild TẤT CẢ dự án đã có trong KuzuDB ---
+
+# Quét C:/KuzuDB (hoặc kuzu_db_base trong config.yaml):
+#   - Mỗi subfolder có .fbograph -> giải base64 ra project root
+#   - Kiểm tra App_Data/Controllers còn truy cập được
+#   - Build lại từng dự án (tối đa 4 dự án song song)
+#
+# Dev:
+cd E:\mcp_fbo
+py xml_graph_cli.py rebuild
+
+# Hoặc:
+py xml_fbograph\build_kuzu_projects.py rebuild
+fbograph rebuild
+
+
+# --- 3. Máy chỉ có dist (không source) — PowerShell: cd và exe TÁCH DÒNG ---
+
+# SAI:  cd E:\fastbusiness_mcp fastbusiness_mcp.exe rebuild
+# ĐÚNG:
+cd E:\fastbusiness_mcp
+.\fastbusiness_mcp.exe rebuild
+
+# Build một vài dự án cụ thể:
+cd E:\fastbusiness_mcp
+.\fastbusiness_mcp.exe build "\\172.168.5.14\CustomerPro\FBO\BANYANFBO\SP228\App_Data\Controllers\Dir\AITran.xml"
+
+
+# --- 4. Build hàng loạt theo danh sách path (như trước) ---
+
+py xml_fbograph\build_kuzu_projects.py ^
+  "\\172.168.5.14\CustomerPro\FBO\BANYANFBO\SP228\App_Data\Controllers\Dir\AITran.xml" ^
+  "\\172.168.5.14\CustomerPro\FBI\FAHASAKHANHHOA\FBISP24\App_Data\Controllers\Dir\SVTran.xml" ^
+  "\\172.168.5.14\CustomerPro\FBO\Gate-FBOR2\Program\App_Data\Controllers\Dir\SVTran.xml"
+
+
+# --- 5. Ghi chú ---
+
+# - Full Build/Rebuild sẽ luôn xóa vật lý thư mục .fbograph (Physical Delete)
+#   để giải phóng triệt để ổ cứng trước khi tạo DB mới.
+# - Lần build đầu ~6000 file có thể mất 15–30 phút (share mạng).
+# - Khi parse sẽ có thanh tiến độ: Parse [====----] 3127/6254 (50%) | files/s | ETA
+# - Dự án share offline sẽ bị SKIP (không dừng cả batch).
+# - Biến môi trường override config:
+#     FBOGRAPH_KUZU_BASE=C:\MyKuzu
+#     FBOGRAPH_MULTI_DB=1

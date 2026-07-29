@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE dir [
+  <!ENTITY hello "Hello World">
+  <!ENTITY nested SYSTEM "nested.ent">
+]>
+<dir>
+  <text>
+  <![CDATA[
+  This is a query:
+  ]]>
+  &hello;
+  &nested;
+  </text>
+  <query>
+    <text>
+    <![CDATA[
+      SELECT * FROM xyz
+    ]]>
+    </text>
+  </query>
+</dir>

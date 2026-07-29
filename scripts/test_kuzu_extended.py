@@ -145,9 +145,9 @@ def suite_cli() -> SuiteReport:
 
 # ---------- E. Engine extras ----------
 def suite_engine_extras() -> SuiteReport:
-    from xml_codegraph.query.engine import xml_graph_query, expand_keyword, _graph_cache, _store_cache
-    from xml_codegraph.storage.kuzu_index import KuzuIndexStore
-    from xml_codegraph.utils.path_helper import ProjectPathHelper
+    from xml_fbograph.query.engine import xml_graph_query, expand_keyword, _graph_cache, _store_cache
+    from xml_fbograph.storage.kuzu_index import KuzuIndexStore
+    from xml_fbograph.utils.path_helper import ProjectPathHelper
 
     report = SuiteReport("E.engine_extras")
 
@@ -232,7 +232,7 @@ def suite_engine_extras() -> SuiteReport:
 
 # ---------- F. Concurrency / lock ----------
 def suite_lock() -> SuiteReport:
-    from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+    from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 
     report = SuiteReport("F.lock_singleton")
     path = LOCAL_KUZU if LOCAL_KUZU.exists() else REMOTE_KUZU
@@ -288,7 +288,7 @@ def suite_mcp() -> SuiteReport:
         )
 
     def cypher_via_store():
-        from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+        from xml_fbograph.storage.kuzu_index import KuzuIndexStore
         path = LOCAL_KUZU if LOCAL_KUZU.exists() else REMOTE_KUZU
         s = KuzuIndexStore(path, read_only=True)
         # path key may be Dir\\CPTran.xml
@@ -304,7 +304,7 @@ def suite_mcp() -> SuiteReport:
 
     def read_file_security_check():
         # Simulate outside path rejection logic from mcp_server
-        from xml_codegraph.utils.path_helper import ProjectPathHelper
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
         helper = ProjectPathHelper(REF)
         root = str(helper.get_project_root().resolve()).lower()
         outside = Path("C:/Windows/System32/drivers/etc/hosts").resolve()
@@ -319,7 +319,7 @@ def suite_mcp() -> SuiteReport:
 
 # ---------- H. Data quality ----------
 def suite_data_quality() -> SuiteReport:
-    from xml_codegraph.storage.kuzu_index import KuzuIndexStore
+    from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 
     report = SuiteReport("H.data_quality")
     path = LOCAL_KUZU if LOCAL_KUZU.exists() else REMOTE_KUZU

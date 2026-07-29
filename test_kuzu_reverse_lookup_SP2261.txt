@@ -103,6 +103,6 @@ python xml_graph_cli.py query -t radar "MATCH (detail:XmlFile)-[r:Rel]->(flt:Xml
     nhung edge RETRIEVE_DATA_SOURCE van co trong graph neu da parse luc build.
   - Luon dung --direct khi test.
   - Neu dependents rong: build lai Kuzu cho du an SP2261:
-      python xml_codegraph\build_kuzu_projects.py $REF
+      python xml_fbograph\build_kuzu_projects.py $REF
 
 ================================================================================

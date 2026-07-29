@@ -110,7 +110,7 @@ needs_xml=['Grid\\CPTax.xml'] source=Grid\CPTax.f
 
 ### D. Không cần SQLite
 
-- Mọi logic trên đã có trong `xml_codegraph/query/engine.py` + Kuzu
+- Mọi logic trên đã có trong `xml_fbograph/query/engine.py` + Kuzu
 - Chỉ expose lại qua MCP tools
 
 ## Acceptance

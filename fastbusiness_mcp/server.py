@@ -1,4 +1,4 @@
-"""FastBusiness MCP Server — SQL/XML tools + CodeGraph."""
+"""FastBusiness MCP Server — SQL/XML tools + FBOGraph."""
 
 import asyncio
 import yaml
@@ -13,7 +13,7 @@ from queryDatabase.formatter import format_query_result
 from find_entity_by_xml import get_xml_entities
 from find_entity_by_xml.formatter import format_entity_result
 
-from xml_codegraph.mcp_tools import (
+from xml_fbograph.mcp_tools import (
     mcp_query_radar,
     mcp_search_nodes,
     mcp_get_related_nodes,
@@ -31,7 +31,7 @@ class FastBusinessMCPServer:
         self.config = self._load_config(config_path)
         self.server = Server("fastbusiness-mcp-server")
         self._register_tools()
-        logger.info("FastBusiness MCP Server (SQL/XML + CodeGraph) initialized")
+        logger.info("FastBusiness MCP Server (SQL/XML + FBOGraph) initialized")
 
     def _load_config(self, config_path: str) -> dict:
         try:
@@ -50,7 +50,7 @@ class FastBusinessMCPServer:
                     description="""Chạy SQL trên SQL Server — tự resolve connection từ file_path (Web.config).
 
 query_type:
-- 0: tên object (dmkh, ff_xxx) — auto table/proc/view
+- 0: tên object (dmkh, ff_xxx) — lấy toàn bộ Script tạo Table/Proc/View. LƯU Ý: Kết quả đã tự động bao gồm toàn bộ Index (CREATE INDEX) và Khóa chính/Ngoại (CONSTRAINT) của Table. AI TUYỆT ĐỐI KHÔNG dùng type=1 để tự viết SQL tra cứu index của bảng nữa.
 - 1: SQL ngắn inline (mặc định)
 - 2: path file .sql — dùng cho script dài (tiết kiệm token)
 
@@ -115,43 +115,14 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                     name="query_radar",
                     description="""Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
 Dành cho việc truy vấn nâng cao hoặc các trường hợp ad-hoc.
-Khuyến khích sử dụng search_nodes, get_related_nodes, query_node_details cho các câu hỏi FBO thông thường.
+Khuyến khích sử dụng search_nodes, get_related_nodes, query_node_details cho các câu hỏi thông thường.
+
+CHÚ Ý: Lược đồ đồ thị (Schema), 10 Template Cypher chuẩn và các nguyên tắc cú pháp nghiêm ngặt đã được cung cấp sẵn trong Rules hệ thống (KùzuDB Cypher Query Principles & FBOGraph Schema Guide). 
+Bạn BẮT BUỘC phải đọc và tuân thủ các quy tắc, chỉ chọn 1 trong 10 Template đó khi gọi cypher_query. Tuyệt đối KHÔNG tự sáng tác câu lệnh Cypher.
 
 mode:
 - query (mặc định): chạy cypher_query.
-- schema: trả schema live XmlFile/Rel, toàn bộ columns, giải thích edge_type, quy tắc và ví dụ Cypher. Agent nên gọi mode=schema khi chưa biết cấu trúc DB.
-
---- SCHEMA & QUY TẮC TRUY VẤN KÙZU ---
-1. Node Table:
-   - XmlFile (khóa chính: node_id)
-   - Các thuộc tính chính:
-     * relative_path: Đường dẫn tương đối dùng dấu BACKSLASH kép (Ví dụ: 'Dir\\\\CPTran.xml' hoặc 'Grid\\\\CPTax.xml').
-     * folder_type: Thư mục (Dir, Grid, Filter, Report, Lookup, Templates).
-     * controller_type: Loại (dir, grid, filter, report, lookup, templates).
-     * fields_names: Mảng tên các field (STRING[]).
-     * js_text / sql_text: Văn bản thô code SQL hoặc JS.
-     * needs_xml / paired_f_path: Đánh dấu file mã hóa .f cần nguồn XML.
-2. Relationship Table:
-   - Chỉ có duy nhất một bảng quan hệ tên là: :Rel (Từ XmlFile sang XmlFile).
-   - KHÔNG sử dụng label quan hệ kiểu Neo4j như MATCH ()-[:GRID_MASTER_DETAIL]->().
-     HÃY dùng MATCH ()-[r:Rel]->() WHERE r.edge_type = 'GRID_MASTER_DETAIL'.
-   - Các giá trị edge_type:
-     * 'GRID_MASTER_DETAIL': Liên kết từ màn hình chính sang Grid chi tiết.
-     * 'LOOKUP_REFERENCE': Liên kết Lookup sang controller tham chiếu.
-     * 'COMPANION_FILE': Liên kết các file cùng tên (ví dụ: Dir\\CPTran -> Grid\\CPTran).
-     * 'SHARED_INCLUDE': Liên kết include dùng chung (chiếm ~99% cạnh - PHẢI filter để tránh trôi token).
-     * 'ENTITY_INCLUDE', 'PARAM_ENTITY_USE', 'RETRIEVE_DATA_SOURCE'.
-3. Tìm kiếm JS handler:
-   - Dùng `js_text CONTAINS 'Tên_Handler'` thay vì fields_names.
-4. Đo độ dài chuỗi (string length):
-   - KHÔNG dùng hàm `length(string)` (gây lỗi Binder exception: Function LENGTH did not receive correct arguments).
-   - HÃY dùng hàm `size(string)` để lấy độ dài chuỗi.
-
-Ví dụ Cypher hợp lệ:
-MATCH (a:XmlFile)-[r:Rel]->(b:XmlFile)
-WHERE a.relative_path = 'Dir\\\\CPTran.xml' AND r.edge_type = 'GRID_MASTER_DETAIL'
-RETURN b.relative_path, b.needs_xml, b.source_extension
-LIMIT 20""",
+- schema: trả schema live XmlFile/Rel (Agent chỉ gọi để check cấu trúc thực tế khi cần).""",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -258,9 +229,14 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần truy vấn không tồn tại, KHÔNG
                 ),
                 Tool(
                     name="read_local_file",
-                    description="""Đọc trực tiếp nội dung XML file vật lý từ ổ cứng để đảm bảo dữ liệu mới nhất (Kính lúp tool).
-Hỗ trợ tự động giải mã font Tiếng Việt Windows-1258.
-CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị.""",
+                    description="""Đọc trực tiếp nội dung file vật lý từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache). Tool này hoạt động như một chiếc 'kính lúp' để xem nội dung code.
+Các tính năng nổi bật:
+1. Hỗ trợ đường dẫn tuyệt đối hoặc tương đối (tự động phân giải từ gốc dự án hoặc thư mục Controllers).
+2. Tùy chọn đọc nội dung gốc (raw) hoặc nội dung phẳng (flat - tự động phân giải tất cả XML entities và includes).
+3. Hỗ trợ tự động giải mã font Tiếng Việt Windows-1258.
+4. Chặn truy cập (sandbox) ra ngoài thư mục dự án để đảm bảo an toàn.
+
+CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị.""",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -355,7 +331,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
 
     async def run(self) -> None:
         """Run the MCP server."""
-        logger.info("Starting FastBusiness MCP Server (SQL/XML + CodeGraph)...")
+        logger.info("Starting FastBusiness MCP Server (SQL/XML + FBOGraph)...")
 
         # Run server
         async with stdio_server() as (read_stream, write_stream):

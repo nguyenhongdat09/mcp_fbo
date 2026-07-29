@@ -33,8 +33,9 @@ if not exist "dist\fastbusiness_mcp\fastbusiness_mcp.exe" (
     exit /b 1
 )
 
-REM Copy config cạnh exe để MCP/Cursor tìm được khi cwd = thư mục deploy
+REM Copy config va file batch canh exe de user tien su dung
 copy /Y config.yaml dist\fastbusiness_mcp\config.yaml >nul
+copy /Y rebuild_all.bat dist\fastbusiness_mcp\rebuild_all.bat >nul
 
 echo.
 echo [OK] Build successful: dist\fastbusiness_mcp\fastbusiness_mcp.exe
