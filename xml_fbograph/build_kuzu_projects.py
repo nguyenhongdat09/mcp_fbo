@@ -15,6 +15,7 @@ from xml_fbograph.utils.path_helper import (
     resolve_kuzu_db_base,
 )
 from xml_fbograph.storage.kuzu_index import _db_instances
+from xml_fbograph.save_disk import touch_kuzu_access, maybe_cleanup_stale_kuzu
 
 def build_kuzu_for_project(path_str: str, overwrite: bool = True, progress=None) -> bool:
     """
@@ -51,6 +52,11 @@ def build_kuzu_for_project(path_str: str, overwrite: bool = True, progress=None)
                 
         print(f"Đang xây dựng graph Kuzu cho dự án: {project_root}")
         build_and_save_graph(controllers_dir, graph_dir, progress=progress, project_label=str(project_root))
+        
+        # Touch access log & try cleanup
+        touch_kuzu_access(str(project_root))
+        maybe_cleanup_stale_kuzu()
+        
         print(f"Xây dựng thành công Kuzu DB tại: {kuzu_db_path}")
         return True
     except Exception as e:

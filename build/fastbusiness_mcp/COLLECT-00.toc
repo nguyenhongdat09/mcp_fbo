@@ -270,6 +270,9 @@
   ('win32\\win32job.pyd',
    'E:\\mcp_fbo\\venv\\Lib\\site-packages\\win32\\win32job.pyd',
    'EXTENSION'),
+  ('xml_fbograph\\kuzu_build.txt',
+   'E:\\mcp_fbo\\xml_fbograph\\kuzu_build.txt',
+   'DATA'),
   ('yaml\\_yaml.cp312-win_amd64.pyd',
    'E:\\mcp_fbo\\venv\\Lib\\site-packages\\yaml\\_yaml.cp312-win_amd64.pyd',
    'EXTENSION')],)

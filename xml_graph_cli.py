@@ -11,20 +11,34 @@ sys.path.append(str(Path(__file__).parent.resolve()))
 from xml_fbograph.builder.graph_builder import build_and_save_graph
 from xml_fbograph.build_kuzu_projects import cmd_rebuild_all
 from xml_fbograph.query.engine import xml_graph_query
-from xml_fbograph.utils.path_helper import ProjectPathHelper
+from xml_fbograph.utils.path_helper import ProjectPathHelper, resolve_controllers_dir
 from xml_fbograph.service.daemon import get_pipe_name
 from xml_fbograph.storage.kuzu_index import reset_graph_dir
+from xml_fbograph.save_disk import touch_kuzu_access, maybe_cleanup_stale_kuzu, cleanup_stale_kuzu_projects
 
 def cmd_build(args):
-    controllers_dir = Path(args.root).resolve()
-    if not controllers_dir.is_dir():
-        print(f"Lỗi: Thư mục Controllers không tồn tại: {controllers_dir}")
+    root_arg = str(args.root).rstrip("\\/")
+    controllers_dir = resolve_controllers_dir(root_arg)
+    try:
+        ok = controllers_dir.is_dir() and controllers_dir.name.lower() == "controllers"
+    except Exception:
+        ok = False
+    if not ok:
+        print(f"Lỗi: Không tìm thấy App_Data\\Controllers dưới: {root_arg}")
+        print(f"  Đã thử: {controllers_dir}")
         sys.exit(1)
-        
-    helper = ProjectPathHelper(controllers_dir / "dummy.xml")
+
+    helper = ProjectPathHelper(str(controllers_dir / "dummy.xml"))
     graph_dir = helper.get_graph_dir()
-    
+
     print(f"Bắt đầu xây dựng graph cho: {controllers_dir}")
+    try:
+        root_norm = str(Path(root_arg)).rstrip("\\/").lower().replace("/", "\\")
+        ctrl_norm = str(controllers_dir).rstrip("\\/").lower().replace("/", "\\")
+        if root_norm != ctrl_norm:
+            print(f"(tự nối App_Data\\Controllers từ: {root_arg})")
+    except Exception:
+        print(f"(tự nối App_Data\\Controllers từ: {root_arg})")
     print(f"Phạm vi quét: Dir, Grid, Filter, Report, Templates/Upload")
     print(f"Đầu ra graph sẽ được lưu tại: {graph_dir}", flush=True)
     print(flush=True)
@@ -36,6 +50,8 @@ def cmd_build(args):
 
     try:
         build_and_save_graph(controllers_dir, graph_dir)
+        touch_kuzu_access(str(helper.get_project_root()))
+        maybe_cleanup_stale_kuzu()
         print("Xây dựng XML FBOGraph thành công!")
     except Exception as e:
         print(f"Lỗi khi xây dựng graph: {e}")
@@ -161,6 +177,15 @@ def cmd_watch(args):
     from xml_fbograph.service.watcher import start_watcher
     start_watcher(controllers_dir, helper.get_graph_dir())
 
+def cmd_cleanup_disk(args):
+    print("=== Dọn dẹp KuzuDB cũ (Cleanup Disk) ===")
+    from xml_fbograph.save_disk.cleanup import cleanup_stale_kuzu_projects
+    from xml_fbograph.save_disk.retention_config import get_access_log_retention_days
+    retention_days = get_access_log_retention_days()
+    print(f"Số ngày giữ lại (retention days): {retention_days}")
+    cleanup_stale_kuzu_projects(retention_days)
+    print("Hoàn tất dọn dẹp!")
+
 def main():
     # PowerShell cũ hay lỗi font tiếng Việt — ép UTF-8 cho stdin/stdout
     if hasattr(sys.stdout, "reconfigure"):
@@ -173,8 +198,12 @@ def main():
     parser = argparse.ArgumentParser(description="XML FBOGraph CLI Tool")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    parser_build = subparsers.add_parser("build", help="Xây dựng graph từ đầu cho một Controllers")
-    parser_build.add_argument("--root", required=True, help="Đường dẫn thư mục Controllers")
+    parser_build = subparsers.add_parser("build", help="Xây dựng graph từ đầu cho một dự án")
+    parser_build.add_argument(
+        "--root",
+        required=True,
+        help="Project root (tự nối App_Data\\Controllers) hoặc đường dẫn Controllers",
+    )
 
     subparsers.add_parser(
         "rebuild",
@@ -192,8 +221,10 @@ def main():
     parser_query.add_argument("--match-type", dest="match_type", default="all", choices=["all", "code", "field", "file"], help="Lọc tìm kiếm theo loại khớp")
     parser_query.add_argument("--direct", action="store_true", help="Bỏ qua daemon, query trực tiếp (khuyến nghị khi debug đường dẫn Kuzu)")
 
-    parser_watch = subparsers.add_parser("watch", help="Khởi chạy Watchdog tự động cập nhật graph khi file thay đổi")
+    parser_watch = subparsers.add_parser("watch", help="Khởi chạy Watchdog tự tự động cập nhật graph khi file thay đổi")
     parser_watch.add_argument("--ref", required=True, help="Đường dẫn một file XML bất kỳ trong dự án để xác định ngữ cảnh")
+
+    subparsers.add_parser("cleanup-disk", help="Dọn dẹp các Kuzu DB cũ không được truy cập quá thời gian quy định")
 
     args = parser.parse_args()
 
@@ -205,6 +236,8 @@ def main():
         cmd_query(args)
     elif args.command == "watch":
         cmd_watch(args)
+    elif args.command == "cleanup-disk":
+        cmd_cleanup_disk(args)
 
 if __name__ == "__main__":
     main()

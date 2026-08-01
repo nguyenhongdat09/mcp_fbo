@@ -18,5 +18,4 @@ extract_options:
 fbograph:
   kuzu_db_base: "C:/KuzuDB"
   user_multi_db_yn: 1
-
-
+  access_log_retention_days: 30

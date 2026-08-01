@@ -8,8 +8,13 @@ from typing import Dict, List, Any, Optional, Tuple
 
 from xml_fbograph.core.schema import XmlGraph, GraphNode
 from xml_fbograph.utils.path_helper import ProjectPathHelper
+from xml_fbograph.utils.kuzu_build_spawn import (
+    ensure_mcp_kuzu_ready,
+    clear_building_marker,
+)
 from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 from xml_fbograph.rules.edges_rules import EdgeType
+from xml_fbograph.save_disk import touch_kuzu_access, maybe_cleanup_stale_kuzu
 
 # In-memory cache: tránh load Kuzu mỗi query
 # Cache được invalidate khi graph_dir thay đổi.
@@ -207,38 +212,23 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
       folder_filter: str hoặc list, lọc theo thư mục (ví dụ: 'Dir' hoặc ['Dir', 'Grid'])
       type_filter: str hoặc list, lọc theo loại controller (ví dụ: 'dir' hoặc 'grid')
     """
-    # 1. Xác định dự án và tự động build graph nếu chưa có
+    # 1. Gate CustomerPro + App_Data/Controllers; thieu Kuzu -> spawn detached (khong sync-build)
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()
     controllers_dir = helper.get_controllers_path()
+
+    db_path = ensure_mcp_kuzu_ready(reference_file)
+    clear_building_marker(graph_dir)
     
-    db_path = graph_dir / "kuzu"
+    # Touch access log & try cleanup
+    touch_kuzu_access(str(helper.get_project_root()))
+    maybe_cleanup_stale_kuzu()
 
-    def _kuzu_ready(path: Path) -> bool:
-        if not path.exists():
-            return False
-        if path.is_file():
-            return path.stat().st_size > 0
-        try:
-            return any(path.iterdir())
-        except Exception:
-            return False
-
-    if not _kuzu_ready(db_path):
-        _safe_log(f"[FBOGraph] Graph missing at {graph_dir}. Auto-building...")
-        from xml_fbograph.builder.graph_builder import build_and_save_graph
-        # Drop stale read-only handles before rebuild
-        _store_cache.pop(str(graph_dir), None)
-        _graph_cache.pop(str(graph_dir), None)
-        build_and_save_graph(controllers_dir, graph_dir)
-        _safe_log("[FBOGraph] Auto-build finished.")
-        _graph_cache.pop(str(graph_dir), None)
-        _last_sync_times[str(graph_dir)] = time.time()
-    elif os.environ.get("FBOGRAPH_AUTO_SYNC", "").strip() == "1":
-        # Chỉ sync gia tăng khi bật FBOGRAPH_AUTO_SYNC=1 (tránh lock khi chỉ query read-only)
+    if os.environ.get("FBOGRAPH_AUTO_SYNC", "").strip() == "1":
+        # Chi sync gia tang khi bat FBOGRAPH_AUTO_SYNC=1 (tranh lock khi chi query read-only)
         graph_dir_key = str(graph_dir)
         now = time.time()
-        if now - _last_sync_times.get(graph_dir_key, 0.0) > 300.0:  # 5 phút
+        if now - _last_sync_times.get(graph_dir_key, 0.0) > 300.0:  # 5 phut
             _safe_log(f"[FBOGraph] Auto-syncing graph (incremental) for {graph_dir_key}...")
             from xml_fbograph.builder.graph_builder import build_and_save_graph
             _store_cache.pop(graph_dir_key, None)

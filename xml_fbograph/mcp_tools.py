@@ -2,6 +2,7 @@ import json
 import threading
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Setup paths to ensure clean execution and imports
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
@@ -18,9 +19,16 @@ if hasattr(sys.stderr, "reconfigure"):
         pass
 
 from xml_fbograph.utils.path_helper import ProjectPathHelper
+from xml_fbograph.utils.kuzu_build_spawn import (
+    NotFastBusinessProjectError,
+    KuzuBuildingError,
+    ensure_mcp_kuzu_ready,
+    kuzu_db_ready,
+)
 from xml_fbograph.service.watcher import start_watcher
 from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 from xml_fbograph.query.engine import xml_graph_query, _safe_log
+from xml_fbograph.save_disk import touch_kuzu_access, maybe_cleanup_stale_kuzu
 
 # Cache connections and watcher
 _watched_projects = set()
@@ -28,45 +36,24 @@ _kuzu_stores = {}
 
 
 def _kuzu_db_ready(db_path: Path) -> bool:
-    if not db_path.exists():
-        return False
-    if db_path.is_file():
-        return db_path.stat().st_size > 0
-    try:
-        return any(db_path.iterdir())
-    except Exception:
-        return False
+    return kuzu_db_ready(db_path)
 
 
 def _ensure_graph_built(reference_file: str) -> Path:
-    """Build graph neu kuzu chua co / rong. Tra ve db_path."""
-    helper = ProjectPathHelper(reference_file)
-    graph_dir = helper.get_graph_dir()
-    db_path = graph_dir / "kuzu"
-    if _kuzu_db_ready(db_path):
-        return db_path
-
-    _safe_log(f"[FboFBOGraph MCP] Building graph for {helper.get_project_root()} ...")
-    from xml_fbograph.builder.graph_builder import build_and_save_graph
-
-    # Invalidate caches before rebuild
-    db_key = str(db_path)
-    _kuzu_stores.pop(db_key, None)
-    from xml_fbograph.query import engine as qe
-
-    qe._store_cache.pop(str(graph_dir), None)
-    qe._graph_cache.pop(str(graph_dir), None)
-
-    build_and_save_graph(helper.get_controllers_path(), graph_dir)
-    _safe_log("[FboFBOGraph MCP] Graph build finished.")
-    return db_path
+    """
+    Dam bao Kuzu san sang cho MCP.
+    Khong sync-build in-process: Other -> loi; thieu Kuzu -> spawn detached.
+    """
+    return ensure_mcp_kuzu_ready(reference_file)
 
 
 def start_watcher_for_project(reference_file: str):
     """Khoi chay file watcher trong background thread neu project nay chua duoc giam sat."""
     try:
         helper = ProjectPathHelper(reference_file)
-        project_root = str(helper.get_project_root().resolve())
+        if not helper.is_fastbusiness_customerpro_project():
+            return
+        project_root = str(helper.get_project_root())
         controllers_dir = helper.get_controllers_path()
         graph_dir = helper.get_graph_dir()
 
@@ -93,34 +80,36 @@ def start_watcher_for_project(reference_file: str):
 
 
 def get_kuzu_store(reference_file: str):
-    """Lay hoac khoi tao ket noi Kuzu DB cho du an (build-if-missing truoc read_only)."""
+    """Lay ket noi Kuzu read-only (gate CustomerPro; thieu DB -> spawn detached, khong sync-build)."""
+    db_path = ensure_mcp_kuzu_ready(reference_file)
     helper = ProjectPathHelper(reference_file)
-    graph_dir = helper.get_graph_dir().resolve()
-    db_path = (graph_dir / "kuzu").resolve()
+    graph_dir = helper.get_graph_dir()
+    try:
+        graph_dir = graph_dir.resolve()
+        db_path = db_path.resolve()
+    except Exception:
+        pass
     db_key = str(db_path)
-    graph_key = str(graph_dir)
 
     from xml_fbograph.query import engine as qe
 
-    # Tự động đồng bộ gia tăng nếu đã quá 5 phút
-    import time
-    now = time.time()
-    if now - qe._last_sync_times.get(graph_key, 0.0) > 300.0:
-        # Gọi xml_graph_query với target rỗng / dummy để kích hoạt kiểm tra/đồng bộ tự động
-        try:
-            qe.xml_graph_query("search", "", reference_file, limit=1)
-        except Exception:
-            pass
-
-    if not _kuzu_db_ready(db_path):
-        _ensure_graph_built(reference_file)
     start_watcher_for_project(reference_file)
 
-    # Luon kiem tra mtime cua KuzuDB va reopen neu can thiet
     store = qe.ensure_fresh_readonly_store(db_path, graph_dir)
     store._bind_live_connection()
     _kuzu_stores[db_key] = store
+    
+    # Touch access log & try cleanup
+    touch_kuzu_access(str(helper.get_project_root()))
+    maybe_cleanup_stale_kuzu()
+    
     return store
+
+
+def _mcp_gate_error_json(exc: Exception) -> Optional[str]:
+    if isinstance(exc, (NotFastBusinessProjectError, KuzuBuildingError)):
+        return json.dumps(exc.payload, indent=2, ensure_ascii=False)
+    return None
 
 
 
@@ -249,6 +238,9 @@ def mcp_query_radar(
             return json.dumps({"warning": warning, "results": results}, indent=2, ensure_ascii=False)
         return json.dumps(results, indent=2, ensure_ascii=False)
     except Exception as e:
+        gate = _mcp_gate_error_json(e)
+        if gate:
+            return gate
         return f"Loi thuc thi Cypher: {str(e)}"
 
 
@@ -273,6 +265,9 @@ def mcp_search_nodes(
         )
         return json.dumps(res, indent=2, ensure_ascii=False)
     except Exception as e:
+        gate = _mcp_gate_error_json(e)
+        if gate:
+            return gate
         return f"Loi search_nodes: {str(e)}"
 
 
@@ -295,6 +290,9 @@ def mcp_get_related_nodes(
                     ]
         return json.dumps(res, indent=2, ensure_ascii=False)
     except Exception as e:
+        gate = _mcp_gate_error_json(e)
+        if gate:
+            return gate
         return f"Loi get_related_nodes: {str(e)}"
 
 
@@ -311,6 +309,9 @@ def mcp_query_node_details(target: str, reference_file: str, view: str = "contex
                 res["source_on_disk"] = ""
         return json.dumps(res, indent=2, ensure_ascii=False)
     except Exception as e:
+        gate = _mcp_gate_error_json(e)
+        if gate:
+            return gate
         return f"Loi query_node_details: {str(e)}"
 
 

@@ -13,6 +13,7 @@ from xml_fbograph.parsers.sql_parser import SqlBlockParser
 from xml_fbograph.parsers.js_parser import JsBlockParser
 from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 from xml_fbograph.utils.path_helper import get_graph_scan_roots, is_graph_scope_relative_path, get_extract_shared_include_yn
+from xml_fbograph.save_disk import touch_kuzu_access
 
 def generate_node_id(relative_path: str) -> str:
     """Tạo ID duy nhất dựa trên đường dẫn tương đối (đã chuẩn hóa)."""
@@ -620,7 +621,11 @@ def build_and_save_graph(controllers_dir: Path, output_dir: Path, progress=None,
     kuzu_store = KuzuIndexStore(db_path)
     kuzu_store.sync_graph(graph)
     print(f"[TIMING] kuzu write: {time.perf_counter()-t_kuzu:.2f}s")
-
+    
+    # Touch access log for the project
+    if project_label:
+        touch_kuzu_access(project_label)
+    
     return graph
 
 

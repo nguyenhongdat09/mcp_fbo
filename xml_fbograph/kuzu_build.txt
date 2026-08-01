@@ -74,3 +74,11 @@ py xml_fbograph\build_kuzu_projects.py ^
 # - Biến môi trường override config:
 #     FBOGRAPH_KUZU_BASE=C:\MyKuzu
 #     FBOGRAPH_MULTI_DB=1
+#     FBOGRAPH_ACCESS_LOG_RETENTION_DAYS=30
+
+# --- 6. Dọn dẹp Kuzu DB (Cleanup Disk) ---
+# Tự động lưu vết thời gian truy cập mỗi khi query/build tại C:/KuzuDB/justify_project_log.json
+# Số ngày giữ lại: cấu hình qua config.yaml `fbograph.access_log_retention_days` (mặc định 30).
+# Để xóa thủ công các DB không còn dùng đến:
+#   fbograph cleanup-disk
+#   (Hoặc: py xml_graph_cli.py cleanup-disk)

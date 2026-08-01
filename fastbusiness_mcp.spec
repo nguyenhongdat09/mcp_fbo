@@ -9,6 +9,7 @@ a = Analysis(
         ('rebuild_all.bat', '.'),
         ('queryDatabase/queries_config.yaml', 'queryDatabase'),
         ('queryDatabase/queries', 'queryDatabase/queries'),
+        ('xml_fbograph/kuzu_build.txt', 'xml_fbograph'),
     ],
     hiddenimports=[
         'mcp', 'mcp.server', 'mcp.server.stdio', 'mcp.types',
