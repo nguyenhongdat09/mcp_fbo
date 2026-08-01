@@ -237,8 +237,9 @@ def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str,
         return {
             "status": "building",
             "message": (
-                "Kuzu chua co. Build detached dang chay. "
-                "Hay goi lai tool sau khi build xong (15-30 phut)."
+                "Kuzu chua co hoac dang duoc build. "
+                "Neu process PowerShell build Kuzu cua ban CHUA chay, BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd NGAY BÂY GIỜ. "
+                "Nếu đang chạy rồi thì hãy đợi (15-30 phut) và gọi lại sau."
             ),
             "group": group,
             "project_root": project_root,
@@ -251,41 +252,22 @@ def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str,
     argv, work_dir = build_detached_command(reference_file)
     build_cmd = " ".join(f'"{a}"' if " " in a else a for a in argv)
 
-    creationflags = 0
-    if os.name == "nt":
-        # Mo console moi — user thay tien do; khong block MCP stdio
-        creationflags = (
-            subprocess.CREATE_NEW_CONSOLE  # type: ignore[attr-defined]
-            | subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-        )
-
-    popen_kwargs: Dict[str, Any] = {
-        "cwd": str(work_dir),
-        "stdin": subprocess.DEVNULL,
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
-        "close_fds": True,
-    }
-    if creationflags:
-        popen_kwargs["creationflags"] = creationflags
-
-    proc = subprocess.Popen(argv, **popen_kwargs)
-    _write_building_marker(graph_dir, proc.pid, build_cmd)
+    _write_building_marker(graph_dir, 0, build_cmd)
     sys.stderr.write(
-        f"[FboFBOGraph MCP] spawn build pid={proc.pid} cmd={build_cmd}\n"
+        f"[FboFBOGraph MCP] delegated build cmd to Agent: {build_cmd}\n"
     )
     return {
         "status": "building",
         "message": (
-            "Kuzu chua co. Da mo CMD build detached. "
-            "Hay goi lai tool sau khi build xong (15-30 phut)."
+            "Kuzu chua co. BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd BẰNG POWERSHELL NGAY BÂY GIỜ. "
+            "Khong duoc bo qua buoc nay!"
         ),
         "group": group,
         "project_root": project_root,
         "graph_dir": str(graph_dir),
         "build_cmd": build_cmd,
-        "pid": proc.pid,
-        "spawned": True,
+        "pid": 0,
+        "spawned": False,
     }
 
 
