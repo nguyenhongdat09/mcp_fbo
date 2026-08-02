@@ -14,12 +14,26 @@ from typing import Any, Dict, Optional, Tuple
 from xml_fbograph.utils.path_helper import (
     ProjectPathHelper,
     get_customerpro_project_path,
-    get_fbo_group_name,
-    has_app_data_controllers,
 )
 
 BUILDING_MARKER_NAME = ".building"
 BUILDING_MARKER_MAX_AGE_SEC = 45 * 60  # 45 phut
+
+
+class InvalidReferenceFileError(Exception):
+    """Loi khi reference_file truyen vao la path tuong doi hoac khong hop le."""
+
+    def __init__(self, reference_file: str, reason: str, message: str, known_projects: Optional[list[str]] = None):
+        self.payload = {
+            "error": "invalid_reference_file",
+            "reason": reason,
+            "message": message,
+            "reference_file": reference_file,
+            "hint": "Luôn truyền absolute path, ví dụ: E:\\FBO\\SP2263\\App_Data\\Controllers\\Filter\\SVInvoiceFilter.xml"
+        }
+        if known_projects is not None:
+            self.payload["known_projects"] = known_projects
+        super().__init__(self.payload["message"])
 
 
 class NotFastBusinessProjectError(Exception):
@@ -28,7 +42,7 @@ class NotFastBusinessProjectError(Exception):
     def __init__(
         self,
         reference_file: str,
-        group: str = "Other",
+        group: str = "Other",  # giữ param tương thích caller cũ; không đưa vào JSON
         reason: str = "other",
     ):
         if reason == "missing_controllers":
@@ -51,7 +65,6 @@ class NotFastBusinessProjectError(Exception):
             "error": "not_fastbusiness_project",
             "message": message,
             "reference_file": reference_file,
-            "group": group or "Other",
             "reason": reason,
         }
         project_path = get_customerpro_project_path(reference_file)
@@ -228,7 +241,6 @@ def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str,
     Spawn CMD/process detached. Tra ve payload status=building.
     Neu marker dang song -> khong spawn lai.
     """
-    group = get_fbo_group_name(reference_file)
     helper = ProjectPathHelper(reference_file)
     project_root = str(helper.get_project_root())
 
@@ -241,7 +253,6 @@ def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str,
                 "Neu process PowerShell build Kuzu cua ban CHUA chay, BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd NGAY BÂY GIỜ. "
                 "Nếu đang chạy rồi thì hãy đợi (15-30 phut) và gọi lại sau."
             ),
-            "group": group,
             "project_root": project_root,
             "graph_dir": str(graph_dir),
             "build_cmd": existing.get("build_cmd", ""),
@@ -262,7 +273,6 @@ def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str,
             "Kuzu chua co. BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd BẰNG POWERSHELL NGAY BÂY GIỜ. "
             "Khong duoc bo qua buoc nay!"
         ),
-        "group": group,
         "project_root": project_root,
         "graph_dir": str(graph_dir),
         "build_cmd": build_cmd,
@@ -282,8 +292,61 @@ def kuzu_db_ready(db_path: Path) -> bool:
         return False
 
 
-def _raise_if_not_fbo_project(reference_file: str) -> None:
-    pass
+def _validate_and_resolve_reference_file(reference_file: str) -> str:
+    if not reference_file:
+        raise InvalidReferenceFileError(
+            reference_file=str(reference_file),
+            reason="missing",
+            message="reference_file bi trong. Ban phai truyen duong dan absolute."
+        )
+
+    ref_str = str(reference_file).strip()
+    
+    is_absolute = False
+    if len(ref_str) >= 2 and ref_str[0].isalpha() and ref_str[1] == ':':
+        is_absolute = True
+    elif ref_str.startswith("\\\\") or ref_str.startswith("//"):
+        is_absolute = True
+    elif ref_str.startswith("/") and not ref_str.startswith("//"):
+        is_absolute = False
+        
+    if not is_absolute:
+        from xml_fbograph.utils.path_helper import discover_registered_projects
+        known = discover_registered_projects()
+        
+        rel = ref_str.replace("\\", "/")
+        if rel.lower().startswith("app_data/controllers/"):
+            rel = rel[len("app_data/controllers/"):]
+        elif rel.lower().startswith("controllers/"):
+            rel = rel[len("controllers/"):]
+            
+        matches = []
+        known_str_list = []
+        for proj in known:
+            known_str_list.append(str(proj))
+            candidate = proj / "App_Data" / "Controllers" / rel
+            if candidate.is_file():
+                matches.append(candidate)
+                
+        if len(matches) == 1:
+            return str(matches[0])
+            
+        raise InvalidReferenceFileError(
+            reference_file=ref_str,
+            reason="ambiguous_or_unresolved_relative",
+            message="reference_file la duong dan tuong doi. Agent CẤM dùng path tương đối.",
+            known_projects=known_str_list
+        )
+        
+    from xml_fbograph.utils.path_helper import has_app_data_controllers
+    if not has_app_data_controllers(ref_str):
+        raise InvalidReferenceFileError(
+            reference_file=ref_str,
+            reason="missing_controllers",
+            message="reference_file absolute nhung khong tim thay thu muc App_Data\\Controllers."
+        )
+        
+    return ref_str
 
 
 def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
@@ -293,7 +356,7 @@ def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
     - Thieu Kuzu -> spawn detached + KuzuBuildingError (khong sync-build)
     - Ready -> tra ve db_path
     """
-    _raise_if_not_fbo_project(reference_file)
+    reference_file = _validate_and_resolve_reference_file(reference_file)
 
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()

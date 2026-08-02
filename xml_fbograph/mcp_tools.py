@@ -20,6 +20,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 from xml_fbograph.utils.path_helper import ProjectPathHelper
 from xml_fbograph.utils.kuzu_build_spawn import (
+    InvalidReferenceFileError,
     NotFastBusinessProjectError,
     KuzuBuildingError,
     ensure_mcp_kuzu_ready,
@@ -107,7 +108,7 @@ def get_kuzu_store(reference_file: str):
 
 
 def _mcp_gate_error_json(exc: Exception) -> Optional[str]:
-    if isinstance(exc, (NotFastBusinessProjectError, KuzuBuildingError)):
+    if isinstance(exc, (InvalidReferenceFileError, NotFastBusinessProjectError, KuzuBuildingError)):
         return json.dumps(exc.payload, indent=2, ensure_ascii=False)
     return None
 

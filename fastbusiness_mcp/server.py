@@ -139,7 +139,7 @@ mode:
                             },
                             "reference_file": {
                                 "type": "string",
-                                "description": "Any XML file path in the project to resolve paths",
+                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
                             },
                         },
                         "required": ["reference_file"],
@@ -160,7 +160,7 @@ Van chap nhan co dau (tu dong fold), nhung agent nen dung khong dau.""",
                             },
                             "reference_file": {
                                 "type": "string",
-                                "description": "Any XML file path in the project to resolve paths",
+                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
                             },
                             "match_type": {
                                 "type": "string",
@@ -190,7 +190,7 @@ Van chap nhan co dau (tu dong fold), nhung agent nen dung khong dau.""",
                             },
                             "reference_file": {
                                 "type": "string",
-                                "description": "Any XML file path in the project to resolve paths",
+                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
                             },
                             "mode": {
                                 "type": "string",
@@ -217,7 +217,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần truy vấn không tồn tại, KHÔNG
                             },
                             "reference_file": {
                                 "type": "string",
-                                "description": "Any XML file path in the project to resolve paths",
+                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
                             },
                             "view": {
                                 "type": "string",
@@ -246,7 +246,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢ
                             },
                             "reference_file": {
                                 "type": "string",
-                                "description": "Any XML file path in the project to resolve paths",
+                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
                             },
                             "read_option": {
                                 "type": "integer",

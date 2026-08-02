@@ -29,6 +29,13 @@ alwaysApply: true
   - `giay bao no` → CPTran | `phieu chi` → CDTran
   - `dien giai` → dien_giai | `ten hang hoa` → ten_vt | `gia ban` → gia2
 
+## CodeGraph reference_file (BẮT BUỘC)
+- Mọi tool: search_nodes, get_related_nodes, query_node_details, query_radar, read_local_file
+  phải truyền reference_file = ABSOLUTE path XML trong project đang làm
+  (vd E:\FBO\SP2263\App_Data\Controllers\Filter\SVInvoiceFilter.xml).
+- CẤM relative / basename. Nếu user đang mở file trong IDE → lấy full path file đó.
+- Nếu tool trả invalid_reference_file → sửa path rồi gọi lại, KHÔNG chạy build_cmd cho path lạ.
+
 ## Critical Rules
 - Partition: `@@prime$partition$current`, NEVER hardcode `d91$202501`
 - Partitioned tables: giữ `$` trong SQL (`exec fsd_addfields 'd91$', ...`)

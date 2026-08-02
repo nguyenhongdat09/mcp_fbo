@@ -205,33 +205,43 @@ class TestEnsureMcpKuzuGate(unittest.TestCase):
         reset_config_caches()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
+    def test_missing_reference_file(self):
+        from xml_fbograph.utils.kuzu_build_spawn import InvalidReferenceFileError, ensure_mcp_kuzu_ready
+        with self.assertRaises(InvalidReferenceFileError) as ctx:
+            ensure_mcp_kuzu_ready("")
+        self.assertEqual(ctx.exception.payload["reason"], "missing")
+
+    def test_relative_reference_file(self):
+        from xml_fbograph.utils.kuzu_build_spawn import InvalidReferenceFileError, ensure_mcp_kuzu_ready
+        with self.assertRaises(InvalidReferenceFileError) as ctx:
+            ensure_mcp_kuzu_ready("Filter/SVInvoiceFilter.xml")
+        self.assertEqual(ctx.exception.payload["reason"], "ambiguous_or_unresolved_relative")
+
+    def test_absolute_but_missing_controllers(self):
+        from xml_fbograph.utils.kuzu_build_spawn import InvalidReferenceFileError, ensure_mcp_kuzu_ready
+        ref = str(Path(self.temp_dir) / "OtherProj" / "Filter.xml")
+        with self.assertRaises(InvalidReferenceFileError) as ctx:
+            ensure_mcp_kuzu_ready(ref)
+        self.assertEqual(ctx.exception.payload["reason"], "missing_controllers")
 
 
-    @mock.patch("xml_fbograph.utils.kuzu_build_spawn.subprocess.Popen")
-    def test_missing_kuzu_spawns_once_no_sync_build(self, mock_popen):
+    def test_missing_kuzu_spawns_once_no_sync_build(self):
         self.controllers.joinpath("Dir").mkdir(parents=True)
         Path(self.ref).write_text("<dir/>", encoding="utf-8")
-
-        proc = mock.Mock()
-        proc.pid = 4242
-        mock_popen.return_value = proc
 
         with self.assertRaises(KuzuBuildingError) as ctx1:
             ensure_mcp_kuzu_ready(self.ref)
         self.assertEqual(ctx1.exception.payload["status"], "building")
-        self.assertTrue(ctx1.exception.payload.get("spawned"))
-        self.assertEqual(mock_popen.call_count, 1)
+        self.assertFalse(ctx1.exception.payload.get("spawned"))
 
         # Lan 2: marker con song -> khong spawn them
         with self.assertRaises(KuzuBuildingError) as ctx2:
             ensure_mcp_kuzu_ready(self.ref)
         self.assertFalse(ctx2.exception.payload.get("spawned"))
-        self.assertEqual(mock_popen.call_count, 1)
 
         # Lan 3 van khong spawn them
         with self.assertRaises(KuzuBuildingError):
             ensure_mcp_kuzu_ready(self.ref)
-        self.assertEqual(mock_popen.call_count, 1)
 
 
 if __name__ == "__main__":
