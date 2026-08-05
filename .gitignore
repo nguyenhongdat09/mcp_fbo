@@ -8,5 +8,5 @@ build/
 dist/
 FastBusiness-MCP-Package/
 logs/
-.codegraph/
+.fbograph/
 *.log

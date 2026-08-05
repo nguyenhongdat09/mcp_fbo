@@ -18,7 +18,7 @@ def set_config(config: dict | None) -> None:
 
 
 def normalize_modes(mode: str | list[str] | None) -> set[str]:
-    """Chuẩn hóa mode MCP → {'content'} và/hoặc {'path'}."""
+    """Chuẩn hóa mode MCP → {'content'}, {'path'}, và/hoặc {'list'}."""
     if mode is None:
         return {"content"}
 
@@ -30,6 +30,8 @@ def normalize_modes(mode: str | list[str] | None) -> set[str]:
             result.add("content")
         elif value in ("path", "1"):
             result.add("path")
+        elif value in ("list", "2", "list_all", "get_all_entity"):
+            result.add("list")
     return result or {"content"}
 
 
@@ -75,6 +77,7 @@ def get_xml_entities(
     mode: str | list[str] | None = "content",
     force_reload: bool = False,
     list_all: bool = False,
+    get_all_entity: bool = False,
     config: dict | None = None,
 ) -> dict[str, Any]:
     """
@@ -83,15 +86,17 @@ def get_xml_entities(
     Args:
         file_path: Đường dẫn file XML (.xml, .f, ...)
         entities: Danh sách tên entity (có hoặc không có &...;)
-        mode: "content" (mode 0), "path" (mode 1), hoặc ["content", "path"]
+        mode: "content" (mode 0), "path" (mode 1), "list" (mode 2)
         force_reload: Bỏ cache parse trong memory và parse lại
-        list_all: Chỉ trả danh sách tên entity (chỉ mode content)
+        list_all: Tương đương mode="list"
+        get_all_entity: Tương đương mode="list"
         config: Giữ để tương thích MCP (không còn dùng ReadXML.exe)
     """
     _ = config if config is not None else _config
     modes = normalize_modes(mode)
     want_content = "content" in modes
     want_path = "path" in modes
+    want_list = "list" in modes or list_all or get_all_entity
 
     file_path = str(file_path or "").strip()
     if not file_path:
@@ -101,24 +106,17 @@ def get_xml_entities(
     if not xml_path.is_file():
         return {"success": False, "error": f"File không tồn tại: {file_path}", "file_path": file_path}
 
-    if list_all and not want_content:
-        return {
-            "success": False,
-            "error": "list_all chỉ dùng với mode=content",
-            "file_path": file_path,
-        }
-
-    if want_path and not entities:
+    if want_path and not entities and not want_list:
         return {
             "success": False,
             "error": "mode=path cần truyền entities (array tên entity)",
             "file_path": file_path,
         }
 
-    if not list_all and not entities and want_content and not want_path:
+    if not want_list and not entities and want_content and not want_path:
         return {
             "success": False,
-            "error": "Cần truyền entities (array) hoặc list_all=true",
+            "error": "Cần truyền entities (array) hoặc gọi mode='list'",
             "file_path": file_path,
         }
 
@@ -149,13 +147,30 @@ def get_xml_entities(
         "entity_count": len(all_entities),
     }
 
-    if want_content:
-        if list_all:
-            base_result["list_all"] = True
-            base_result["entity_names"] = list(all_entities.keys())
-            if not want_path:
-                return base_result
+    if want_list:
+        entity_list = []
+        for name, ent in res.get("system_entities", {}).items():
+            declared_in = str(Path(ent.get("declaredInFile") or ent.get("sourceFile") or "")).lower()
+            if declared_in != str(xml_path).lower():
+                continue
+            
+            val = ent.get("value")
+            val_preview = (val[:117] + "...") if val and len(val) > 120 else val
+            entity_list.append({
+                "name": name,
+                "kind": "general",
+                "is_external": bool(ent.get("systemUrl")),
+                "system_path": ent.get("systemUrl") or None,
+                "value_preview": None if ent.get("systemUrl") else val_preview,
+                "line": ent.get("line") or -1,
+            })
+            
+        base_result["entity_count"] = len(entity_list)
+        base_result["entities"] = entity_list
+        if not want_content and not want_path:
+            return base_result
 
+    if want_content:
         if normalized_names:
             content_results: list[dict[str, Any]] = []
             for norm in normalized_names:

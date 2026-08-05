@@ -14,7 +14,7 @@ alwaysApply: true
    - query_type=2: path file `.sql` (script dài)
 2. `get_xml_entities` - Đọc entity XML (mode=content / path)
 
-### CodeGraph (XML index Kuzu)
+### FBOGraph (XML index Kuzu)
 3. `search_nodes` - Tìm field/code/file (có synonym FBO)
 4. `get_related_nodes` - navigate / dependencies / dependents
 5. `query_node_details` - context / blocks (+ needs_xml, agent_hint)
@@ -29,7 +29,7 @@ alwaysApply: true
   - `giay bao no` → CPTran | `phieu chi` → CDTran
   - `dien giai` → dien_giai | `ten hang hoa` → ten_vt | `gia ban` → gia2
 
-## CodeGraph reference_file (BẮT BUỘC)
+## FBOGraph reference_file (BẮT BUỘC)
 - Mọi tool: search_nodes, get_related_nodes, query_node_details, query_radar, read_local_file
   phải truyền reference_file = ABSOLUTE path XML trong project đang làm
   (vd E:\FBO\SP2263\App_Data\Controllers\Filter\SVInvoiceFilter.xml).

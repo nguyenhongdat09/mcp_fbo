@@ -32,6 +32,14 @@ def format_entity_result(result: dict[str, Any]) -> str:
         for name in names:
             lines.append(f"  - {name}")
 
+    if "list" in modes:
+        entities_out = result.get("entities") or []
+        import json
+        lines.append("```json")
+        lines.append(json.dumps(entities_out, indent=2, ensure_ascii=False))
+        lines.append("```")
+        return "\n".join(lines).rstrip()
+
     entities_out = result.get("entities") or []
     if entities_out:
         found_count = sum(1 for item in entities_out if item.get("found"))

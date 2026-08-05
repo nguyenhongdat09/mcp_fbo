@@ -21,6 +21,9 @@ from xml_fbograph.mcp_tools import (
     mcp_read_local_file,
 )
 
+from search_qlyc import search_qlyc
+from search_qlyc.formatter import format_search_result
+
 logger = setup_logger(__name__)
 
 
@@ -86,8 +89,12 @@ db_type: app (mặc định) hoặc sys.""",
                 ),
                 Tool(
                     name="get_xml_entities",
-                    description="""Đọc XML entity từ file_path . 
-mode: content = nội dung entity; path = vị trí khai báo file:line (F12).
+                    description="""Đọc XML entity từ file_path. 
+mode: 
+- content: lấy nội dung entity (cần truyền entities)
+- path: vị trí khai báo file:line (cần truyền entities)
+- list: liệt kê toàn bộ ENTITY trong DOCTYPE (dùng khi chưa biết tên entity, không cần truyền entities). Mặc định mode=list chỉ trả về các entity loại 'general' được khai báo trực tiếp trong file.
+
 CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị.""",
                     inputSchema={
                         "type": "object",
@@ -99,16 +106,16 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                             "entities": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Danh sách tên entity (vd: XMLWhenVoucherInit, ListField)",
+                                "description": "Danh sách tên entity (vd: XMLWhenVoucherInit, ListField) - Không bắt buộc khi mode='list'",
                             },
                             "mode": {
                                 "type": "string",
-                                "enum": ["content", "path"],
-                                "description": "content hoặc path để định nghĩa thông tin cần lấy",
+                                "enum": ["content", "path", "list"],
+                                "description": "content (nội dung), path (vị trí), hoặc list (liệt kê)",
                                 "default": "content",
                             },
                         },
-                        "required": ["file_path", "entities"],
+                        "required": ["file_path"],
                     },
                 ),
                 Tool(
@@ -258,6 +265,53 @@ CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢ
                         "required": ["file_path", "reference_file"],
                     },
                 ),
+                Tool(
+                    name="search_qlyc",
+                    description="""Tra cứu lịch sử yêu cầu (UR/ticket) đã từng làm — dùng khi user hỏi kiểu: trước đây có yêu cầu / chức năng ABC chưa? dự án này từng làm gì liên quan X?
+
+Agent tự phân tích câu hỏi user → chuẩn hóa thành query ngắn gọn (tiếng Việt, nêu đúng nghiệp vụ/chức năng) rồi gọi tool.
+Kết quả gồm fcode1, ma_da, noi_dung, score, page, total_pages… để agent đọc và trả lời có/không + dẫn chứng.
+
+Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
+1) Giữ nguyên query — tăng page lần lượt (page=2, 3, …) đến hết total_pages / trang cuối. Không bỏ qua trang.
+2) Hết trang mà vẫn không thấy → mới đổi cách diễn đạt query (từ đồng nghĩa, bỏ từ thừa, nêu chức năng cụ thể hơn) rồi lặp lại bước 1 với query mới.
+3) Tối đa 3 lần đổi query (3 cách diễn đạt) trong một lượt trả lời user. CẤM tự ý thử quá 3 lần.
+4) Sau 3 lần vẫn không thấy → dừng, báo user rõ đã thử những query nào + đã lật trang ra sao; để user xem và quyết định. Chỉ khi user yêu cầu tìm lại thì mới search tiếp — và lại tối đa 3 lần đổi query (mỗi lần vẫn lật hết trang trước khi đổi query).
+ .""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Câu tìm kiếm đã được agent chuẩn hóa từ ý user (ngắn, rõ nghiệp vụ/chức năng cần tra lịch sử). Không nhét nguyên câu chat dài nếu có thể rút gọn. Đổi query chỉ sau khi đã lật hết trang của query hiện tại; tối đa 3 cách diễn đạt mỗi lượt (xem description tool).",
+                            },
+                            "ma_da": {
+                                "type": "string",
+                                "description": "Filter đúng mã dự án. CHỈ truyền khi user yêu cầu lọc theo dự án; không thì bỏ trống / không gửi để search toàn bộ dự án.",
+                            },
+                            "bp_lt": {
+                                "type": "string",
+                                "description": "Filter bộ phận LT (vd. FSD). CHỈ truyền khi user yêu cầu lọc theo bộ phận; không thì bỏ trống / không gửi để search mọi bộ phận.",
+                            },
+                            "page": {
+                                "type": "integer",
+                                "description": "Số trang (từ 1). Lần đầu dùng 1; nếu chưa thấy kết quả liên quan thì tăng page đến hết total_pages trước khi đổi query.",
+                                "default": 1,
+                            },
+                            "page_size": {
+                                "type": "integer",
+                                "description": "Số item mỗi trang (1…50). Mặc định 20.",
+                                "default": 20,
+                            },
+                            "max_total": {
+                                "type": "integer",
+                                "description": "Cửa sổ xếp hạng tối đa sau search (1…100). Mặc định 100 — dùng để biết còn bao nhiêu trang (total_pages).",
+                                "default": 100,
+                            },
+                        },
+                        "required": ["query"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -321,6 +375,18 @@ CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢ
                     read_option = int(arguments.get("read_option", 1))
                     res = mcp_read_local_file(file_path, reference_file, read_option)
                     return [TextContent(type="text", text=res)]
+
+                elif name == "search_qlyc":
+                    result = search_qlyc(
+                        query=arguments["query"],
+                        ma_da=arguments.get("ma_da"),
+                        bp_lt=arguments.get("bp_lt"),
+                        page=int(arguments.get("page", 1)),
+                        page_size=int(arguments.get("page_size", 20)),
+                        max_total=int(arguments.get("max_total", 100)),
+                        config=self.config.get("rag_qlyc"),
+                    )
+                    return [TextContent(type="text", text=format_search_result(result))]
 
                 else:
                     return [TextContent(type="text", text=f"Unknown tool: {name}")]

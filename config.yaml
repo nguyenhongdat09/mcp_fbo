@@ -19,3 +19,9 @@ fbograph:
   kuzu_db_base: "C:/KuzuDB"
   user_multi_db_yn: 1
   access_log_retention_days: 30
+
+# RAG QLYC Search API (MCP tool search_qlyc)
+rag_qlyc:
+  base_url: "http://localhost:8000"
+  api_key: "fsd@@123"
+  timeout_seconds: 30

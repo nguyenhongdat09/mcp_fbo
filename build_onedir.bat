@@ -14,13 +14,13 @@ if errorlevel 1 (
 
 if exist venv\Scripts\activate.bat call venv\Scripts\activate.bat
 
-pyinstaller --version >nul 2>&1
-if errorlevel 1 pip install pyinstaller
+python -m PyInstaller --version >nul 2>&1
+if errorlevel 1 python -m pip install pyinstaller
 
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
 
-pyinstaller fastbusiness_mcp.spec --clean --noconfirm
+python -m PyInstaller fastbusiness_mcp.spec --clean --noconfirm
 if errorlevel 1 (
     echo [ERROR] Build failed
     pause

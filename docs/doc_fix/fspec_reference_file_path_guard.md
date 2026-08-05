@@ -2,7 +2,7 @@
 
 > **Cách dùng:** Copy toàn bộ nội dung từ mục «PROMPT GỬI GEMINI» trở xuống, dán cho Gemini (hoặc AI khác) kèm repo `mcp_fbo` để nó implement.
 >
-> **Mục tiêu sản phẩm:** Agent Cursor gọi `search_nodes` / CodeGraph tools **không còn** tạo project Kuzu ảo, không còn báo `building` vì path tương đối / thiếu `reference_file`.
+> **Mục tiêu sản phẩm:** Agent Cursor gọi `search_nodes` / FBOGraph tools **không còn** tạo project Kuzu ảo, không còn báo `building` vì path tương đối / thiếu `reference_file`.
 
 ---
 
@@ -148,7 +148,7 @@ Giữ required: ["..., reference_file"] như hiện tại. KHÔNG bỏ required.
 
 Thêm section ngắn (tiếng Việt), ví dụ:
 
-## CodeGraph reference_file (BẮT BUỘC)
+## FBOGraph reference_file (BẮT BUỘC)
 - Mọi tool: search_nodes, get_related_nodes, query_node_details, query_radar, read_local_file
   phải truyền reference_file = ABSOLUTE path XML trong project đang làm
   (vd E:\\FBO\\SP2263\\App_Data\\Controllers\\Filter\\SVInvoiceFilter.xml).

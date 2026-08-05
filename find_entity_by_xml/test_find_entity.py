@@ -135,15 +135,23 @@ class TestGetXmlEntitiesInline:
 <!DOCTYPE dir [
 <!ENTITY Foo "<field name='x'/>">
 <!ENTITY Bar "<field name='y'/>">
+<!ENTITY % Param "value">
 ]>
 <dir>&Foo;&Bar;</dir>
 """,
             encoding="utf-8",
         )
 
-        result = get_xml_entities(str(xml_file), list_all=True)
+        result = get_xml_entities(str(xml_file), mode="list")
         assert result["success"] is True
-        assert set(result["entity_names"]) == {"Foo", "Bar"}
+        assert "entities" in result
+        names = {e["name"] for e in result["entities"]}
+        assert {"Foo", "Bar"} <= names
+        assert "Param" not in names
+        
+        foo_ent = next(e for e in result["entities"] if e["name"] == "Foo")
+        assert foo_ent["kind"] == "general"
+        assert foo_ent["value_preview"] == "<field name='x'/>"
 
     def test_missing_file(self):
         result = get_xml_entities(r"E:\no\such\file.xml", ["Foo"])

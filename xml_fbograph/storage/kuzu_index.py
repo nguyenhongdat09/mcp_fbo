@@ -90,7 +90,7 @@ def invalidate_store_caches_for_db(db_path: Path) -> None:
 
 def _is_connection_closed_error(exc: Exception) -> bool:
     msg = str(exc).lower()
-    return "connection is closed" in msg or "connection closed" in msg
+    return "connection is closed" in msg or "connection closed" in msg or "database is closed" in msg or "database closed" in msg
 
 def get_path_size(path: Path) -> int:
     """Tinh toan dung luong (bytes) cua file hoac thu muc."""
@@ -877,6 +877,17 @@ class KuzuIndexStore:
         """
         Load the entire graph from Kuzu database into memory.
         """
+        self._bind_live_connection()
+        try:
+            return self._load_graph_impl()
+        except Exception as exc:
+            if not _is_connection_closed_error(exc):
+                raise
+            close_cached_database(self.db_path)
+            self._bind_live_connection(force_reopen=True)
+            return self._load_graph_impl()
+
+    def _load_graph_impl(self) -> XmlGraph:
         t0 = time.time()
         graph = XmlGraph()
 
