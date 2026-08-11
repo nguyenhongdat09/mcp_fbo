@@ -12,7 +12,9 @@ a = Analysis(
         ('xml_fbograph/kuzu_build.txt', 'xml_fbograph'),
     ],
     hiddenimports=[
-        'mcp', 'mcp.server', 'mcp.server.stdio', 'mcp.types',
+        'mcp', 'mcp.server', 'mcp.server.stdio', 'mcp.server.context',
+        'mcp.server.lowlevel', 'mcp.server.lowlevel.server', 'mcp.types',
+        'mcp_types',
         'yaml',
         'fastbusiness_mcp', 'fastbusiness_mcp.server',
         'fastbusiness_mcp.utils.logger',
@@ -35,6 +37,10 @@ a = Analysis(
         'find_entity_by_xml.formatter',
         'lxml', 'lxml.etree',
         'pyodbc',
+        'search_qlyc',
+        'search_qlyc.service',
+        'search_qlyc.client',
+        'search_qlyc.formatter',
         # FBOGraph + CLI rebuild Kuzu (fastbusiness_mcp.exe build ...)
         'kuzu',
         'xml_fbograph',

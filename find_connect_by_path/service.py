@@ -24,7 +24,7 @@ def find_connection_by_path(file_path: str, db_type: str = "app") -> dict:
     if not project_root:
         return {
             "success": False,
-            "error": "Không xác định được project root từ file path (không có App_Data hoặc Web.config)",
+            "error": "[LỖI ĐƯỜNG DẪN] Không xác định được project root từ file path (không có App_Data hoặc Web.config).\n-> NGUYÊN NHÂN: Bạn đang truyền đường dẫn tương đối (Relative Path) hoặc đường dẫn sai.\n-> CÁCH SỬA: BẮT BUỘC phải truyền đường dẫn TUYỆT ĐỐI (Absolute Path) tới 1 file trong thư mục dự án FBO.\n-> VÍ DỤ ĐÚNG: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SRTran.xml (hoặc UNC path tương đương).",
             "file_path": file_path,
         }
 

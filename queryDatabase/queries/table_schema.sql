@@ -1,131 +1,151 @@
-# Task: Sửa resolve_controllers_dir + _normalize_path_str để chấp nhận mọi dạng --root linh động
-# (File này là PROMPT text gửi Gemini — không phải SQL.)
+SET NOCOUNT ON
+DECLARE @cTable VARCHAR(33), @strSQL NVARCHAR(4000), @cRef VARCHAR(128), @cFields VARCHAR(1000), @Max INT, @xOrder INT, @i INT, @cTmp VARCHAR(128), @cName VARCHAR(128), @isCreateTable BIT, @isCreateIndex BIT, @isCreateTrigger BIT, @isCreateDF BIT, @cNewLine VARCHAR(5)
+SELECT @cTable = '{{table_name}}', @isCreateTable = '1', @isCreateIndex = '1', @isCreateTrigger = '1', @isCreateDF = '1', @strSQL = '', @cNewLine = CHAR(13) + CHAR(10)
 
-## Bối cảnh
+CREATE TABLE #result(val NVARCHAR(4000))
 
-File chính: E:\mcp_fbo\xml_fbograph\utils\path_helper.py
-CLI entry:  E:\mcp_fbo\xml_graph_cli.py  (hàm cmd_build dùng resolve_controllers_dir)
+DECLARE @id INT
+SELECT @id = OBJECT_ID(@cTable)
 
-Hiện tại --root chỉ nhận project root hoặc .../App_Data/Controllers.
-Yêu cầu mới: nhận BẤT KỲ đường dẫn nào miễn thuộc dự án FBO CustomerPro —
-CLI tự walk ngược lên tìm Controllers.
+IF @isCreateTable = '1'
+BEGIN
+	SELECT CAST(CASE WHEN b.column_name IS NULL THEN 0 ELSE 1 END AS BIT) AS pkey, a.COLUMN_NAME AS val, CAST('' AS NVARCHAR(128)) AS textname, a.DATA_TYPE AS datatype
+			, a.DATA_TYPE + ISNULL('(' + RTRIM(CHARACTER_MAXIMUM_LENGTH) + ')', '') + ISNULL('(' + RTRIM(NUMERIC_PRECISION) + ',' + RTRIM(NUMERIC_SCALE) + ')', '')  AS type
+			, CAST(CASE WHEN IS_NULLABLE = 'NO' THEN 'NOT NULL' ELSE 'NULL' END AS VARCHAR(33)) AS xnull, a.ORDINAL_POSITION AS xorder
+		INTO #t
+		FROM INFORMATION_SCHEMA.COLUMNS a 
+			LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE b ON a.table_name = b.table_name AND a.column_name  = b.column_name AND b.CONSTRAINT_NAME IN (SELECT name FROM sysobjects c WHERE c.xtype = 'PK')
+		WHERE a.TABLE_NAME = @cTable 
 
-## Các case --root cần hoạt động (tất cả phải ra cùng 1 Controllers)
+		select name, cast(seed_value as int) as seed_value, cast(increment_value as int) as increment_value into #identity from sys.identity_columns where object_id = @id
+		
 
-Ví dụ project: \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227
+	UPDATE #t SET type = datatype WHERE datatype IN ('ntext', 'smalldatetime', 'datetime', 'bit', 'tinyint', 'int', 'image', 'binary')
+	UPDATE #t SET type = REPLACE(type, '(-1)', '(max)') 
+	
+	UPDATE #t SET type = type + ' identity(' + rtrim(b.seed_value) + ',' + rtrim(b.increment_value) + ')' FROM #t a join #identity b on a.val = b.name
+	SELECT @Max = MAX(xorder) FROM #t
+	UPDATE #t SET xnull = xnull + ',' WHERE xorder <> @Max
+	UPDATE #t SET xnull = xnull + @cNewLine + ')' WHERE xorder = @Max
 
-Case 1 — Project root:
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227
-  → Controllers: \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers
+	SET @strSQL = 'CREATE TABLE ' + @cTable + '('
+	INSERT INTO #result SELECT @strSQL + @cNewLine
 
-Case 2 — App_Data:
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data
-  → Controllers: \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers
+	DECLARE cr1 CURSOR FOR SELECT xorder FROM #t
+	OPEN cr1
+	FETCH NEXT FROM cr1 INTO @xOrder
+		WHILE @@FETCH_STATUS = 0
+		BEGIN		
+			SELECT @strSQL = CHAR(9) + '[' + val + '] ' + type + ' ' + xnull FROM #t WHERE xorder = @xOrder
+			INSERT INTO #result SELECT @strSQL + @cNewLine
+			FETCH NEXT FROM cr1 INTO @xOrder
+		END
+	CLOSE cr1
+	DEALLOCATE cr1
 
-Case 3 — Controllers (đã đúng):
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers
-  → Controllers: như trên (giữ nguyên)
+	SELECT a.CONSTRAINT_NAME AS name, a.COLUMN_NAME AS col, b.xtype, OBJECT_NAME(c.rkeyid) AS rname, a.ORDINAL_POSITION AS xorder INTO #key 
+		FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE a LEFT JOIN sysobjects b ON a.CONSTRAINT_NAME = b.name 
+			LEFT JOIN sysreferences c ON b.id = c.constid
+	WHERE a.TABLE_NAME = @cTable 
 
-Case 4 — Subfolder trong Controllers (Dir/Grid/Filter/...):
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers\Filter
-  → Controllers: walk lên 1 cấp
+	IF EXISTS(SELECT 1 FROM #key WHERE xtype = 'PK')
+	BEGIN
+		SELECT @strSQL = '', @cFields = ''
+		SELECT @strSQL = name, @cFields = @cFields + col + ', ' FROM #key WHERE xtype = 'PK'
+		SET @strSQL = 'ALTER TABLE ' + @cTable + ' WITH NOCHECK ADD CONSTRAINT ' + @strSQL + ' PRIMARY KEY CLUSTERED(' + SUBSTRING(@cFields, 1, LEN(@cFields) - 1) + ') ON [PRIMARY]'
+		INSERT INTO #result SELECT @strSQL + @cNewLine
+	END
 
-Case 5 — File XML cụ thể:
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers\Filter\VoucherLockingMultiUser.xml
-  \\172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers\Dir\TNTran.xml
-  → Controllers: walk lên tìm folder tên "controllers" có cha là "app_data"
+	IF EXISTS(SELECT 1 FROM #key WHERE xtype = 'F')
+	BEGIN
+		INSERT INTO #result SELECT 'GO' + @cNewLine
+		SELECT @strSQL = '', @cFields = ''
+		SELECT @strSQL = name, @cFields = col, @cRef = rname FROM #key WHERE xtype = 'F'
+		SET @strSQL = 'ALTER TABLE ' + @cTable + ' ADD CONSTRAINT ' + @strSQL + ' FOREIGN KEY (' + @cFields + ') REFERENCES ' + @cRef + '(' + @cFields + ')'
+		INSERT INTO #result SELECT @strSQL + @cNewLine
+	END
 
-Case 6 — UNC 1 backslash (bị truncated — thường do terminal/JSON):
-  \172.168.5.14\CustomerPro\FBO\QUANGDUC\SP227\App_Data\Controllers\Dir\TNTran.xml
-  → normalize thành \\... rồi xử lý như case 5
+	DROP TABLE #key 
+	DROP TABLE #t
+	drop table #identity
+END
 
-Case 7 — Forward slash:
-  //172.168.5.14/CustomerPro/FBO/QUANGDUC/SP227/App_Data/Controllers/Dir/TNTran.xml
-  → normalize rồi xử lý như case 5
+IF @isCreateIndex = 1
+BEGIN
+	IF EXISTS (SELECT 1 FROM #result)
+	BEGIN
+		INSERT INTO #result SELECT 'GO' + @cNewLine
+	END
+	SELECT name, indid INTO #index FROM sysindexes i WHERE id = @id AND status = 0 
+		AND (INDEXPROPERTY(@id, i.name, N'IsStatistics') <> 1) AND (INDEXPROPERTY(@id, i.name, N'IsAutoStatistics') <> 1) AND (INDEXPROPERTY(@id, i.name, N'IsHypothetical') <> 1) AND indid BETWEEN 0 AND 255 
+	DELETE #index WHERE name IS NULL
 
-## Logic resolve_controllers_dir cần sửa
+	DECLARE cr2 CURSOR FOR SELECT name, indid FROM #index
+	OPEN cr2
+	FETCH NEXT FROM cr2 INTO @cName, @xOrder
+		WHILE @@FETCH_STATUS = 0
+		BEGIN			
+			SELECT @cFields = '', @i = 1
+			WHILE 1=1
+			BEGIN
+				SET @cTmp = NULL
+				SET @cTmp = INDEX_COL(@cTable, @xOrder, @i)			
+				IF @cTmp IS NULL 
+				BEGIN
+					GOTO ExitWhile
+				END
+				SET @cFields =  @cFields + CASE WHEN @cFields = '' THEN '' ELSE ', ' END + @cTmp
+				SET @i = @i + 1
+			END
+			
+ExitWhile:	SET @strSQL = 'CREATE INDEX ['+@cName+'] ON ' + @cTable + '('+@cFields+') ON [PRIMARY]'
+			INSERT INTO #result SELECT @strSQL + @cNewLine
+			FETCH NEXT FROM cr2 INTO @cName, @xOrder
+		END
+	CLOSE cr2
+	DEALLOCATE cr2
+	DROP TABLE #index
+END
 
-Thuật toán ưu tiên (theo thứ tự):
+IF @isCreateTrigger = 1
+BEGIN
+	SELECT name, xtype INTO #tr FROM sysobjects WHERE parent_obj = @id AND xtype IN ('TR', 'V', 'D')
+	IF EXISTS (SELECT 1 FROM #tr) AND EXISTS (SELECT 1 FROM #result)
+	BEGIN
+		INSERT INTO #result SELECT 'GO' + @cNewLine
+	END
+	CREATE TABLE #txt(val NVARCHAR(MAX))
+	
+	SET @strSQL = ''
+	SELECT @strSQL = @strSQL + 'INSERT INTO #txt EXEC sp_helptext ' + name + @cNewLine + 'INSERT INTO #txt SELECT CHAR(13) + CHAR(10) + ''GO'' + CHAR(13) + CHAR(10)' + @cNewLine FROM #tr WHERE xtype = 'TR'
+	EXEC sp_executesql @strSQL
+	
+	INSERT INTO #result SELECT val FROM #txt
+	
+	DECLARE cr3 CURSOR FOR SELECT val FROM #txt
+	OPEN cr3
+	FETCH NEXT FROM cr3 INTO @strSQL
+		WHILE @@FETCH_STATUS = 0
+		BEGIN		
+			FETCH NEXT FROM cr3 INTO @strSQL
+		END
+	CLOSE cr3
+	DEALLOCATE cr3
+	DROP TABLE #txt
+END
 
-1. Normalize path trước (gọi _normalize_path_str đã sửa để xử lý UNC 1bs/forward slash).
+IF @isCreateDF = 1 AND @isCreateTrigger = 1
+BEGIN
+	SELECT x.name AS name, COL_NAME(a.id, a.colid) AS colname, a.colid, b.definition INTO #df 
+		FROM sysconstraints a 
+			LEFT JOIN sysobjects x ON a.constid = x.id
+			LEFT JOIN sys.default_constraints b ON x.name = b.name
+		WHERE x.name IN (SELECT name FROM #tr)
+	INSERT INTO #result SELECT 'ALTER TABLE ' + @cTable + ' ADD CONSTRAINT [' + name + ']  DEFAULT ' + definition + ' FOR ' + colname + @cNewLine FROM #df 
 
-2. Nếu path trỏ vào file (có extension .xml, .aspx, ... hoặc is_file()):
-   → lấy parent folder rồi walk tiếp bước 3.
+	DROP TABLE #df
+	DROP TABLE #tr	
+END
+SELECT * FROM #result
 
-3. Walk từ folder hiện tại lên trên, tìm folder thỏa:
-   folder.name.lower() == "controllers" AND folder.parent.name.lower() == "app_data"
-   Nếu tìm thấy → return folder đó.
-
-4. Nếu bước 3 không tìm thấy (chưa đi đến controllers):
-   Thử nối xuống dưới theo ưu tiên:
-   a. path + "App_Data/Controllers"  (nếu is_dir())
-   b. path + "Controllers"           (nếu parent.name == app_data và is_dir())
-   → return cái đầu tiên is_dir()
-
-5. Nếu vẫn không tìm thấy → raise ValueError hoặc return None
-   (caller xml_graph_cli.py sẽ báo lỗi rõ ràng cho user)
-
-Không dùng ProjectPathHelper.get_controllers_path() trong resolve_controllers_dir
-(để tránh vòng phụ thuộc và cho phép path không qua CustomerPro — CLI manual).
-
-## _normalize_path_str cần sửa đồng thời
-
-Vấn đề cũ: heuristic "customerpro" keyword hardcode. Xem prompt refactor trước.
-
-Quy tắc chuẩn (không dùng keyword domain-specific):
-- Replace "/" → "\"
-- Nếu kết quả bắt đầu bằng "\\" → UNC hợp lệ, giữ nguyên.
-- Nếu bắt đầu bằng đúng 1 "\" VÀ segment sau không phải drive letter
-  (drive letter = 1 ký tự alpha theo sau bởi ":"):
-  → thêm "\" vào đầu (UNC bị mất 1 ký tự).
-  Ví dụ: \172.168.5.14\... → \\172.168.5.14\...
-          \server\share\... → \\server\share\...
-  Không làm gì với: \C:\foo (C: là drive letter → giữ nguyên)
-
-## Unit tests BẮT BUỘC
-
-Thêm vào xml_fbograph/tests/test_customerpro_kuzu_gate.py hoặc test_path_helper.py.
-
-Tất cả 7 case ở trên phải pass, dùng tempfile tạo cây thư mục giả:
-
-```
-tmp/
-  CustomerPro/
-    FBO/
-      QUANGDUC/
-        SP227/
-          App_Data/
-            Controllers/
-              Dir/
-                TNTran.xml
-              Filter/
-                VoucherLockingMultiUser.xml
-```
-
-Test từng case:
-  resolved = resolve_controllers_dir(<path>)
-  assert resolved == tmp / "CustomerPro" / "FBO" / "QUANGDUC" / "SP227" / "App_Data" / "Controllers"
-
-Thêm test normalize:
-  assert _normalize_path_str(r"\172.168.5.14\foo")  == r"\\172.168.5.14\foo"
-  assert _normalize_path_str(r"\\172.168.5.14\foo") == r"\\172.168.5.14\foo"
-  assert _normalize_path_str(r"//172.168.5.14/foo") == r"\\172.168.5.14\foo"
-  assert _normalize_path_str(r"\C:\foo")            == r"\C:\foo"   # drive, giữ nguyên
-  assert _normalize_path_str(r"E:\foo")             == r"E:\foo"    # drive, giữ nguyên
-
-Thêm test get_customerpro_project_path không dùng keyword heuristic:
-  # Path không chứa CustomerPro nhưng bắt đầu \host → vẫn Other (không crash)
-  assert get_customerpro_project_path(r"\172.168.5.14\OtherShare\Foo\Bar\x.xml") == ""
-
-## Không được làm
-- Không đổi signature public của các hàm.
-- Không thêm logic CustomerPro vào resolve_controllers_dir
-  (hàm này general-purpose, CLI manual không cần gate CustomerPro).
-- Không commit.
-
-## Tham chiếu đọc trước
-- E:\mcp_fbo\xml_fbograph\utils\path_helper.py
-  (resolve_controllers_dir, _normalize_path_str, _split_path_parts,
-   get_customerpro_project_path, has_app_data_controllers)
-- E:\mcp_fbo\xml_graph_cli.py  (cmd_build — caller của resolve_controllers_dir)
-- E:\mcp_fbo\xml_fbograph\tests\test_customerpro_kuzu_gate.py
+DROP TABLE #result

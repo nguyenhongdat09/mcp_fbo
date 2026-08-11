@@ -36,11 +36,11 @@ def post_search_api(base_url: str, api_key: str, timeout: int, payload: dict) ->
         return {
             "ok": False,
             "error": "khong_ket_noi_api",
-            "detail": str(e.reason)
+            "detail": f"{e.reason} | url={url}",
         }
     except Exception as e:
         return {
             "ok": False,
             "error": "khong_ket_noi_api",
-            "detail": str(e)
+            "detail": f"{e} | url={url}",
         }

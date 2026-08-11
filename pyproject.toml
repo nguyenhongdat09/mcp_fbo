@@ -8,7 +8,7 @@ readme = "README.md"
 license = {text = "MIT"}
 
 dependencies = [
-    "mcp>=0.9.0",
+    "mcp>=2.0.0",
     "pyyaml>=6.0.0",
     "pyodbc>=5.0.0",
     "lxml>=5.0.0",

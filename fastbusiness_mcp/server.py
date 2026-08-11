@@ -3,8 +3,16 @@
 import asyncio
 import yaml
 from mcp.server import Server
+from mcp.server.context import ServerRequestContext
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import (
+    Tool,
+    TextContent,
+    ListToolsResult,
+    CallToolResult,
+    PaginatedRequestParams,
+    CallToolRequestParams,
+)
 
 from .utils.logger import setup_logger
 
@@ -32,22 +40,41 @@ class FastBusinessMCPServer:
 
     def __init__(self, config_path: str = "config.yaml"):
         self.config = self._load_config(config_path)
-        self.server = Server("fastbusiness-mcp-server")
-        self._register_tools()
+        # MCP SDK >=2.0: đăng ký handler qua constructor (không còn @list_tools/@call_tool)
+        self.server = Server(
+            "fastbusiness-mcp-server",
+            on_list_tools=self._on_list_tools,
+            on_call_tool=self._on_call_tool,
+        )
         logger.info("FastBusiness MCP Server (SQL/XML + FBOGraph) initialized")
 
     def _load_config(self, config_path: str) -> dict:
+        from fastbusiness_mcp.config_paths import resolve_config_path
+
+        resolved = resolve_config_path(config_path)
+        if resolved is None:
+            logger.warning(f"Config not found: {config_path}, using defaults")
+            return {}
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                return yaml.safe_load(f) or {}
+            with open(resolved, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            rag = cfg.get("rag_qlyc") or {}
+            if rag.get("base_url"):
+                logger.info(f"Loaded config from {resolved} (rag_qlyc.base_url={rag.get('base_url')})")
+            else:
+                logger.info(f"Loaded config from {resolved}")
+            return cfg
         except Exception as e:
-            logger.warning(f"Failed to load config: {e}, using defaults")
+            logger.warning(f"Failed to load config {resolved}: {e}, using defaults")
             return {}
 
-    def _register_tools(self) -> None:
-        @self.server.list_tools()
-        async def list_tools() -> list[Tool]:
-            return [
+    async def _on_list_tools(
+        self,
+        ctx: ServerRequestContext,
+        params: PaginatedRequestParams | None,
+    ) -> ListToolsResult:
+        return ListToolsResult(
+            tools=[
                 Tool(
                     name="query_database",
                     description="""Chạy SQL trên SQL Server — tự resolve connection từ file_path (Web.config).
@@ -313,88 +340,126 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
                     },
                 ),
             ]
+        )
 
-        @self.server.call_tool()
-        async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-            """Handle tool calls."""
-            try:
-                if name == "query_database":
-                    result = query_database(
-                        file_path=arguments["file_path"],
-                        query=arguments["query"],
-                        db_type=arguments.get("db_type", "app"),
-                        max_rows=int(arguments.get("max_rows", 20000)),
-                        query_type=int(arguments.get("query_type", 1)),
-                    )
-                    return [TextContent(type="text", text=format_query_result(result))]
+    async def _on_call_tool(
+        self,
+        ctx: ServerRequestContext,
+        params: CallToolRequestParams,
+    ) -> CallToolResult:
+        """Handle tool calls."""
+        name = params.name
+        arguments = params.arguments or {}
+        try:
+            if name == "query_database":
+                result = query_database(
+                    file_path=arguments["file_path"],
+                    query=arguments["query"],
+                    db_type=arguments.get("db_type", "app"),
+                    max_rows=int(arguments.get("max_rows", 20000)),
+                    query_type=int(arguments.get("query_type", 1)),
+                )
+                return CallToolResult(
+                    content=[TextContent(type="text", text=format_query_result(result))]
+                )
 
-                elif name == "get_xml_entities":
-                    result = get_xml_entities(
-                        arguments["file_path"],
-                        arguments.get("entities"),
-                        mode=arguments.get("mode", "content"),
-                        force_reload=False,
-                        list_all=False,
-                    )
-                    return [TextContent(type="text", text=format_entity_result(result))]
+            elif name == "get_xml_entities":
+                result = get_xml_entities(
+                    arguments["file_path"],
+                    arguments.get("entities"),
+                    mode=arguments.get("mode", "content"),
+                    force_reload=False,
+                    list_all=False,
+                )
+                return CallToolResult(
+                    content=[TextContent(type="text", text=format_entity_result(result))]
+                )
 
-                elif name == "query_radar":
-                    cypher_query = arguments.get("cypher_query", "")
-                    reference_file = arguments["reference_file"]
-                    mode = arguments.get("mode", "query")
-                    res = mcp_query_radar(cypher_query, reference_file, mode)
-                    return [TextContent(type="text", text=res)]
+            elif name == "query_radar":
+                cypher_query = arguments.get("cypher_query", "")
+                reference_file = arguments["reference_file"]
+                mode = arguments.get("mode", "query")
+                res = mcp_query_radar(cypher_query, reference_file, mode)
+                return CallToolResult(content=[TextContent(type="text", text=res)])
 
-                elif name == "search_nodes":
-                    query = arguments["query"]
-                    reference_file = arguments["reference_file"]
-                    match_type = arguments.get("match_type", "all")
-                    folder_filter = arguments.get("folder_filter")
-                    limit = int(arguments.get("limit", 20))
-                    res = mcp_search_nodes(query, reference_file, match_type, folder_filter, limit)
-                    return [TextContent(type="text", text=res)]
+            elif name == "search_nodes":
+                query = arguments["query"]
+                reference_file = arguments["reference_file"]
+                match_type = arguments.get("match_type", "all")
+                folder_filter = arguments.get("folder_filter")
+                limit = int(arguments.get("limit", 20))
+                res = mcp_search_nodes(query, reference_file, match_type, folder_filter, limit)
+                return CallToolResult(content=[TextContent(type="text", text=res)])
 
-                elif name == "get_related_nodes":
-                    target = arguments["target"]
-                    reference_file = arguments["reference_file"]
-                    mode = arguments.get("mode", "navigate")
-                    include_shared = arguments.get("include_shared", False)
-                    res = mcp_get_related_nodes(target, reference_file, mode, include_shared)
-                    return [TextContent(type="text", text=res)]
+            elif name == "get_related_nodes":
+                target = arguments["target"]
+                reference_file = arguments["reference_file"]
+                mode = arguments.get("mode", "navigate")
+                include_shared = arguments.get("include_shared", False)
+                res = mcp_get_related_nodes(target, reference_file, mode, include_shared)
+                return CallToolResult(content=[TextContent(type="text", text=res)])
 
-                elif name == "query_node_details":
-                    target = arguments["target"]
-                    reference_file = arguments["reference_file"]
-                    view = arguments.get("view", "context")
-                    res = mcp_query_node_details(target, reference_file, view)
-                    return [TextContent(type="text", text=res)]
+            elif name == "query_node_details":
+                target = arguments["target"]
+                reference_file = arguments["reference_file"]
+                view = arguments.get("view", "context")
+                res = mcp_query_node_details(target, reference_file, view)
+                return CallToolResult(content=[TextContent(type="text", text=res)])
 
-                elif name == "read_local_file":
-                    file_path = arguments["file_path"]
-                    reference_file = arguments["reference_file"]
-                    read_option = int(arguments.get("read_option", 1))
-                    res = mcp_read_local_file(file_path, reference_file, read_option)
-                    return [TextContent(type="text", text=res)]
+            elif name == "read_local_file":
+                file_path = arguments["file_path"]
+                reference_file = arguments["reference_file"]
+                read_option = int(arguments.get("read_option", 1))
+                res = mcp_read_local_file(file_path, reference_file, read_option)
+                return CallToolResult(content=[TextContent(type="text", text=res)])
 
-                elif name == "search_qlyc":
-                    result = search_qlyc(
-                        query=arguments["query"],
-                        ma_da=arguments.get("ma_da"),
-                        bp_lt=arguments.get("bp_lt"),
-                        page=int(arguments.get("page", 1)),
-                        page_size=int(arguments.get("page_size", 20)),
-                        max_total=int(arguments.get("max_total", 100)),
-                        config=self.config.get("rag_qlyc"),
-                    )
-                    return [TextContent(type="text", text=format_search_result(result))]
+            elif name == "search_qlyc":
+                rag_config = self.config.get("rag_qlyc") or {}
+                default_bp_lt = rag_config.get("bp_lt")
+                if default_bp_lt is None:
+                    default_bp_lt = ""
+                
+                bp_lt = arguments.get("bp_lt")
+                if bp_lt is None:
+                    bp_lt = default_bp_lt
 
-                else:
-                    return [TextContent(type="text", text=f"Unknown tool: {name}")]
+                result = search_qlyc(
+                    query=arguments["query"],
+                    ma_da=arguments.get("ma_da"),
+                    bp_lt=bp_lt,
+                    page=int(arguments.get("page", 1)),
+                    page_size=int(arguments.get("page_size", 20)),
+                    max_total=int(arguments.get("max_total", 100)),
+                    config=rag_config,
+                )
+                return CallToolResult(
+                    content=[TextContent(type="text", text=format_search_result(result))]
+                )
 
-            except Exception as e:
-                logger.error(f"Tool execution error: {e}")
-                return [TextContent(type="text", text=f"Error: {str(e)}")]
+            else:
+                return CallToolResult(
+                    content=[TextContent(type="text", text=f"Unknown tool: {name}")],
+                    is_error=True,
+                )
 
+        except KeyError as e:
+            missing_key = str(e).strip("'")
+            error_msg = (
+                f"[LỖI THIẾU THAM SỐ] Tool '{name}' yêu cầu bắt buộc phải có tham số '{missing_key}'.\n"
+                f"Vui lòng gọi lại tool và truyền đầy đủ tham số này.\n"
+                f"Lưu ý: Đối với 'file_path' hoặc 'reference_file', LUÔN dùng đường dẫn TUYỆT ĐỐI (VD: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SRTran.xml)."
+            )
+            logger.error(f"Tool {name} missing argument: {missing_key}")
+            return CallToolResult(
+                content=[TextContent(type="text", text=error_msg)],
+                is_error=True,
+            )
+        except Exception as e:
+            logger.error(f"Tool execution error: {e}")
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"[LỖI THỰC THI TOOL '{name}'] {str(e)}\nVui lòng kiểm tra lại tham số truyền vào và thử lại.")],
+                is_error=True,
+            )
     async def run(self) -> None:
         """Run the MCP server."""
         logger.info("Starting FastBusiness MCP Server (SQL/XML + FBOGraph)...")
@@ -406,6 +471,9 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
 
 def main():
     """Entry point for the MCP server."""
+    from fastbusiness_mcp.license import verify_and_enforce_license
+
+    verify_and_enforce_license()
     server = FastBusinessMCPServer()
     asyncio.run(server.run())
 

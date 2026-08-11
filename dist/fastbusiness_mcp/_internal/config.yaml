@@ -22,6 +22,8 @@ fbograph:
 
 # RAG QLYC Search API (MCP tool search_qlyc)
 rag_qlyc:
-  base_url: "http://localhost:8000"
+  # API RAG chạy trên máy/GPU nội bộ — khớp web_ui (không dùng localhost trừ khi uvicorn chạy cùng máy)
+  base_url: "http://172.168.5.14:8000"
   api_key: "fsd@@123"
   timeout_seconds: 30
+  bp_lt: "FSD"

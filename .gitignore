@@ -10,3 +10,4 @@ FastBusiness-MCP-Package/
 logs/
 .fbograph/
 *.log
+key.json
