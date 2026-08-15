@@ -74,7 +74,7 @@
  [],
  False,
  False,
- 1786412387,
+ 1786507707,
  [('run.exe',
    'E:\\PythonProject\\mcp_fbo\\.venv\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\run.exe',
    'EXECUTABLE')],

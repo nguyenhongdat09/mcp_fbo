@@ -22,7 +22,7 @@ from xml_fbograph.utils.path_helper import ProjectPathHelper
 from xml_fbograph.utils.kuzu_build_spawn import (
     InvalidReferenceFileError,
     NotFastBusinessProjectError,
-    KuzuBuildingError,
+    KuzuBuildFailedError,
     ensure_mcp_kuzu_ready,
     kuzu_db_ready,
 )
@@ -43,7 +43,7 @@ def _kuzu_db_ready(db_path: Path) -> bool:
 def _ensure_graph_built(reference_file: str) -> Path:
     """
     Dam bao Kuzu san sang cho MCP.
-    Khong sync-build in-process: Other -> loi; thieu Kuzu -> spawn detached.
+    Thieu Kuzu -> sync-build in-process roi return db_path.
     """
     return ensure_mcp_kuzu_ready(reference_file)
 
@@ -81,7 +81,7 @@ def start_watcher_for_project(reference_file: str):
 
 
 def get_kuzu_store(reference_file: str):
-    """Lay ket noi Kuzu read-only (gate CustomerPro; thieu DB -> spawn detached, khong sync-build)."""
+    """Lay ket noi Kuzu read-only (gate CustomerPro; thieu DB -> sync-build in-process)."""
     db_path = ensure_mcp_kuzu_ready(reference_file)
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()
@@ -108,7 +108,7 @@ def get_kuzu_store(reference_file: str):
 
 
 def _mcp_gate_error_json(exc: Exception) -> Optional[str]:
-    if isinstance(exc, (InvalidReferenceFileError, NotFastBusinessProjectError, KuzuBuildingError)):
+    if isinstance(exc, (InvalidReferenceFileError, NotFastBusinessProjectError, KuzuBuildFailedError)):
         return json.dumps(exc.payload, indent=2, ensure_ascii=False)
     return None
 

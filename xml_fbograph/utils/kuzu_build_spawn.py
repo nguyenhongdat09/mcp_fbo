@@ -1,15 +1,14 @@
 """
-Spawn detached build Kuzu cho MCP — không sync-build trong process MCP.
+Gate MCP: validate reference_file + sync-build Kuzu in-process khi thiếu DB. Không spawn detached, không trả build_cmd cho Agent.
 """
 from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from xml_fbograph.utils.path_helper import (
     ProjectPathHelper,
@@ -76,12 +75,12 @@ class NotFastBusinessProjectError(Exception):
         super().__init__(self.payload["message"])
 
 
-class KuzuBuildingError(Exception):
-    """Kuzu chua san sang; da spawn (hoac dang) build detached."""
+class KuzuBuildFailedError(Exception):
+    """Loi xay ra khi build Kuzu in-process."""
 
     def __init__(self, payload: Dict[str, Any]):
         self.payload = payload
-        super().__init__(payload.get("message", "Kuzu building"))
+        super().__init__(payload.get("message", "Kuzu build failed"))
 
 
 def _pid_alive(pid: int) -> bool:
@@ -122,12 +121,11 @@ def _read_building_marker(graph_dir: Path) -> Optional[Dict[str, Any]]:
             return {"pid": 0, "started_at": marker.stat().st_mtime}
 
 
-def _write_building_marker(graph_dir: Path, pid: int, build_cmd: str) -> None:
+def _write_building_marker(graph_dir: Path, pid: int) -> None:
     graph_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         "pid": pid,
         "started_at": time.time(),
-        "build_cmd": build_cmd,
     }
     (graph_dir / BUILDING_MARKER_NAME).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
@@ -150,135 +148,13 @@ def is_building_in_progress(graph_dir: Path) -> Optional[Dict[str, Any]]:
     if not data:
         return None
     pid = int(data.get("pid") or 0)
-    started_at = float(data.get("started_at") or 0.0)
-    age = time.time() - started_at if started_at else BUILDING_MARKER_MAX_AGE_SEC + 1
-    if _pid_alive(pid) or age < BUILDING_MARKER_MAX_AGE_SEC:
+    if pid > 0 and _pid_alive(pid):
         return data
     clear_building_marker(graph_dir)
     return None
 
 
-def _mcp_json_candidates() -> list[Path]:
-    home = Path.home()
-    candidates = [
-        home / ".cursor" / "mcp.json",
-        home / ".cursor" / "mcp" / "mcp.json",
-    ]
-    appdata = os.environ.get("APPDATA", "").strip()
-    if appdata:
-        candidates.append(Path(appdata) / "Cursor" / "User" / "globalStorage" / "mcp.json")
-        candidates.append(Path(appdata) / "Cursor" / "mcp.json")
-    return candidates
 
-
-def resolve_fastbusiness_mcp_command() -> Tuple[Optional[Path], Optional[Path]]:
-    """
-    Tim (exe, cwd) cua fastbusiness-mcp.
-    Uu tien: mcp.json -> FASTBUSINESS_MCP_EXE -> sys.frozen executable.
-    """
-    env_exe = os.environ.get("FASTBUSINESS_MCP_EXE", "").strip()
-    if env_exe:
-        exe = Path(env_exe)
-        return exe, exe.parent if exe.parent.is_dir() else None
-
-    for cfg_path in _mcp_json_candidates():
-        if not cfg_path.is_file():
-            continue
-        try:
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        servers = cfg.get("mcpServers") or {}
-        if not isinstance(servers, dict):
-            continue
-        entry = None
-        for key, val in servers.items():
-            if "fastbusiness" in str(key).lower() and isinstance(val, dict):
-                entry = val
-                break
-        if not entry:
-            continue
-        command = (entry.get("command") or "").strip()
-        if not command:
-            continue
-        exe = Path(command)
-        cwd_raw = (entry.get("cwd") or "").strip()
-        cwd = Path(cwd_raw) if cwd_raw else exe.parent
-        return exe, cwd
-
-    if getattr(sys, "frozen", False):
-        exe = Path(sys.executable).resolve()
-        return exe, exe.parent
-
-    return None, None
-
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent
-
-
-def build_detached_command(reference_file: str) -> Tuple[list, Path]:
-    """
-    Tra ve (argv, cwd) de spawn build.
-    Exe: fastbusiness_mcp.exe build <path>
-    Dev: py xml_fbograph/build_kuzu_projects.py <path>
-    """
-    helper = ProjectPathHelper(reference_file)
-    target = str(helper.get_project_root())
-    exe, cwd = resolve_fastbusiness_mcp_command()
-    if exe and exe.is_file():
-        work_dir = cwd if cwd and cwd.is_dir() else exe.parent
-        return [str(exe), "build", target], work_dir
-
-    repo = _repo_root()
-    script = repo / "xml_fbograph" / "build_kuzu_projects.py"
-    py = sys.executable or "py"
-    return [py, str(script), target], repo
-
-
-def spawn_detached_kuzu_build(reference_file: str, graph_dir: Path) -> Dict[str, Any]:
-    """
-    Spawn CMD/process detached. Tra ve payload status=building.
-    Neu marker dang song -> khong spawn lai.
-    """
-    helper = ProjectPathHelper(reference_file)
-    project_root = str(helper.get_project_root())
-
-    existing = is_building_in_progress(graph_dir)
-    if existing:
-        return {
-            "status": "building",
-            "message": (
-                "Kuzu chua co hoac dang duoc build. "
-                "Neu process PowerShell build Kuzu cua ban CHUA chay, BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd NGAY BÂY GIỜ. "
-                "Nếu đang chạy rồi thì hãy đợi (15-30 phut) và gọi lại sau."
-            ),
-            "project_root": project_root,
-            "graph_dir": str(graph_dir),
-            "build_cmd": existing.get("build_cmd", ""),
-            "pid": existing.get("pid"),
-            "spawned": False,
-        }
-
-    argv, work_dir = build_detached_command(reference_file)
-    build_cmd = " ".join(f'"{a}"' if " " in a else a for a in argv)
-
-    _write_building_marker(graph_dir, 0, build_cmd)
-    sys.stderr.write(
-        f"[FboFBOGraph MCP] delegated build cmd to Agent: {build_cmd}\n"
-    )
-    return {
-        "status": "building",
-        "message": (
-            "Kuzu chua co. BAN PHAI SỬ DỤNG TOOL run_command ĐỂ CHẠY LỆNH TRONG TRƯỜNG build_cmd BẰNG POWERSHELL NGAY BÂY GIỜ. "
-            "Khong duoc bo qua buoc nay!"
-        ),
-        "project_root": project_root,
-        "graph_dir": str(graph_dir),
-        "build_cmd": build_cmd,
-        "pid": 0,
-        "spawned": False,
-    }
 
 
 def kuzu_db_ready(db_path: Path) -> bool:
@@ -349,12 +225,78 @@ def _validate_and_resolve_reference_file(reference_file: str) -> str:
     return ref_str
 
 
+def _sync_build_kuzu_in_mcp(reference_file: str, graph_dir: Path) -> None:
+    helper = ProjectPathHelper(reference_file)
+    project_root = str(helper.get_project_root())
+    
+    # 1. Log stderr
+    sys.stderr.write(f"[FboFBOGraph MCP] Kuzu missing. Sync-building in-process for {project_root} ...\n")
+    sys.stderr.flush()
+    
+    # 2. Marker
+    pid = os.getpid()
+    _write_building_marker(graph_dir, pid)
+    
+    try:
+        # 3. Invalidate cache
+        db_path = graph_dir / "kuzu"
+        db_key = str(db_path)
+        graph_dir_key = str(graph_dir)
+        
+        try:
+            from xml_fbograph.query import engine as qe
+            qe._store_cache.pop(graph_dir_key, None)
+            qe._graph_cache.pop(graph_dir_key, None)
+        except Exception:
+            pass
+            
+        try:
+            from xml_fbograph.storage.kuzu_index import _db_instances
+            _db_instances.pop(db_key.replace("\\", "/").lower(), None)
+        except Exception:
+            pass
+            
+        try:
+            if 'xml_fbograph.mcp_tools' in sys.modules:
+                sys.modules['xml_fbograph.mcp_tools']._kuzu_stores.pop(db_key, None)
+        except Exception:
+            pass
+
+        # 4. Build
+        import contextlib
+        from xml_fbograph.builder.graph_builder import build_and_save_graph
+        with contextlib.redirect_stdout(sys.stderr): # tránh phá JSON-RPC MCP
+            build_and_save_graph(
+                helper.get_controllers_path(),
+                graph_dir,
+                project_label=project_root
+            )
+        sys.stderr.write("[FboFBOGraph MCP] Sync-build finished.\n")
+        sys.stderr.flush()
+    finally:
+        # 6. Clear marker
+        clear_building_marker(graph_dir)
+
+import threading
+_sync_build_locks: dict[str, threading.Lock] = {}
+_sync_build_locks_guard = threading.Lock()
+
+def _graph_build_lock(graph_dir: Path) -> threading.Lock:
+    key = str(graph_dir)
+    with _sync_build_locks_guard:
+        lock = _sync_build_locks.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _sync_build_locks[key] = lock
+        return lock
+
 def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
     """
-    Gate MCP: CustomerPro + App_Data/Controllers + Kuzu ready.
-    - Other / thieu Controllers -> NotFastBusinessProjectError
-    - Thieu Kuzu -> spawn detached + KuzuBuildingError (khong sync-build)
-    - Ready -> tra ve db_path
+    Gate MCP: validate reference_file + dam bao Kuzu ready.
+    - invalid path -> InvalidReferenceFileError (KHONG build)
+    - kuzu ready -> return db_path
+    - thieu kuzu -> sync-build in-process (build_and_save_graph), roi return db_path
+    - build fail -> exception ro, KHONG tra build_cmd
     """
     reference_file = _validate_and_resolve_reference_file(reference_file)
 
@@ -366,5 +308,48 @@ def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
         clear_building_marker(graph_dir)
         return db_path
 
-    payload = spawn_detached_kuzu_build(reference_file, graph_dir)
-    raise KuzuBuildingError(payload)
+    # Wait if another process is building
+    existing_marker = is_building_in_progress(graph_dir)
+    if existing_marker and existing_marker.get("pid") != os.getpid():
+        sys.stderr.write(f"[FboFBOGraph MCP] Waiting for in-process Kuzu build pid={existing_marker.get('pid')} ...\n")
+        sys.stderr.flush()
+        start_wait = time.time()
+        while is_building_in_progress(graph_dir):
+            time.sleep(2)
+            if kuzu_db_ready(db_path):
+                clear_building_marker(graph_dir)
+                return db_path
+            if time.time() - start_wait > BUILDING_MARKER_MAX_AGE_SEC:
+                break
+        
+        if kuzu_db_ready(db_path):
+            clear_building_marker(graph_dir)
+            return db_path
+
+    lock = _graph_build_lock(graph_dir)
+    with lock:
+        if kuzu_db_ready(db_path):
+            clear_building_marker(graph_dir)
+            return db_path
+
+        try:
+            _sync_build_kuzu_in_mcp(reference_file, graph_dir)
+        except Exception as e:
+            clear_building_marker(graph_dir)
+            raise KuzuBuildFailedError({
+                "error": "kuzu_build_failed",
+                "message": f"Kuzu build in-process failed: {str(e)}",
+                "project_root": str(helper.get_project_root()),
+                "graph_dir": str(graph_dir)
+            })
+
+        if not kuzu_db_ready(db_path):
+            raise KuzuBuildFailedError({
+                "error": "kuzu_build_failed",
+                "message": "Kuzu build completed but DB is still not ready.",
+                "project_root": str(helper.get_project_root()),
+                "graph_dir": str(graph_dir)
+            })
+            
+        clear_building_marker(graph_dir)
+        return db_path

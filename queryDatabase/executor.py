@@ -75,6 +75,9 @@ def _build_connection_string(parsed: dict[str, str]) -> str:
     database = parsed.get("database", "")
     user = parsed.get("user", "")
     password = parsed.get("password", "")
+    # Web.config thường có App=%UserID (placeholder FBO) — không dùng nguyên chữ cho Profiler.
+    raw_app = (parsed.get("app_name") or "").strip()
+    app_name = "FSD" if (not raw_app or "%" in raw_app) else raw_app
 
     if not server or not database:
         raise ValueError("Connection thiếu server hoặc database")
@@ -85,6 +88,7 @@ def _build_connection_string(parsed: dict[str, str]) -> str:
             f"DRIVER={{{driver}}}",
             f"SERVER={server}",
             f"DATABASE={database}",
+            f"APP={app_name}",
             "TrustServerCertificate=yes",
             "Encrypt=no",
         ]

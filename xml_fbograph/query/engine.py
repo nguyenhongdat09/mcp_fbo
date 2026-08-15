@@ -212,7 +212,7 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
       folder_filter: str hoặc list, lọc theo thư mục (ví dụ: 'Dir' hoặc ['Dir', 'Grid'])
       type_filter: str hoặc list, lọc theo loại controller (ví dụ: 'dir' hoặc 'grid')
     """
-    # 1. Gate CustomerPro + App_Data/Controllers; thieu Kuzu -> spawn detached (khong sync-build)
+    # 1. Gate ensure_mcp_kuzu_ready (thieu Kuzu -> sync-build in-process)
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()
     controllers_dir = helper.get_controllers_path()

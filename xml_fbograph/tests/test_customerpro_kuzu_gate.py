@@ -1,4 +1,4 @@
-"""Tests gate CustomerPro + App_Data/Controllers + detached build (khong sync-build)."""
+"""Tests gate CustomerPro + App_Data/Controllers + sync-build in-process."""
 import json
 import os
 import sys
@@ -19,9 +19,11 @@ from xml_fbograph.utils.path_helper import (
 )
 from xml_fbograph.utils.kuzu_build_spawn import (
     NotFastBusinessProjectError,
-    KuzuBuildingError,
+    KuzuBuildFailedError,
     ensure_mcp_kuzu_ready,
 )
+
+import xml_fbograph.builder.graph_builder
 
 
 UNC_OK = (
@@ -225,23 +227,144 @@ class TestEnsureMcpKuzuGate(unittest.TestCase):
         self.assertEqual(ctx.exception.payload["reason"], "missing_controllers")
 
 
-    def test_missing_kuzu_spawns_once_no_sync_build(self):
+    @mock.patch("xml_fbograph.builder.graph_builder.build_and_save_graph")
+    def test_missing_kuzu_sync_builds_then_returns_db_path(self, mock_build):
         self.controllers.joinpath("Dir").mkdir(parents=True)
         Path(self.ref).write_text("<dir/>", encoding="utf-8")
 
-        with self.assertRaises(KuzuBuildingError) as ctx1:
-            ensure_mcp_kuzu_ready(self.ref)
-        self.assertEqual(ctx1.exception.payload["status"], "building")
-        self.assertFalse(ctx1.exception.payload.get("spawned"))
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
+        helper = ProjectPathHelper(self.ref)
+        graph_dir = helper.get_graph_dir()
+        db_path = graph_dir / "kuzu"
 
-        # Lan 2: marker con song -> khong spawn them
-        with self.assertRaises(KuzuBuildingError) as ctx2:
-            ensure_mcp_kuzu_ready(self.ref)
-        self.assertFalse(ctx2.exception.payload.get("spawned"))
+        def _fake_build(*args, **kwargs):
+            db_path.mkdir(parents=True, exist_ok=True)
+            (db_path / "data.bin").write_text("dummy", encoding="utf-8")
+        
+        mock_build.side_effect = _fake_build
 
-        # Lan 3 van khong spawn them
-        with self.assertRaises(KuzuBuildingError):
+        result = ensure_mcp_kuzu_ready(self.ref)
+
+        self.assertEqual(result, db_path)
+        self.assertTrue(db_path.exists())
+        mock_build.assert_called_once()
+        
+        # Check marker is gone
+        from xml_fbograph.utils.kuzu_build_spawn import _read_building_marker
+        self.assertIsNone(_read_building_marker(graph_dir))
+
+    @mock.patch("xml_fbograph.builder.graph_builder.build_and_save_graph")
+    @mock.patch("time.sleep")
+    def test_stale_pid0_marker_does_not_wait_sync_builds_immediately(self, mock_sleep, mock_build):
+        self.controllers.joinpath("Dir").mkdir(parents=True)
+        Path(self.ref).write_text("<dir/>", encoding="utf-8")
+
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
+        helper = ProjectPathHelper(self.ref)
+        graph_dir = helper.get_graph_dir()
+        
+        # Tạo marker pid=0
+        import json
+        import time
+        from xml_fbograph.utils.kuzu_build_spawn import BUILDING_MARKER_NAME
+        graph_dir.mkdir(parents=True, exist_ok=True)
+        marker_path = graph_dir / BUILDING_MARKER_NAME
+        marker_path.write_text(json.dumps({
+            "pid": 0,
+            "started_at": time.time(),
+            "build_cmd": "legacy.exe build X"
+        }), encoding="utf-8")
+
+        db_path = graph_dir / "kuzu"
+
+        def _fake_build(*args, **kwargs):
+            db_path.mkdir(parents=True, exist_ok=True)
+            (db_path / "data.bin").write_text("dummy", encoding="utf-8")
+        mock_build.side_effect = _fake_build
+
+        result = ensure_mcp_kuzu_ready(self.ref)
+
+        self.assertEqual(result, db_path)
+        self.assertTrue(db_path.exists())
+        mock_build.assert_called_once()
+        mock_sleep.assert_not_called()
+        self.assertFalse(marker_path.exists())
+
+    @mock.patch("xml_fbograph.builder.graph_builder.build_and_save_graph")
+    @mock.patch("xml_fbograph.utils.kuzu_build_spawn._pid_alive")
+    @mock.patch("time.sleep")
+    def test_dead_pid_marker_cleared_then_sync_build(self, mock_sleep, mock_alive, mock_build):
+        self.controllers.joinpath("Dir").mkdir(parents=True)
+        Path(self.ref).write_text("<dir/>", encoding="utf-8")
+        
+        mock_alive.return_value = False
+
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
+        helper = ProjectPathHelper(self.ref)
+        graph_dir = helper.get_graph_dir()
+        
+        # Tạo marker pid dead
+        import json
+        import time
+        from xml_fbograph.utils.kuzu_build_spawn import BUILDING_MARKER_NAME
+        graph_dir.mkdir(parents=True, exist_ok=True)
+        marker_path = graph_dir / BUILDING_MARKER_NAME
+        marker_path.write_text(json.dumps({
+            "pid": 999999,
+            "started_at": time.time()
+        }), encoding="utf-8")
+
+        db_path = graph_dir / "kuzu"
+
+        def _fake_build(*args, **kwargs):
+            db_path.mkdir(parents=True, exist_ok=True)
+            (db_path / "data.bin").write_text("dummy", encoding="utf-8")
+        mock_build.side_effect = _fake_build
+
+        result = ensure_mcp_kuzu_ready(self.ref)
+
+        self.assertEqual(result, db_path)
+        mock_build.assert_called_once()
+        mock_sleep.assert_not_called()
+        self.assertFalse(marker_path.exists())
+
+    @mock.patch("xml_fbograph.builder.graph_builder.build_and_save_graph")
+    def test_kuzu_already_ready_skips_build(self, mock_build):
+        self.controllers.joinpath("Dir").mkdir(parents=True)
+        Path(self.ref).write_text("<dir/>", encoding="utf-8")
+
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
+        helper = ProjectPathHelper(self.ref)
+        graph_dir = helper.get_graph_dir()
+        db_path = graph_dir / "kuzu"
+
+        db_path.mkdir(parents=True, exist_ok=True)
+        (db_path / "data.bin").write_text("dummy", encoding="utf-8")
+
+        result = ensure_mcp_kuzu_ready(self.ref)
+
+        self.assertEqual(result, db_path)
+        mock_build.assert_not_called()
+
+    @mock.patch("xml_fbograph.builder.graph_builder.build_and_save_graph")
+    def test_sync_build_failure_returns_error_not_build_cmd(self, mock_build):
+        self.controllers.joinpath("Dir").mkdir(parents=True)
+        Path(self.ref).write_text("<dir/>", encoding="utf-8")
+
+        mock_build.side_effect = RuntimeError("disk full")
+        
+        from xml_fbograph.utils.kuzu_build_spawn import KuzuBuildFailedError
+        with self.assertRaises(KuzuBuildFailedError) as ctx:
             ensure_mcp_kuzu_ready(self.ref)
+            
+        self.assertEqual(ctx.exception.payload["error"], "kuzu_build_failed")
+        self.assertNotIn("build_cmd", ctx.exception.payload)
+        
+        from xml_fbograph.utils.path_helper import ProjectPathHelper
+        helper = ProjectPathHelper(self.ref)
+        graph_dir = helper.get_graph_dir()
+        from xml_fbograph.utils.kuzu_build_spawn import _read_building_marker
+        self.assertIsNone(_read_building_marker(graph_dir))
 
 
 if __name__ == "__main__":

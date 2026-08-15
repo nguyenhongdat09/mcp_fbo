@@ -15,6 +15,7 @@ from mcp.types import (
 )
 
 from .utils.logger import setup_logger
+from .agent_messages import QUERY_RADAR_ERROR_MSG, MISSING_ARG_MSG, GENERAL_EXECUTION_ERROR_MSG
 
 from queryDatabase import query_database
 from queryDatabase.formatter import format_query_result
@@ -23,9 +24,6 @@ from find_entity_by_xml.formatter import format_entity_result
 
 from xml_fbograph.mcp_tools import (
     mcp_query_radar,
-    mcp_search_nodes,
-    mcp_get_related_nodes,
-    mcp_query_node_details,
     mcp_read_local_file,
 )
 
@@ -148,8 +146,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
                 Tool(
                     name="query_radar",
                     description="""Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
-Dành cho việc truy vấn nâng cao hoặc các trường hợp ad-hoc.
-Khuyến khích sử dụng search_nodes, get_related_nodes, query_node_details cho các câu hỏi thông thường.
+Đây là tool DUY NHẤT để truy vấn Graph (các hàm cũ đã bị ẩn).
 
 CHÚ Ý: Lược đồ đồ thị (Schema), 10 Template Cypher chuẩn và các nguyên tắc cú pháp nghiêm ngặt đã được cung cấp sẵn trong Rules hệ thống (KùzuDB Cypher Query Principles & FBOGraph Schema Guide). 
 Bạn BẮT BUỘC phải đọc và tuân thủ các quy tắc, chỉ chọn 1 trong 10 Template đó khi gọi cypher_query. Tuyệt đối KHÔNG tự sáng tác câu lệnh Cypher.
@@ -177,88 +174,6 @@ mode:
                             },
                         },
                         "required": ["reference_file"],
-                    },
-                ),
-                Tool(
-                    name="search_nodes",
-                    description="""Tim kiem node/field/code trong du an FBO.
-Synonym ASCII (uu tien, tranh loi encoding): truyen query KHONG DAU.
-Vi du: 'giay bao no' -> CPTran; 'phieu chi' -> CDTran; 'dien giai' -> dien_giai; 'gia ban' -> gia2/gia_nt2; 'ten hang hoa' -> ten_vt.
-Van chap nhan co dau (tu dong fold), nhung agent nen dung khong dau.""",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Keyword ASCII uu tien: 'giay bao no', 'phieu chi', 'dien giai', 'ma_kh', 'CPTran'",
-                            },
-                            "reference_file": {
-                                "type": "string",
-                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
-                            },
-                            "match_type": {
-                                "type": "string",
-                                "description": "Match type: 'all' (default), 'field', 'code', 'file'",
-                            },
-                            "folder_filter": {
-                                "type": "string",
-                                "description": "Folders to search, comma separated (e.g. 'Dir,Grid'). Defaults to Dir,Grid,Filter,Report,Lookup",
-                            },
-                            "limit": {
-                                "type": "number",
-                                "description": "Maximum results (default: 20)",
-                            },
-                        },
-                        "required": ["query", "reference_file"],
-                    },
-                ),
-                Tool(
-                    name="get_related_nodes",
-                    description="""Truy vấn các file/node liên quan đến file target.""",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "target": {
-                                "type": "string",
-                                "description": "Target file relative path or basename (e.g., 'Dir/CPTran.xml', 'CPTax.xml')",
-                            },
-                            "reference_file": {
-                                "type": "string",
-                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
-                            },
-                            "mode": {
-                                "type": "string",
-                                "description": "Mode: 'navigate' (default), 'dependencies', 'dependents'",
-                            },
-                            "include_shared": {
-                                "type": "boolean",
-                                "description": "Include SHARED_INCLUDE relationships (default: false)",
-                            },
-                        },
-                        "required": ["target", "reference_file"],
-                    },
-                ),
-                Tool(
-                    name="query_node_details",
-                    description="""Truy vấn chi tiết thông tin cấu trúc bên trong của một file/controller.
-CHÚ Ý QUAN TRỌNG: Nếu file XML cần truy vấn không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị.""",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "target": {
-                                "type": "string",
-                                "description": "Target file relative path or basename (e.g., 'Dir/CPTran.xml', 'CPTax.xml')",
-                            },
-                            "reference_file": {
-                                "type": "string",
-                                "description": "BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu.",
-                            },
-                            "view": {
-                                "type": "string",
-                                "description": "View type: 'context' (default) or 'blocks'",
-                            },
-                        },
-                        "required": ["target", "reference_file"],
                     },
                 ),
                 Tool(
@@ -382,30 +297,6 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
                 res = mcp_query_radar(cypher_query, reference_file, mode)
                 return CallToolResult(content=[TextContent(type="text", text=res)])
 
-            elif name == "search_nodes":
-                query = arguments["query"]
-                reference_file = arguments["reference_file"]
-                match_type = arguments.get("match_type", "all")
-                folder_filter = arguments.get("folder_filter")
-                limit = int(arguments.get("limit", 20))
-                res = mcp_search_nodes(query, reference_file, match_type, folder_filter, limit)
-                return CallToolResult(content=[TextContent(type="text", text=res)])
-
-            elif name == "get_related_nodes":
-                target = arguments["target"]
-                reference_file = arguments["reference_file"]
-                mode = arguments.get("mode", "navigate")
-                include_shared = arguments.get("include_shared", False)
-                res = mcp_get_related_nodes(target, reference_file, mode, include_shared)
-                return CallToolResult(content=[TextContent(type="text", text=res)])
-
-            elif name == "query_node_details":
-                target = arguments["target"]
-                reference_file = arguments["reference_file"]
-                view = arguments.get("view", "context")
-                res = mcp_query_node_details(target, reference_file, view)
-                return CallToolResult(content=[TextContent(type="text", text=res)])
-
             elif name == "read_local_file":
                 file_path = arguments["file_path"]
                 reference_file = arguments["reference_file"]
@@ -444,11 +335,7 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
 
         except KeyError as e:
             missing_key = str(e).strip("'")
-            error_msg = (
-                f"[LỖI THIẾU THAM SỐ] Tool '{name}' yêu cầu bắt buộc phải có tham số '{missing_key}'.\n"
-                f"Vui lòng gọi lại tool và truyền đầy đủ tham số này.\n"
-                f"Lưu ý: Đối với 'file_path' hoặc 'reference_file', LUÔN dùng đường dẫn TUYỆT ĐỐI (VD: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SRTran.xml)."
-            )
+            error_msg = MISSING_ARG_MSG.format(tool_name=name, missing_key=missing_key)
             logger.error(f"Tool {name} missing argument: {missing_key}")
             return CallToolResult(
                 content=[TextContent(type="text", text=error_msg)],
@@ -456,8 +343,12 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
             )
         except Exception as e:
             logger.error(f"Tool execution error: {e}")
+            if name == "query_radar":
+                error_msg = QUERY_RADAR_ERROR_MSG.format(error_detail=str(e))
+            else:
+                error_msg = GENERAL_EXECUTION_ERROR_MSG.format(tool_name=name, error_detail=str(e))
             return CallToolResult(
-                content=[TextContent(type="text", text=f"[LỖI THỰC THI TOOL '{name}'] {str(e)}\nVui lòng kiểm tra lại tham số truyền vào và thử lại.")],
+                content=[TextContent(type="text", text=error_msg)],
                 is_error=True,
             )
     async def run(self) -> None:

@@ -15,26 +15,24 @@ alwaysApply: true
 2. `get_xml_entities` - Đọc entity XML (mode=content / path)
 
 ### FBOGraph (XML index Kuzu)
-3. `search_nodes` - Tìm field/code/file (có synonym FBO)
-4. `get_related_nodes` - navigate / dependencies / dependents
-5. `query_node_details` - context / blocks (+ needs_xml, agent_hint)
-6. `query_radar` - Cypher ad-hoc (chỉ khi cần)
-7. `read_local_file` - Đọc file XML trong project
+3. `query_radar` - Cypher ad-hoc (chỉ khi cần)
+4. `read_local_file` - Đọc file XML trong project
 
 ## Agent habit
-- Chưa biết file → `search_nodes` → `get_related_nodes` navigate
-- Entity Include → `get_xml_entities`; schema DB → `query_database`
-- Thấy `needs_xml` / `.f` → đừng cố đọc XML mã hóa
-- `search_nodes` query: **ưu tiên KHÔNG DẤU** (tránh lỗi charset)
-  - `giay bao no` → CPTran | `phieu chi` → CDTran
-  - `dien giai` → dien_giai | `ten hang hoa` → ten_vt | `gia ban` → gia2
+- Chưa biết file → query_radar (Template 1 / 5 / 11), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
+- Entity Include → get_xml_entities; schema DB → query_database
+- Thấy needs_xml / .f → đừng cố đọc XML mã hóa
+- Keyword search qua query_radar: ưu tiên KHÔNG DẤU
+  - giay bao no → CPTran | phieu chi → CDTran
+  - dien giai → dien_giai | ten hang hoa → ten_vt | gia ban → gia2
 
 ## FBOGraph reference_file (BẮT BUỘC)
-- Mọi tool: search_nodes, get_related_nodes, query_node_details, query_radar, read_local_file
+- Tool live: query_radar, read_local_file
   phải truyền reference_file = ABSOLUTE path XML trong project đang làm
   (vd E:\FBO\SP2263\App_Data\Controllers\Filter\SVInvoiceFilter.xml).
 - CẤM relative / basename. Nếu user đang mở file trong IDE → lấy full path file đó.
-- Nếu tool trả invalid_reference_file → sửa path rồi gọi lại, KHÔNG chạy build_cmd cho path lạ.
+- Nếu tool trả invalid_reference_file → sửa path rồi gọi lại.
+- query_radar thiếu Kuzu: MCP tự sync-build rồi trả kết quả Cypher. Agent KHÔNG tự chạy fbograph / fastbusiness_mcp.exe build.
 
 ## Critical Rules
 - Partition: `@@prime$partition$current`, NEVER hardcode `d91$202501`

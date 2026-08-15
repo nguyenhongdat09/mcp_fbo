@@ -112,6 +112,14 @@ class WebConfigLoader:
             self.raw_connection_strings["app"] = self._replace_catalog(orig_raw, app_db)
 
     @staticmethod
+    def _resolve_app_name(raw: str | None) -> str:
+        """App=%UserID trong Web.config là placeholder runtime FBO — MCP dùng FSD."""
+        value = (raw or "").strip()
+        if not value or "%" in value:
+            return "FSD"
+        return value
+
+    @staticmethod
     def parse_connection_string(connection_string: str) -> dict[str, str]:
         """Parse ADO.NET connection string thành dict — giống extension."""
         parts: dict[str, str] = {}
@@ -125,7 +133,9 @@ class WebConfigLoader:
         return {
             "server": parts.get("data source", ""),
             "database": parts.get("initial catalog", ""),
-            "app_name": "vscode",
+            "app_name": WebConfigLoader._resolve_app_name(
+                parts.get("app") or parts.get("application name")
+            ),
             "user": parts.get("uid", parts.get("user id", "")),
             "password": parts.get("pwd", parts.get("password", "")),
         }
