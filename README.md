@@ -1,6 +1,6 @@
 # FastBusiness MCP Server
 
-MCP server cho FastBusiness: **query SQL** (resolve connection từ path) và **đọc XML entity**.
+MCP server cho FastBusiness (kiến trúc `mcp.server.MCPServer` / FastMCP + Pydantic v2): **query SQL**, **đọc XML entity**, **Kùzu Graph DB (Radar)**, **đọc file vật lý**, và **tra cứu lịch sử yêu cầu (search_qlyc)**.
 
 ## Cài đặt
 
@@ -14,20 +14,23 @@ pip install -r requirements.txt
 {
   "mcpServers": {
     "fastbusiness-mcp": {
-      "command": "E:\\mcp_fbo\\venv\\Scripts\\python.exe",
+      "command": "E:\\PythonProject\\mcp_fbo\\.venv\\Scripts\\python.exe",
       "args": ["-m", "fastbusiness_mcp.server"],
-      "cwd": "E:\\mcp_fbo"
+      "cwd": "E:\\PythonProject\\mcp_fbo"
     }
   }
 }
 ```
 
-## MCP Tools
+## MCP Tools (5 tools)
 
 | Tool | Mô tả |
 |---|---|
 | `query_database` | Chạy SQL — resolve connection từ `file_path` |
-| `get_xml_entities` | Đọc entity XML (`content` / `path`) |
+| `get_xml_entities` | Đọc entity XML (`content` / `path` / `list`) |
+| `query_radar` | Truy vấn Kùzu Graph DB theo Template Cypher chuẩn |
+| `read_local_file` | Đọc trực tiếp nội dung file từ ổ cứng (raw / flat) |
+| `search_qlyc` | Tra cứu lịch sử ticket / yêu cầu đã thực hiện |
 
 ## Modules
 

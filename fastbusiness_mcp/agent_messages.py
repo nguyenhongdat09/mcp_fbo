@@ -21,3 +21,20 @@ GENERAL_EXECUTION_ERROR_MSG = """
 {error_detail}
 Vui lòng kiểm tra lại tham số truyền vào và thử lại. Nếu là lỗi liên quan tới query_radar, hãy chắc chắn bạn đã dùng đúng Template.
 """
+
+VALIDATION_ERROR_MSG = """
+[LỖI THAM SỐ KHÔNG HỢP LỆ] Tool '{tool_name}' — Agent cần sửa tham số rồi gọi lại.
+
+{detail_vi}
+
+Gợi ý:
+- 'file_path' / 'reference_file': LUÔN dùng đường dẫn TUYỆT ĐỐI (VD: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SRTran.xml).
+- 'db_type': chỉ 'app' hoặc 'sys'.
+- 'mode' (get_xml_entities): 'content', 'path', 'list'.
+- 'mode' (query_radar): 'query', 'schema'.
+- 'read_option': 1 hoặc 2.
+- 'page', 'page_size', 'max_total': phải là số nguyên hợp lệ.
+"""
+
+PATH_HINT_FIELDS = frozenset({"file_path", "reference_file"})
+

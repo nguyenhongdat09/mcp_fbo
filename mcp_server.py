@@ -5,10 +5,13 @@ import threading
 from pathlib import Path
 
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server import MCPServer as FastMCP
 except ImportError:
-    print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
-    sys.exit(1)
+    try:
+        from mcp.server.fastmcp import FastMCP
+    except ImportError:
+        print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
+        sys.exit(1)
 
 mcp = FastMCP("FboFBOGraph")
 

@@ -19,27 +19,6 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:
         pass
 
-# CRITICAL (MCP stdio): stdout chi duoc JSON-RPC. Moi print() → stderr.
-_orig_print = builtins.print
-
-
-def _mcp_safe_print(*args, **kwargs):
-    file = kwargs.get("file", None)
-    if file is None or file is sys.stdout:
-        kwargs["file"] = sys.stderr
-    try:
-        _orig_print(*args, **kwargs)
-    except Exception:
-        try:
-            text = " ".join(str(a) for a in args) + "\n"
-            sys.stderr.buffer.write(text.encode("utf-8", errors="replace"))
-            sys.stderr.flush()
-        except Exception:
-            pass
-
-
-builtins.print = _mcp_safe_print
-
 # Add the parent directory to Python path
 # This allows imports to work correctly when frozen by PyInstaller
 if getattr(sys, "frozen", False):
@@ -48,6 +27,10 @@ else:
     application_path = Path(__file__).parent
 
 sys.path.insert(0, str(application_path))
+
+from fastbusiness_mcp.stdio_safe import ensure_stdio_safe_print
+
+ensure_stdio_safe_print()
 
 from fastbusiness_mcp.config_paths import ensure_frozen_working_directory
 

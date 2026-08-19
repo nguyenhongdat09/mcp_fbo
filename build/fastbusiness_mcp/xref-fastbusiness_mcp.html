@@ -128,6 +128,7 @@ imports:
     <a href="#_collections_abc">_collections_abc</a>
  &#8226;   <a href="#_weakrefset">_weakrefset</a>
  &#8226;   <a href="#abc">abc</a>
+ &#8226;   <a href="#anyio">anyio</a>
  &#8226;   <a href="#builtins">builtins</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
@@ -258,7 +259,10 @@ imports:
  &#8226;   <a href="#enum">enum</a>
  &#8226;   <a href="#fastbusiness_mcp">fastbusiness_mcp</a>
  &#8226;   <a href="#fastbusiness_mcp.config_paths">fastbusiness_mcp.config_paths</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#fastbusiness_mcp.stdio_safe">fastbusiness_mcp.stdio_safe</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
  &#8226;   <a href="#fastbusiness_mcp.utils.logger">fastbusiness_mcp.utils.logger</a>
  &#8226;   <a href="#find_connect_by_path">find_connect_by_path</a>
  &#8226;   <a href="#find_connect_by_path.path_resolver">find_connect_by_path.path_resolver</a>
@@ -285,6 +289,10 @@ imports:
  &#8226;   <a href="#mcp.server.context">mcp.server.context</a>
  &#8226;   <a href="#mcp.server.lowlevel">mcp.server.lowlevel</a>
  &#8226;   <a href="#mcp.server.lowlevel.server">mcp.server.lowlevel.server</a>
+ &#8226;   <a href="#mcp.server.mcpserver">mcp.server.mcpserver</a>
+ &#8226;   <a href="#mcp.server.mcpserver.server">mcp.server.mcpserver.server</a>
+ &#8226;   <a href="#mcp.server.mcpserver.tools">mcp.server.mcpserver.tools</a>
+ &#8226;   <a href="#mcp.server.mcpserver.utilities.func_metadata">mcp.server.mcpserver.utilities.func_metadata</a>
  &#8226;   <a href="#mcp.server.stdio">mcp.server.stdio</a>
  &#8226;   <a href="#mcp.types">mcp.types</a>
  &#8226;   <a href="#mcp_types">mcp_types</a>
@@ -293,6 +301,8 @@ imports:
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
  &#8226;   <a href="#posixpath">posixpath</a>
+ &#8226;   <a href="#pydantic">pydantic</a>
+ &#8226;   <a href="#pydantic_core">pydantic_core</a>
  &#8226;   <a href="#pyi_rth_cryptography_openssl.py">pyi_rth_cryptography_openssl.py</a>
  &#8226;   <a href="#pyi_rth_inspect.py">pyi_rth_inspect.py</a>
  &#8226;   <a href="#pyi_rth_multiprocessing.py">pyi_rth_multiprocessing.py</a>
@@ -1113,6 +1123,8 @@ imported by:
  &#8226;   <a href="#cryptography.utils">cryptography.utils</a>
  &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#fastbusiness_mcp.config_paths">fastbusiness_mcp.config_paths</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
  &#8226;   <a href="#find_entity_by_xml.entity_cache">find_entity_by_xml.entity_cache</a>
  &#8226;   <a href="#find_entity_by_xml.entity_resolver">find_entity_by_xml.entity_resolver</a>
  &#8226;   <a href="#find_entity_by_xml.fbo_ent_parser">find_entity_by_xml.fbo_ent_parser</a>
@@ -2773,6 +2785,7 @@ imported by:
  &#8226;   <a href="#mcp.shared.direct_dispatcher">mcp.shared.direct_dispatcher</a>
  &#8226;   <a href="#mcp.shared.dispatcher">mcp.shared.dispatcher</a>
  &#8226;   <a href="#mcp.shared.jsonrpc_dispatcher">mcp.shared.jsonrpc_dispatcher</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#sse_starlette.sse">sse_starlette.sse</a>
  &#8226;   <a href="#starlette.requests">starlette.requests</a>
  &#8226;   <a href="#starlette.responses">starlette.responses</a>
@@ -4064,7 +4077,6 @@ imported by:
  &#8226;   <a href="#asyncio.unix_events">asyncio.unix_events</a>
  &#8226;   <a href="#asyncio.windows_events">asyncio.windows_events</a>
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
- &#8226;   <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
  &#8226;   <a href="#httpx2._transports.asgi">httpx2._transports.asgi</a>
  &#8226;   <a href="#kuzu.async_connection">kuzu.async_connection</a>
  &#8226;   <a href="#sse_starlette.sse">sse_starlette.sse</a>
@@ -5597,6 +5609,7 @@ imported by:
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#doctest">doctest</a>
  &#8226;   <a href="#enum">enum</a>
+ &#8226;   <a href="#fastbusiness_mcp.stdio_safe">fastbusiness_mcp.stdio_safe</a>
  &#8226;   <a href="#gettext">gettext</a>
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#inspect">inspect</a>
@@ -11935,7 +11948,10 @@ imported by:
     <a href="#fastbusiness_mcp.agent_messages">fastbusiness_mcp.agent_messages</a>
  &#8226;   <a href="#fastbusiness_mcp.config_paths">fastbusiness_mcp.config_paths</a>
  &#8226;   <a href="#fastbusiness_mcp.license">fastbusiness_mcp.license</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#fastbusiness_mcp.stdio_safe">fastbusiness_mcp.stdio_safe</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
  &#8226;   <a href="#fastbusiness_mcp.utils">fastbusiness_mcp.utils</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
@@ -11953,7 +11969,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
 
   </div>
 
@@ -11974,7 +11991,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#fastbusiness_mcp.license.license_manager">fastbusiness_mcp.license.license_manager</a>
- &#8226;   <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
@@ -12024,33 +12041,97 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="fastbusiness_mcp.server"></a>
-  <a target="code" href="///E:/PythonProject/mcp_fbo/fastbusiness_mcp/server.py" type="text/plain"><tt>fastbusiness_mcp.server</tt></a>
+  <a name="fastbusiness_mcp.mcp_app"></a>
+  <a target="code" href="///E:/PythonProject/mcp_fbo/fastbusiness_mcp/mcp_app.py" type="text/plain"><tt>fastbusiness_mcp.mcp_app</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#asyncio">asyncio</a>
+    <a href="#__future__">__future__</a>
  &#8226;   <a href="#fastbusiness_mcp">fastbusiness_mcp</a>
  &#8226;   <a href="#fastbusiness_mcp.agent_messages">fastbusiness_mcp.agent_messages</a>
  &#8226;   <a href="#fastbusiness_mcp.config_paths">fastbusiness_mcp.config_paths</a>
- &#8226;   <a href="#fastbusiness_mcp.license">fastbusiness_mcp.license</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
  &#8226;   <a href="#fastbusiness_mcp.utils.logger">fastbusiness_mcp.utils.logger</a>
  &#8226;   <a href="#find_entity_by_xml">find_entity_by_xml</a>
  &#8226;   <a href="#find_entity_by_xml.formatter">find_entity_by_xml.formatter</a>
+ &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#mcp.server">mcp.server</a>
- &#8226;   <a href="#mcp.server.context">mcp.server.context</a>
- &#8226;   <a href="#mcp.server.stdio">mcp.server.stdio</a>
- &#8226;   <a href="#mcp.types">mcp.types</a>
+ &#8226;   <a href="#mcp.server.mcpserver.exceptions">mcp.server.mcpserver.exceptions</a>
+ &#8226;   <a href="#pydantic">pydantic</a>
  &#8226;   <a href="#queryDatabase">queryDatabase</a>
  &#8226;   <a href="#queryDatabase.formatter">queryDatabase.formatter</a>
+ &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#search_qlyc">search_qlyc</a>
  &#8226;   <a href="#search_qlyc.formatter">search_qlyc.formatter</a>
+ &#8226;   <a href="#typing">typing</a>
  &#8226;   <a href="#xml_fbograph.mcp_tools">xml_fbograph.mcp_tools</a>
  &#8226;   <a href="#yaml">yaml</a>
 
   </div>
   <div class="import">
 imported by:
+    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="fastbusiness_mcp.server"></a>
+  <a target="code" href="///E:/PythonProject/mcp_fbo/fastbusiness_mcp/server.py" type="text/plain"><tt>fastbusiness_mcp.server</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#fastbusiness_mcp">fastbusiness_mcp</a>
+ &#8226;   <a href="#fastbusiness_mcp.license">fastbusiness_mcp.license</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.stdio_safe">fastbusiness_mcp.stdio_safe</a>
+ &#8226;   <a href="#fastbusiness_mcp.utils.logger">fastbusiness_mcp.utils.logger</a>
+
+  </div>
+  <div class="import">
+imported by:
     <a href="#run_server.py">run_server.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="fastbusiness_mcp.stdio_safe"></a>
+  <a target="code" href="///E:/PythonProject/mcp_fbo/fastbusiness_mcp/stdio_safe.py" type="text/plain"><tt>fastbusiness_mcp.stdio_safe</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#builtins">builtins</a>
+ &#8226;   <a href="#fastbusiness_mcp">fastbusiness_mcp</a>
+ &#8226;   <a href="#sys">sys</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="fastbusiness_mcp.tool_errors"></a>
+  <a target="code" href="///E:/PythonProject/mcp_fbo/fastbusiness_mcp/tool_errors.py" type="text/plain"><tt>fastbusiness_mcp.tool_errors</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#fastbusiness_mcp">fastbusiness_mcp</a>
+ &#8226;   <a href="#fastbusiness_mcp.agent_messages">fastbusiness_mcp.agent_messages</a>
+ &#8226;   <a href="#mcp.server.mcpserver.exceptions">mcp.server.mcpserver.exceptions</a>
+ &#8226;   <a href="#pydantic">pydantic</a>
+ &#8226;   <a href="#re">re</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -12086,7 +12167,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
@@ -12193,7 +12275,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#find_entity_by_xml.entity_cache">find_entity_by_xml.entity_cache</a>
  &#8226;   <a href="#find_entity_by_xml.entity_expander">find_entity_by_xml.entity_expander</a>
  &#8226;   <a href="#find_entity_by_xml.entity_resolver">find_entity_by_xml.entity_resolver</a>
@@ -12329,7 +12411,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
@@ -16366,6 +16448,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#fastbusiness_mcp.license.license_manager">fastbusiness_mcp.license.license_manager</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#find_entity_by_xml.formatter">find_entity_by_xml.formatter</a>
  &#8226;   <a href="#httpx2._content">httpx2._content</a>
  &#8226;   <a href="#httpx2._main">httpx2._main</a>
@@ -18825,7 +18908,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#mcp.client._memory">mcp.client._memory</a>
  &#8226;   <a href="#mcp.client.client">mcp.client.client</a>
  &#8226;   <a href="#mcp.server._otel">mcp.server._otel</a>
@@ -19410,8 +19493,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
- &#8226;   <a href="#mcp.server">mcp.server</a>
+    <a href="#mcp.server">mcp.server</a>
  &#8226;   <a href="#mcp.server._otel">mcp.server._otel</a>
  &#8226;   <a href="#mcp.server.extension">mcp.server.extension</a>
  &#8226;   <a href="#mcp.server.lowlevel.server">mcp.server.lowlevel.server</a>
@@ -19611,6 +19693,7 @@ imported by:
  &#8226;   <a href="#mcp.server.mcpserver.server">mcp.server.mcpserver.server</a>
  &#8226;   <a href="#mcp.server.mcpserver.tools">mcp.server.mcpserver.tools</a>
  &#8226;   <a href="#mcp.server.mcpserver.utilities">mcp.server.mcpserver.utilities</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -19665,7 +19748,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#mcp.server.mcpserver.resolve">mcp.server.mcpserver.resolve</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
+ &#8226;   <a href="#mcp.server.mcpserver.resolve">mcp.server.mcpserver.resolve</a>
  &#8226;   <a href="#mcp.server.mcpserver.resources.resource_manager">mcp.server.mcpserver.resources.resource_manager</a>
  &#8226;   <a href="#mcp.server.mcpserver.resources.templates">mcp.server.mcpserver.resources.templates</a>
  &#8226;   <a href="#mcp.server.mcpserver.server">mcp.server.mcpserver.server</a>
@@ -19995,6 +20080,7 @@ imports:
 imported by:
     <a href="#mcp.server.mcpserver">mcp.server.mcpserver</a>
  &#8226;   <a href="#mcp.server.mcpserver.context">mcp.server.mcpserver.context</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -20015,6 +20101,7 @@ imported by:
     <a href="#mcp.server.mcpserver.server">mcp.server.mcpserver.server</a>
  &#8226;   <a href="#mcp.server.mcpserver.tools.base">mcp.server.mcpserver.tools.base</a>
  &#8226;   <a href="#mcp.server.mcpserver.tools.tool_manager">mcp.server.mcpserver.tools.tool_manager</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -20155,6 +20242,7 @@ imported by:
     <a href="#mcp.server.mcpserver.prompts.base">mcp.server.mcpserver.prompts.base</a>
  &#8226;   <a href="#mcp.server.mcpserver.resources.templates">mcp.server.mcpserver.resources.templates</a>
  &#8226;   <a href="#mcp.server.mcpserver.tools.base">mcp.server.mcpserver.tools.base</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -20404,8 +20492,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
- &#8226;   <a href="#mcp">mcp</a>
+    <a href="#mcp">mcp</a>
  &#8226;   <a href="#mcp.server.mcpserver.server">mcp.server.mcpserver.server</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
@@ -21222,8 +21309,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
- &#8226;   <a href="#mcp">mcp</a>
+    <a href="#mcp">mcp</a>
  &#8226;   <a href="#mcp.types">mcp.types</a>
  &#8226;   <a href="#mcp.types.jsonrpc">mcp.types.jsonrpc</a>
  &#8226;   <a href="#mcp.types.methods">mcp.types.methods</a>
@@ -24648,7 +24734,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#mcp.client._probe">mcp.client._probe</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
+ &#8226;   <a href="#mcp.client._probe">mcp.client._probe</a>
  &#8226;   <a href="#mcp.client.extension">mcp.client.extension</a>
  &#8226;   <a href="#mcp.client.session">mcp.client.session</a>
  &#8226;   <a href="#mcp.client.session_group">mcp.client.session_group</a>
@@ -24745,6 +24833,7 @@ imported by:
  &#8226;   <a href="#pydantic.validators">pydantic.validators</a>
  &#8226;   <a href="#pydantic.version">pydantic.version</a>
  &#8226;   <a href="#pydantic.warnings">pydantic.warnings</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -28338,6 +28427,7 @@ imported by:
  &#8226;   <a href="#pydantic.version">pydantic.version</a>
  &#8226;   <a href="#pydantic_core._pydantic_core">pydantic_core._pydantic_core</a>
  &#8226;   <a href="#pydantic_core.core_schema">pydantic_core.core_schema</a>
+ &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
 
@@ -28679,7 +28769,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#queryDatabase.connection">queryDatabase.connection</a>
  &#8226;   <a href="#queryDatabase.executor">queryDatabase.executor</a>
  &#8226;   <a href="#queryDatabase.formatter">queryDatabase.formatter</a>
@@ -28742,7 +28832,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
@@ -28939,6 +29029,8 @@ imported by:
  &#8226;   <a href="#email.quoprimime">email.quoprimime</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#encodings.idna">encodings.idna</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
+ &#8226;   <a href="#fastbusiness_mcp.tool_errors">fastbusiness_mcp.tool_errors</a>
  &#8226;   <a href="#find_connect_by_path.web_config_loader">find_connect_by_path.web_config_loader</a>
  &#8226;   <a href="#find_entity_by_xml.entity_expander">find_entity_by_xml.entity_expander</a>
  &#8226;   <a href="#find_entity_by_xml.entity_resolver">find_entity_by_xml.entity_resolver</a>
@@ -29606,7 +29698,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#search_qlyc.client">search_qlyc.client</a>
  &#8226;   <a href="#search_qlyc.formatter">search_qlyc.formatter</a>
@@ -29647,7 +29739,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
 
   </div>
@@ -34574,6 +34666,7 @@ imported by:
  &#8226;   <a href="#enum">enum</a>
  &#8226;   <a href="#fastbusiness_mcp.config_paths">fastbusiness_mcp.config_paths</a>
  &#8226;   <a href="#fastbusiness_mcp.license.license_manager">fastbusiness_mcp.license.license_manager</a>
+ &#8226;   <a href="#fastbusiness_mcp.stdio_safe">fastbusiness_mcp.stdio_safe</a>
  &#8226;   <a href="#fastbusiness_mcp.utils.logger">fastbusiness_mcp.utils.logger</a>
  &#8226;   <a href="#fractions">fractions</a>
  &#8226;   <a href="#ftplib">ftplib</a>
@@ -35842,6 +35935,7 @@ imported by:
  &#8226;   <a href="#cryptography.hazmat.primitives.asymmetric.rsa">cryptography.hazmat.primitives.asymmetric.rsa</a>
  &#8226;   <a href="#cryptography.hazmat.primitives.ciphers.base">cryptography.hazmat.primitives.ciphers.base</a>
  &#8226;   <a href="#cryptography.utils">cryptography.utils</a>
+ &#8226;   <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#fastbusiness_mcp.utils.logger">fastbusiness_mcp.utils.logger</a>
  &#8226;   <a href="#find_entity_by_xml.entity_expander">find_entity_by_xml.entity_expander</a>
  &#8226;   <a href="#find_entity_by_xml.entity_resolver">find_entity_by_xml.entity_resolver</a>
@@ -39733,7 +39827,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#xml_fbograph">xml_fbograph</a>
  &#8226;   <a href="#xml_fbograph.service.daemon">xml_fbograph.service.daemon</a>
@@ -40384,7 +40478,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#fastbusiness_mcp.server">fastbusiness_mcp.server</a>
+    <a href="#fastbusiness_mcp.mcp_app">fastbusiness_mcp.mcp_app</a>
  &#8226;   <a href="#queryDatabase.query_resolver">queryDatabase.query_resolver</a>
  &#8226;   <a href="#run_server.py">run_server.py</a>
  &#8226;   <a href="#uvicorn.config">uvicorn.config</a>
