@@ -317,7 +317,8 @@ def mcp_query_node_details(target: str, reference_file: str, view: str = "contex
 
 
 # Tool 5
-def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 1) -> str:
+def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 3) -> str:
+
     try:
         helper = ProjectPathHelper(reference_file)
         project_root = helper.get_project_root()
@@ -340,6 +341,15 @@ def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 
         if not p.exists():
             return f"Loi: File khong ton tai: {file_path}"
 
+        if read_option == 3:
+            from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml
+            from find_entity_by_xml.bridges.summary_xml_format import format_summary_xml_result
+            try:
+                result = summary_xml(str(p))
+                return format_summary_xml_result(result)
+            except Exception as e:
+                return f"[ERROR] read_local_file summary_xml\nLoi khi summary XML: {str(e)}"
+
         from xml_fbograph.parsers.xml_parser import read_file_content
         from find_entity_by_xml.facade import flat_xml
 
@@ -354,3 +364,4 @@ def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 
         return content
     except Exception as e:
         return f"Loi doc file: {str(e)}"
+

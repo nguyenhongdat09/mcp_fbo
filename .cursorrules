@@ -22,11 +22,14 @@ alwaysApply: true
 
 ## Agent habit
 - Chưa biết file → query_radar (Template 1 / 5 / 11), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
+- Đọc file controller FBO: MẶC ĐỊNH dùng `read_local_file(..., read_option=3)` (hoặc không truyền `read_option`) để nhận JSON summary siêu gọn (~29ms, tiết kiệm 95% token). CHỈ gọi `read_option=2` khi cần đọc full flat để sửa code.
+
 - Entity Include → get_xml_entities; schema DB → query_database
 - Thấy needs_xml / .f → đừng cố đọc XML mã hóa
 - Keyword search qua query_radar: ưu tiên KHÔNG DẤU
   - giay bao no → CPTran | phieu chi → CDTran
   - dien giai → dien_giai | ten hang hoa → ten_vt | gia ban → gia2
+
 
 ## FBOGraph reference_file (BẮT BUỘC)
 - Tool live: query_radar, read_local_file

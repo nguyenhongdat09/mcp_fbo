@@ -29,3 +29,8 @@ fbograph = "xml_fbograph.build_kuzu_projects:main"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+

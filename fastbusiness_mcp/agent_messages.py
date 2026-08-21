@@ -32,7 +32,7 @@ Gợi ý:
 - 'db_type': chỉ 'app' hoặc 'sys'.
 - 'mode' (get_xml_entities): 'content', 'path', 'list'.
 - 'mode' (query_radar): 'query', 'schema'.
-- 'read_option': 1 hoặc 2.
+- 'read_option': 1 (raw), 2 (flat), 3 (summary_xml).
 - 'page', 'page_size', 'max_total': phải là số nguyên hợp lệ.
 """
 

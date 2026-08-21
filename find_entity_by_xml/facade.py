@@ -59,8 +59,8 @@ def flat_xml(xml_path: str) -> str:
 
 def extract_expanded_blocks(xml_path: str) -> Dict[str, Any]:
     """
-    Extract SQL and JS blocks from the flat XML.
-    Returns: { sql_blocks, js_blocks, system_entities }
+    Extract SQL and JS blocks from the flat XML by delegating to xml_controller_summary.
+    Returns: { sql_blocks, js_blocks, system_entities, param_entities, flat_text }
     """
     raw_content = read_file_content(xml_path)
     if not raw_content:
@@ -83,46 +83,54 @@ def extract_expanded_blocks(xml_path: str) -> Dict[str, Any]:
             ent_copy['name'] = name
             param_entities.append(ent_copy)
             
-    sql_blocks = []
+    from xml_controller_summary.extract import (
+        extract_controller_blocks,
+        extract_cdata_from_inner,
+        CLIENT_SCRIPT_RE,
+    )
+    extracted = extract_controller_blocks(flat_text)
+    
     js_blocks = []
-    
-    def extract_blocks_for_tags(text: str, tags: List[str]) -> List[Dict[str, Any]]:
-        blocks = []
-        for tag in tags:
-            # Find <tag ...>...</tag>
-            pattern = r'<' + tag + r'\b[^>]*>(.*?)</' + tag + r'>'
-            for match in re.finditer(pattern, text, flags=re.DOTALL | re.IGNORECASE):
-                inner_content = match.group(1)
-                
-                # In flat XML, CDATA are escaped `]]]]><![CDATA[>`.
-                # We unescape them to get pure text.
-                # Actually, flat_text already has <text><![CDATA[ ... ]]></text>
-                cdata_match = re.search(r'<text>\s*<!\[CDATA\[(.*?)\]\]>\s*</text>', inner_content, flags=re.DOTALL)
-                if cdata_match:
-                    content = cdata_match.group(1).replace(']]]]><![CDATA[>', ']]>').strip()
-                else:
-                    cdata_match_2 = re.search(r'<!\[CDATA\[(.*?)\]\]>', inner_content, flags=re.DOTALL)
-                    if cdata_match_2:
-                        content = cdata_match_2.group(1).replace(']]]]><![CDATA[>', ']]>').strip()
-                    else:
-                        # Strip other XML tags (e.g., if there's no CDATA block but plain text)
-                        content = re.sub(r'<[^>]+>', '', inner_content).strip()
-                    
-                if content:
-                    blocks.append({
-                        "content": content,
-                        "line": text[:match.start()].count('\n') + 1,
-                        "tag": tag
-                    })
-        return blocks
-        
-    sql_blocks = extract_blocks_for_tags(flat_text, ["query", "command", "action"])
-    js_blocks = extract_blocks_for_tags(flat_text, ["clientScript", "script"])
-    
-    # If no JS blocks were found using standard tags, try extracting from raw XML as fallback
-    if not js_blocks:
-        js_blocks = _extract_js_blocks_from_raw(flat_text)
-        
+    seen_js = set()
+    for jc in extracted.js_chunks:
+        if jc.content:
+            key = (jc.content.strip(), jc.line)
+            seen_js.add(key)
+            js_blocks.append({
+                "content": jc.content,
+                "line": jc.line,
+                "tag": jc.source,
+            })
+
+    # R1: Restore <clientScript> on facade (for FBOGraph parser) without polluting summary_xml ANTLR
+    for m in CLIENT_SCRIPT_RE.finditer(flat_text):
+        inner = m.group(1)
+        content = extract_cdata_from_inner(inner)
+        if content:
+            line = flat_text[:m.start()].count('\n') + 1
+            key = (content.strip(), line)
+            if key not in seen_js:
+                seen_js.add(key)
+                js_blocks.append({
+                    "content": content,
+                    "line": line,
+                    "tag": "clientScript",
+                })
+            
+    sql_blocks = []
+    for sc in extracted.sql_chunks:
+        if sc.content:
+            tag = sc.kind
+            if sc.event:
+                tag = f"command:{sc.event}"
+            elif sc.id:
+                tag = f"action:{sc.id}"
+            sql_blocks.append({
+                "content": sc.content,
+                "line": sc.line,
+                "tag": tag,
+            })
+            
     return {
         'sql_blocks': sql_blocks,
         'js_blocks': js_blocks,
@@ -131,18 +139,4 @@ def extract_expanded_blocks(xml_path: str) -> Dict[str, Any]:
         'flat_text': flat_text
     }
 
-def _extract_js_blocks_from_raw(raw_content: str) -> List[Dict[str, Any]]:
-    js_blocks = []
-    
-    # Example fallback regex for inline scripts (similar to xml_parser's fallback)
-    onchange_pattern = r'onchange\s*=\s*["\']([^"\']+)["\']'
-    for m in re.finditer(onchange_pattern, raw_content, flags=re.IGNORECASE):
-        content = m.group(1).strip()
-        if content:
-            js_blocks.append({
-                "content": content,
-                "line": raw_content[:m.start()].count('\n') + 1,
-                "tag": "onchange"
-            })
-            
-    return js_blocks
+

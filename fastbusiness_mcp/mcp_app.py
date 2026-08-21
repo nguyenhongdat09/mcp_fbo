@@ -358,16 +358,23 @@ def read_local_file_tool(
         Field(description="BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu."),
     ],
     read_option: Annotated[
-        Literal[1, 2],
-        Field(default=1, description="1: Đọc theo nội dung gốc (mặc định), 2: Đọc theo nội dung flat sau khi resolve entities/includes"),
-    ] = 1,
+        Literal[1, 2, 3],
+        Field(
+            default=3,
+            description=(
+                "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt toàn bộ file với chi phí token tối thiểu. "
+                "2: flat — Đọc toàn bộ XML sau khi resolve entities/includes (CHỈ DÙNG khi cần xem chi tiết từng dòng code để sửa file). "
+                "1: raw — Đọc nội dung file gốc chưa resolve."
+            ),
+        ),
+    ] = 3,
 ) -> str:
-    """Đọc trực tiếp nội dung file vật lý từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache). Tool này hoạt động như một chiếc 'kính lúp' để xem nội dung code.
-Các tính năng nổi bật:
-1. Hỗ trợ đường dẫn tuyệt đối hoặc tương đối (tự động phân giải từ gốc dự án hoặc thư mục Controllers).
-2. Tùy chọn đọc nội dung gốc (raw) hoặc nội dung phẳng (flat - tự động phân giải tất cả XML entities và includes).
-3. Hỗ trợ tự động giải mã font Tiếng Việt Windows-1258.
-4. Chặn truy cập (sandbox) ra ngoài thư mục dự án để đảm bảo an toàn.
+    """Đọc trực tiếp nội dung file controller FBO từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache).
+
+QUY TRÌNH AGENT (TIẾT KIỆM TOKEN):
+1) BƯỚC 1 (MẶC ĐỊNH): LUÔN LUÔN dùng read_option=3 (summary_xml) để nắm toàn bộ bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp.
+2) BƯỚC 2: CHỈ gọi read_option=2 (flat) khi bạn ĐÃ XÁC ĐỊNH ĐƯỢC hàm/khối lệnh cần sửa và cần xem code chi tiết để viết code thay thế.
+3) BƯỚC 3: get_xml_entities chỉ khi cần tra cứu vị trí file DTD/Entity chưa flat.
 
 CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị."""
     try:
