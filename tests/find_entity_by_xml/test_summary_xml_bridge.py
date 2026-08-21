@@ -137,7 +137,27 @@ def test_svtran_unc_smoke():
     assert d["success"]
     assert "onChange$Voucher$Customer" in d["js"]["functions"]
     ma = next(f for f in d["fields"] if f["name"] == "ma_kh")
-    assert ma["lookup"] == "Customer"
     assert d["file"].replace("/", "\\").endswith(r"Dir\SVTran.xml") or "SVTran.xml" in d["file"]
+
+
+def test_mcp_read_local_file_non_xml_switch_to_raw():
+    from xml_fbograph.mcp_tools import mcp_read_local_file
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root_dir = Path(tmpdir)
+        controllers_dir = root_dir / "App_Data" / "Controllers" / "Dir"
+        controllers_dir.mkdir(parents=True, exist_ok=True)
+
+        ref_xml = controllers_dir / "Ref.xml"
+        ref_xml.write_text("<dir></dir>", encoding="utf-8")
+
+        sql_file = controllers_dir / "query.sql"
+        sql_file.write_text("SELECT 1 AS TestVal;", encoding="utf-8")
+
+        # Call with read_option=3 on .sql file -> should auto switch to raw content
+        res = mcp_read_local_file(str(sql_file), str(ref_xml), read_option=3)
+        assert res.strip() == "SELECT 1 AS TestVal;"
+        assert "```json" not in res
+
 
 

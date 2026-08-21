@@ -362,7 +362,7 @@ def read_local_file_tool(
         Field(
             default=3,
             description=(
-                "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt toàn bộ file với chi phí token tối thiểu. "
+                "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt toàn bộ file với chi phí token tối thiểu. Tự động switch sang option 1 raw nếu file không phải .xml (vd .sql, .js, .txt, .config). "
                 "2: flat — Đọc toàn bộ XML sau khi resolve entities/includes (CHỈ DÙNG khi cần xem chi tiết từng dòng code để sửa file). "
                 "1: raw — Đọc nội dung file gốc chưa resolve."
             ),
@@ -372,7 +372,7 @@ def read_local_file_tool(
     """Đọc trực tiếp nội dung file controller FBO từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache).
 
 QUY TRÌNH AGENT (TIẾT KIỆM TOKEN):
-1) BƯỚC 1 (MẶC ĐỊNH): LUÔN LUÔN dùng read_option=3 (summary_xml) để nắm toàn bộ bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp.
+1) BƯỚC 1 (MẶC ĐỊNH): LUÔN LUÔN dùng read_option=3 (summary_xml) để nắm toàn bộ bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp. Lưu ý: nếu file không phải .xml (vd .sql, .js, .txt, .config), tool sẽ tự động switch sang read_option=1 (raw).
 2) BƯỚC 2: CHỈ gọi read_option=2 (flat) khi bạn ĐÃ XÁC ĐỊNH ĐƯỢC hàm/khối lệnh cần sửa và cần xem code chi tiết để viết code thay thế.
 3) BƯỚC 3: get_xml_entities chỉ khi cần tra cứu vị trí file DTD/Entity chưa flat.
 

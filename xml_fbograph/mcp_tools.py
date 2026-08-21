@@ -342,13 +342,16 @@ def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 
             return f"Loi: File khong ton tai: {file_path}"
 
         if read_option == 3:
-            from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml
-            from find_entity_by_xml.bridges.summary_xml_format import format_summary_xml_result
-            try:
-                result = summary_xml(str(p))
-                return format_summary_xml_result(result)
-            except Exception as e:
-                return f"[ERROR] read_local_file summary_xml\nLoi khi summary XML: {str(e)}"
+            if p.suffix.lower() != ".xml":
+                read_option = 1
+            else:
+                from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml
+                from find_entity_by_xml.bridges.summary_xml_format import format_summary_xml_result
+                try:
+                    result = summary_xml(str(p))
+                    return format_summary_xml_result(result)
+                except Exception as e:
+                    return f"[ERROR] read_local_file summary_xml\nLoi khi summary XML: {str(e)}"
 
         from xml_fbograph.parsers.xml_parser import read_file_content
         from find_entity_by_xml.facade import flat_xml
