@@ -1,0 +1,92 @@
+﻿[
+  {
+    "severity": "blocker",
+    "location": "queryDatabase/object_catalog/fetcher.py ΓÇö fetch_one/fetch_many/fetch_callers/fetch_parameters",
+    "expected": "execute_query(parsed_conn, sql) matching queryDatabase/executor.py signature",
+    "actual": "All fetcher calls use execute_query(sql, self._parsed) ΓÇö reversed argument order",
+    "suggested_fix": "Swap to execute_query(self._parsed, sql) in all 5 call sites",
+    "covered_by_existing_tests": "No ΓÇö mocks patch execute_query and return fake 'data' key, masking live failure"
+  },
+  {
+    "severity": "blocker",
+    "location": "queryDatabase/object_catalog/fetcher.py:46 ΓÇö fetch_one rows = res.get('data')",
+    "expected": "Parse result_sets[0] columns+rows into dict rows (like parse_object_lookup_result)",
+    "actual": "fetch_one returns None ΓÇö 'data' key absent in real execute_query response",
+    "suggested_fix": "Add helper _rows_from_result(res) mapping columns to dicts from result_sets",
+    "covered_by_existing_tests": "No ΓÇö test_object_catalog mocks {'data': [...]} which real executor never returns"
+  },
+  {
+    "severity": "major",
+    "location": "queryDatabase/bridges/summary_bridge.py:243 + sql_object_summary/options.py:33",
+    "expected": "When exclude_like=None from bridge, use DEFAULT_EXCLUDE_LIKE (per docs ┬º2.2)",
+    "actual": "AnalyzeOptions(exclude_like=None) sets exclude_like to None, not default infra patterns",
+    "suggested_fix": "In bridge: exclude_patterns = exclude_like if exclude_like is not None else list(DEFAULT_EXCLUDE_LIKE); pass to AnalyzeOptions and build_call_graph",
+    "covered_by_existing_tests": "No ΓÇö docs say bridge should merge default but implementation passes None through"
+  },
+  {
+    "severity": "major",
+    "location": "queryDatabase/bridges/summary_bridge.py:255-289 ΓÇö call graph section",
+    "expected": "max_depth=2 recursively fetches and parses child/grandchild business objects",
+    "actual": "Only 1-hop fetch (fetch_many called 1x); grandchild dbo.grand absent from nodes",
+    "suggested_fix": "Implement recursive _collect_definitions loop until max_depth or max_objects (per docs ┬º7)",
+    "covered_by_existing_tests": "No ΓÇö test_call_graph only tests build_call_graph with pre-built definitions dict"
+  },
+  {
+    "severity": "minor",
+    "location": "queryDatabase/bridges/summary_bridge.py + sql_object_summary/analyze.py",
+    "expected": "Empty/encrypted definition (NULLΓåÆ'') should surface clear warning or error (docs ┬º6)",
+    "actual": "success=True, parse_status=ok with empty definition ΓÇö silent empty summary",
+    "suggested_fix": "Detect empty definition after fetch; return error encrypted_or_empty_definition or meta.warnings",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "minor",
+    "location": "queryDatabase/bridges/summary_bridge.py:296 ΓÇö called_by assignment",
+    "expected": "Docs 05_integration: pure.called_by = fetcher.fetch_callers(...) ΓåÆ list[str]; schema shows called_by: []",
+    "actual": "called_by entries are dicts: {'name': 'dbo.caller_a'}",
+    "suggested_fix": "Use list[str] OR update JSON schema docs to [{name: str}] consistently",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "minor",
+    "location": "sql_object_summary/snippet.py ΓÇö empty zone match",
+    "expected": "Indicate no matches (warning or truncated flag)",
+    "actual": "success=True, snippets=[], no warning in meta",
+    "suggested_fix": "Add meta.warnings when zones/keywords match nothing",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "major",
+    "location": "queryDatabase/bridges/summary_bridge.py:48 ΓÇö cache key",
+    "expected": "Cache key includes snippet params (keywords/zones) or snippet mode not cached",
+    "actual": "Key is (server, db, object_id, modify_date, mode, max_depth) ΓÇö ignores keywords/zones",
+    "suggested_fix": "Extend cache key with hash(keywords, zones) for snippet mode",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "minor",
+    "location": "summary_bridge.py:48 ΓÇö cache key tuple",
+    "expected": "Different max_depth/expand/max_objects produce different cache entries",
+    "actual": "Key includes max_depth but NOT expand, max_objects, include_called_by, exclude_like",
+    "suggested_fix": "Add relevant params to cache key or document intentional omission",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "major",
+    "location": "sql_object_summary/call_graph.py:23 ΓÇö exclude_patterns",
+    "expected": "exclude_like filters infra objects from expansion/recursion",
+    "actual": "exclude_patterns computed but never referenced in build_call_graph",
+    "suggested_fix": "Apply exclude_patterns when deciding which calls to expand/fetch",
+    "covered_by_existing_tests": "No"
+  },
+  {
+    "severity": "minor",
+    "location": "sql_object_summary/call_graph.py:78 ΓÇö max_depth>1",
+    "expected": "depth=2 includes grandchild nodes when definitions provided",
+    "actual": "child.calls lists dbo.grand but grand not added to nodes (only 1-hop in definitions loop)",
+    "suggested_fix": "Document as shallow-only graph or recurse build_call_graph",
+    "covered_by_existing_tests": "No"
+  }
+]
+
+Total findings: 11

@@ -1,0 +1,26 @@
+{
+  "database": "VINHQUANG_FBISP242_A",
+  "total_scanned": 100,
+  "timing": {
+    "avg_ms": 54.68412599817384,
+    "min_ms": 19.418999989284202,
+    "max_ms": 162.13000001152977
+  },
+  "noise_hits": {},
+  "bad_dynamic_sql_count": 0,
+  "domain_counts": {
+    "interest_related": 2,
+    "bctc_form_related": 17,
+    "stock_related": 1,
+    "custom_listing_related": 0,
+    "report_generic": 80,
+    "none": 0
+  },
+  "empty_hints_by_prefix": {
+    "rs_": 0,
+    "zc_": 0,
+    "FastBusiness$": 0,
+    "other": 0
+  },
+  "missing_examples": []
+}

@@ -1,0 +1,77 @@
+{
+  "database": "VINHQUANG_FBISP242_A",
+  "total_scanned": 50,
+  "timing": {
+    "avg_ms": 60.87721199844964,
+    "min_ms": 20.239700010279194,
+    "max_ms": 601.26080000191
+  },
+  "noise_hits": {},
+  "bad_dynamic_sql_count": 0,
+  "domain_counts": {
+    "interest_related": 0,
+    "bctc_form_related": 0,
+    "input_invoice_related": 0,
+    "einvoice_related": 0,
+    "approval_related": 1,
+    "discount_related": 0,
+    "post_related": 0,
+    "voucher_lifecycle_related": 45,
+    "balance_related": 0,
+    "stock_related": 0,
+    "custom_action_related": 0,
+    "custom_report_related": 0,
+    "custom_listing_related": 0,
+    "report_generic": 0,
+    "none": 4
+  },
+  "empty_hints_by_prefix": {
+    "rs_": 0,
+    "zc_": 0,
+    "FastBusiness$": 4,
+    "other": 0
+  },
+  "missing_examples": [
+    {
+      "proc": "dbo.FastBusiness$Voucher$Adjustment$CreateDifference",
+      "line_count": null,
+      "tables_read": [
+        "c74$",
+        "d74$",
+        "m74$"
+      ],
+      "temp_tables": [
+        "#cl",
+        "#p",
+        "#ref"
+      ]
+    },
+    {
+      "proc": "dbo.FastBusiness$Voucher$AutoCreateItem",
+      "line_count": null,
+      "tables_read": [
+        "dmvt"
+      ],
+      "temp_tables": []
+    },
+    {
+      "proc": "dbo.FastBusiness$Voucher$AutoCreateLot",
+      "line_count": null,
+      "tables_read": [
+        "dmlo",
+        "options"
+      ],
+      "temp_tables": [
+        "#temp"
+      ]
+    },
+    {
+      "proc": "dbo.FastBusiness$Voucher$AutoCreateSupplier",
+      "line_count": null,
+      "tables_read": [
+        "dmkh"
+      ],
+      "temp_tables": []
+    }
+  ]
+}

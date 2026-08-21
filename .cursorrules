@@ -8,11 +8,13 @@ alwaysApply: true
 ## MCP Tools Available
 
 ### SQL / XML data
-1. `query_database` - Chạy SQL (resolve connection từ file_path)
-   - query_type=0: tên object (dmkh, ff_xxx)
+1. `query_database` - Chạy SQL & Phân tích Schema/Proc (resolve connection từ file_path)
+   - query_type=0: tên object (bảng hoặc proc/function/view)
+     * Bảng: lấy toàn bộ DDL (CREATE TABLE + Index + Constraint)
+     * Proc/Function/View (tích hợp summary_object AST ANTLR4): mode=summary (mặc định) -> mode=snippet (theo keyword/zone) -> mode=full
    - query_type=1: SQL inline ngắn
    - query_type=2: path file `.sql` (script dài)
-2. `get_xml_entities` - Đọc entity XML (mode=content / path)
+2. `get_xml_entities` - Đọc entity XML (mode=content / path / list)
 
 ### FBOGraph (XML index Kuzu)
 3. `query_radar` - Cypher ad-hoc (chỉ khi cần)

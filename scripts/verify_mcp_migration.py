@@ -24,7 +24,13 @@ async def test_tools_listing():
     tool_names = [t.name for t in tools]
     print(f"Total tools: {len(tools)} -> {tool_names}")
 
-    expected_tools = {"query_database", "get_xml_entities", "query_radar", "read_local_file", "search_qlyc"}
+    expected_tools = {
+        "query_database",
+        "get_xml_entities",
+        "query_radar",
+        "read_local_file",
+        "search_qlyc",
+    }
     assert set(tool_names) == expected_tools, f"Expected {expected_tools}, got {set(tool_names)}"
 
     for t in tools:

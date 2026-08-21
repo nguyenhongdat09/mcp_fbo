@@ -6,6 +6,13 @@ from typing import Any
 
 
 def format_query_result(result: dict[str, Any]) -> str:
+    if result.get("resolved_as") == "object_summary" or "spec_version" in result or (
+        not result.get("success") and result.get("error") in ("snippet_params_required", "object_not_found")
+    ):
+        from .bridges.summary_format import format_summary_result
+
+        return format_summary_result(result)
+
     if not result.get("success"):
         lines = [f"[ERROR] {result.get('error', 'Unknown error')}"]
         if result.get("file_path"):

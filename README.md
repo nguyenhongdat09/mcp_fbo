@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 | Tool | Mô tả |
 |---|---|
-| `query_database` | Chạy SQL — resolve connection từ `file_path` |
+| `query_database` | Chạy SQL & Phân tích Schema/Proc (tự động tra cứu DDL Table hoặc tóm tắt AST Proc/View/Function với ANTLR4) |
 | `get_xml_entities` | Đọc entity XML (`content` / `path` / `list`) |
 | `query_radar` | Truy vấn Kùzu Graph DB theo Template Cypher chuẩn |
 | `read_local_file` | Đọc trực tiếp nội dung file từ ổ cứng (raw / flat) |

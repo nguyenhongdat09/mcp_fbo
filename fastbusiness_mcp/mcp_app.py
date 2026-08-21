@@ -86,11 +86,16 @@ def query_database_tool(
     ],
     query: Annotated[
         str,
-        Field(description="Object name (type=0), SQL inline (type=1), hoặc path .sql (type=2)"),
+        Field(
+            description="Tên object (type=0: bảng hoặc proc/view/function), SQL inline (type=1), hoặc path .sql (type=2)"
+        ),
     ],
     query_type: Annotated[
         int,
-        Field(default=1, description="0=object, 1=SQL inline (default), 2=file .sql"),
+        Field(
+            default=1,
+            description="0=object (tự nhận bảng/proc/view/function), 1=SQL inline (default), 2=file .sql",
+        ),
     ] = 1,
     db_type: Annotated[
         Literal["app", "sys"],
@@ -100,11 +105,108 @@ def query_database_tool(
         int,
         Field(default=20000, description="Giới hạn số dòng trả về (default: 20000)"),
     ] = 20000,
+    mode: Annotated[
+        Literal["summary", "snippet", "full"],
+        Field(
+            default="summary",
+            description="Chế độ phân tích khi query_type=0 với proc/view/function: 'summary'=JSON tóm tắt (params, tables, calls, signals); 'snippet'=trích xuất code theo keywords/zones; 'full'=trả full source code.",
+        ),
+    ] = "summary",
+    schema: Annotated[
+        str,
+        Field(
+            default="dbo",
+            description="Schema mặc định nếu object không có tiền tố schema (mặc định 'dbo').",
+        ),
+    ] = "dbo",
+    max_depth: Annotated[
+        int,
+        Field(
+            default=1,
+            ge=0,
+            le=3,
+            description="Độ sâu đệ quy call graph cho business object (0-3). Mặc định=1. View và Infra mặc định depth=0.",
+        ),
+    ] = 1,
+    max_objects: Annotated[
+        int,
+        Field(
+            default=30,
+            ge=1,
+            le=50,
+            description="Giới hạn số lượng object fetch tối đa trong 1 request đệ quy (mặc định=30).",
+        ),
+    ] = 30,
+    expand: Annotated[
+        list[str] | None,
+        Field(
+            default=None,
+            description="Danh sách infra object cần bung thêm 1 cấp (override depth 0), vd: ['FastBusiness$Balance$BContract'].",
+        ),
+    ] = None,
+    exclude_like: Annotated[
+        list[str] | None,
+        Field(
+            default=None,
+            description="Danh sách regex pattern loại trừ khỏi đệ quy call graph (mặc định loại FastBusiness$%, ff_%, fsd_%).",
+        ),
+    ] = None,
+    include_called_by: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Có truy vấn danh sách object gọi tới object này không (inbound references).",
+        ),
+    ] = False,
+    keywords: Annotated[
+        list[str] | None,
+        Field(
+            default=None,
+            description="mode='snippet': Danh sách từ khóa để trích xuất khối code (vd: ['tl_th', '@Status', 'ctdmku', 'WHILE']).",
+        ),
+    ] = None,
+    zones: Annotated[
+        list[str] | None,
+        Field(
+            default=None,
+            description="mode='snippet': Danh sách vùng cấu trúc cần lấy: 'header', 'params', 'key_filter', 'cursor', 'processing', 'result_set', 'pivot'.",
+        ),
+    ] = None,
+    max_snippet_lines: Annotated[
+        int,
+        Field(
+            default=120,
+            ge=10,
+            le=500,
+            description="Giới hạn số dòng tối đa cho mode snippet (mặc định 120 dòng).",
+        ),
+    ] = 120,
+    max_full_chars: Annotated[
+        int,
+        Field(
+            default=50000,
+            ge=1000,
+            le=200000,
+            description="Giới hạn số ký tự tối đa cho mode full (mặc định 50,000 ký tự).",
+        ),
+    ] = 50000,
+    use_cache: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Có sử dụng cache in-memory thread-safe không (mặc định True).",
+        ),
+    ] = True,
 ) -> str:
     """Chạy SQL trên SQL Server — tự resolve connection từ file_path (Web.config).
 
 query_type:
-- 0: tên object (dmkh, ff_xxx) — lấy toàn bộ Script tạo Table/Proc/View. LƯU Ý: Kết quả đã tự động bao gồm toàn bộ Index (CREATE INDEX) và Khóa chính/Ngoại (CONSTRAINT) của Table. AI TUYỆT ĐỐI KHÔNG dùng type=1 để tự viết SQL tra cứu index của bảng nữa.
+- 0: tên object (bảng hoặc proc/view/function)
+  * Bảng (USER_TABLE): lấy toàn bộ Script tạo Table/Index/Constraint (CREATE TABLE, CREATE INDEX, CONSTRAINT). AI TUYỆT ĐỐI KHÔNG dùng type=1 để tự viết SQL tra cứu index của bảng nữa.
+  * Stored Procedure / Function / View (Tích hợp summary_object): Phân tích cú pháp AST ANTLR4 — trả tóm tắt JSON cực gọn thay vì sp_helptext dài dòng (tiết kiệm token). Hỗ trợ:
+    + mode='summary' (mặc định): biết params, tables, calls, signals, complexity.
+    + mode='snippet': trích xuất block code theo keywords hoặc zones.
+    + mode='full': trả full source code.
 - 1: SQL ngắn inline (mặc định)
 - 2: path file .sql — dùng cho script dài (tiết kiệm token)
 
@@ -116,6 +218,18 @@ db_type: app (mặc định) hoặc sys."""
             db_type=db_type,
             max_rows=max_rows,
             query_type=query_type,
+            mode=mode,
+            schema=schema,
+            max_depth=max_depth,
+            max_objects=max_objects,
+            expand=expand,
+            exclude_like=exclude_like,
+            include_called_by=include_called_by,
+            keywords=keywords,
+            zones=zones,
+            max_snippet_lines=max_snippet_lines,
+            max_full_chars=max_full_chars,
+            use_cache=use_cache,
         )
         return format_query_result(result)
     except Exception as e:
