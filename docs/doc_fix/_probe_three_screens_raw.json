@@ -1,0 +1,2010 @@
+﻿[
+  {
+    "label": "report",
+    "url": "http://172.168.5.14/BinhDienMK/Main/rpt_bkctsstt.aspx?id=15.02.39",
+    "stages": [
+      {
+        "stage": "initial_load",
+        "data": {
+          "url": "http://172.168.5.14/BinhDienMK/Main/rpt_bkctsstt.aspx?id=15.02.39",
+          "title": "Bảng kê chi tiết sổ sách, thực tế",
+          "components": {
+            "mainReport": {
+              "id": "ctl00_FastBusiness_MainReport",
+              "type": null
+            },
+            "searchExtender": {
+              "id": "ctl00_FastBusiness_MainReport_searchExtender_updateDlgPanel$DropShadowBehavior",
+              "type": null
+            },
+            "dirExtender": null,
+            "allIds": []
+          },
+          "mainReport_type": null,
+          "searchExtender_type": null,
+          "dirExtender_type": null,
+          "mainReport_fields": [],
+          "searchExtender_fields": [],
+          "dirExtender_fields": [],
+          "toolbar_buttons": [],
+          "modal_visible": true,
+          "has_f": false,
+          "g_type": "undefined"
+        }
+      }
+    ]
+  },
+  {
+    "label": "category",
+    "url": "http://172.168.5.14/BinhDienMK/Main/invt.aspx?id=15.70.06",
+    "stages": [
+      {
+        "stage": "initial_load",
+        "data": {
+          "url": "http://172.168.5.14/BinhDienMK/Main/invt.aspx?id=15.70.06",
+          "title": "Danh mục hàng hóa, vật tư",
+          "components": {
+            "mainReport": {
+              "id": "ctl00_FastBusiness_MainReport",
+              "type": ""
+            },
+            "searchExtender": null,
+            "dirExtender": null,
+            "allIds": []
+          },
+          "mainReport_type": "",
+          "searchExtender_type": null,
+          "dirExtender_type": null,
+          "mainReport_fields": [
+            {
+              "name": "ma_vt",
+              "alias": "ma_vt",
+              "header": "Mã vật tư",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_vt",
+              "alias": "ten_vt",
+              "header": "Tên vật tư",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dvt",
+              "alias": "dvt",
+              "header": "Đvt",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "gia_ton",
+              "alias": "gia_ton",
+              "header": "Cách tính giá",
+              "type": "Byte",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "loai_vt",
+              "alias": "loai_vt",
+              "header": "Loại vật tư",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_thue",
+              "alias": "ma_thue",
+              "header": "Mã thuế",
+              "type": "Byte",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_bp_vt",
+              "alias": "ma_bp_vt",
+              "header": "Mã bộ phận",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_vt",
+              "alias": "tk_vt",
+              "header": "Tk vật tư",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_gv",
+              "alias": "tk_gv",
+              "header": "Tk giá vốn",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_dt",
+              "alias": "tk_dt",
+              "header": "Tk doanh thu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_tl",
+              "alias": "tk_tl",
+              "header": "Tk hàng bán trả lại",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_gghb",
+              "alias": "tk_gghb",
+              "header": "Tk giảm giá hàng bán",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk_dl",
+              "alias": "tk_dl",
+              "header": "Tk đại lý",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "nh_vt1",
+              "alias": "nh_vt1",
+              "header": "Nhóm 1",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nh_vt1",
+              "alias": "ten_nh_vt1",
+              "header": "Tên nhóm 1",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "nh_vt2",
+              "alias": "nh_vt2",
+              "header": "Nhóm 2",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nh_vt2",
+              "alias": "ten_nh_vt2",
+              "header": "Tên nhóm 2",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "nh_vt3",
+              "alias": "nh_vt3",
+              "header": "Nhóm 3",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nh_vt3",
+              "alias": "ten_nh_vt3",
+              "header": "Tên nhóm 3",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ghi_chu",
+              "alias": "ghi_chu",
+              "header": "Ghi chú",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "status",
+              "alias": "status",
+              "header": "Trạng thái",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            }
+          ],
+          "searchExtender_fields": [],
+          "dirExtender_fields": [],
+          "toolbar_buttons": [
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_New",
+              "text": "Mới",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'New',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Edit",
+              "text": "Sửa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Edit',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Delete",
+              "text": "Xóa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Delete',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_View",
+              "text": "Xem",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'View',commandArgument:'0'});return false"
+            }
+          ],
+          "modal_visible": false,
+          "has_f": false,
+          "g_type": "undefined"
+        }
+      }
+    ],
+    "classification_note": "mainReport._type empty => danh muc"
+  },
+  {
+    "label": "voucher",
+    "url": "http://172.168.5.14/BinhDienMK/Main/socthda.aspx?id=09.10.06",
+    "stages": [
+      {
+        "stage": "initial_load",
+        "data": {
+          "url": "http://172.168.5.14/BinhDienMK/Main/socthda.aspx?id=09.10.06",
+          "title": "Hóa đơn bán hàng",
+          "components": {
+            "mainReport": {
+              "id": "ctl00_FastBusiness_MainReport",
+              "type": "Voucher"
+            },
+            "searchExtender": null,
+            "dirExtender": null,
+            "allIds": []
+          },
+          "mainReport_type": "Voucher",
+          "searchExtender_type": null,
+          "dirExtender_type": null,
+          "mainReport_fields": [
+            {
+              "name": "stt_rec",
+              "alias": "a",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_dvcs",
+              "alias": "a",
+              "header": "Đơn vị",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_ct",
+              "alias": "a",
+              "header": "Ngày",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_ct",
+              "alias": "a",
+              "header": "Số",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_kh",
+              "alias": "a",
+              "header": "Mã khách",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_kh",
+              "alias": "b",
+              "header": "Tên khách",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tt_nt",
+              "alias": "a",
+              "header": "Thanh toán",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_nt",
+              "alias": "a",
+              "header": "Mã nt",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "da_ra_cong",
+              "alias": "a",
+              "header": "Đã ra cổng",
+              "type": "Boolean",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_ct_hddt",
+              "alias": "rtrim(e1.so_ct_hddt)",
+              "header": "Số xác thực",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_seri_hddt",
+              "alias": "rtrim(e1.so_seri_hddt)",
+              "header": "Ký hiệu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tinh_trang_hddt",
+              "alias": "rtrim(e1.tinh_trang_hddt)",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ten_tt_hddt",
+              "alias": "rtrim(e2.statusname%l)",
+              "header": "Tình trạng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dien_giai",
+              "alias": "dien_giai",
+              "header": "Diễn giải",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "han_tt",
+              "alias": "v1",
+              "header": "Hạn thanh toán",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "status",
+              "alias": "a",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "u0",
+              "alias": "u0",
+              "header": "Trạng thái",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "Hash",
+              "alias": "",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            }
+          ],
+          "searchExtender_fields": [],
+          "dirExtender_fields": [],
+          "toolbar_buttons": [
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_New",
+              "text": "Mới",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'New',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Edit",
+              "text": "Sửa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Edit',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Delete",
+              "text": "Xóa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Delete',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Clone",
+              "text": "Chép dữ liệu",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Clone',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Search",
+              "text": "Tìm",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Search',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_View",
+              "text": "Xem",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'View',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Print",
+              "text": "In",
+              "onclick": ""
+            }
+          ],
+          "modal_visible": false,
+          "has_f": false,
+          "g_type": "undefined"
+        }
+      },
+      {
+        "stage": "after_moi",
+        "data": {
+          "url": "http://172.168.5.14/BinhDienMK/Main/socthda.aspx?id=09.10.06",
+          "title": "Hóa đơn bán hàng",
+          "components": {
+            "mainReport": {
+              "id": "ctl00_FastBusiness_MainReport",
+              "type": "Voucher"
+            },
+            "searchExtender": null,
+            "dirExtender": {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender",
+              "type": "Voucher"
+            },
+            "allIds": []
+          },
+          "mainReport_type": "Voucher",
+          "searchExtender_type": null,
+          "dirExtender_type": "Voucher",
+          "mainReport_fields": [
+            {
+              "name": "stt_rec",
+              "alias": "a",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_dvcs",
+              "alias": "a",
+              "header": "Đơn vị",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_ct",
+              "alias": "a",
+              "header": "Ngày",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_ct",
+              "alias": "a",
+              "header": "Số",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_kh",
+              "alias": "a",
+              "header": "Mã khách",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_kh",
+              "alias": "b",
+              "header": "Tên khách",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tt_nt",
+              "alias": "a",
+              "header": "Thanh toán",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_nt",
+              "alias": "a",
+              "header": "Mã nt",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "da_ra_cong",
+              "alias": "a",
+              "header": "Đã ra cổng",
+              "type": "Boolean",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_ct_hddt",
+              "alias": "rtrim(e1.so_ct_hddt)",
+              "header": "Số xác thực",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_seri_hddt",
+              "alias": "rtrim(e1.so_seri_hddt)",
+              "header": "Ký hiệu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tinh_trang_hddt",
+              "alias": "rtrim(e1.tinh_trang_hddt)",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ten_tt_hddt",
+              "alias": "rtrim(e2.statusname%l)",
+              "header": "Tình trạng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dien_giai",
+              "alias": "dien_giai",
+              "header": "Diễn giải",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "han_tt",
+              "alias": "v1",
+              "header": "Hạn thanh toán",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "status",
+              "alias": "a",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "u0",
+              "alias": "u0",
+              "header": "Trạng thái",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "Hash",
+              "alias": "",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            }
+          ],
+          "searchExtender_fields": [],
+          "dirExtender_fields": [
+            {
+              "name": "stt_rec",
+              "alias": "stt_rec",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_kh",
+              "alias": "ma_kh",
+              "header": "Mã khách",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_kh",
+              "alias": "ten_kh",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ong_ba",
+              "alias": "ong_ba",
+              "header": "Người mua",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dien_giai",
+              "alias": "dien_giai",
+              "header": "Diễn giải",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tk",
+              "alias": "tk",
+              "header": "Tài khoản nợ",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_tk",
+              "alias": "ten_tk",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_gd",
+              "alias": "ma_gd",
+              "header": "Mã giao dịch",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_gd",
+              "alias": "ten_gd",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "loai_ct",
+              "alias": "loai_ct",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_tt",
+              "alias": "ma_tt",
+              "header": "Mã thanh toán",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_tt",
+              "alias": "ten_tt",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_nk",
+              "alias": "ma_nk",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nk",
+              "alias": "ten_nk",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "so_ct",
+              "alias": "so_ct",
+              "header": "Số hóa đơn",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_seri",
+              "alias": "so_seri",
+              "header": "Ký hiệu",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_lct",
+              "alias": "ngay_lct",
+              "header": "Ngày lập",
+              "type": "DateTime",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_ct",
+              "alias": "ngay_ct",
+              "header": "Ngày hạch toán",
+              "type": "DateTime",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_nt",
+              "alias": "ma_nt",
+              "header": "Mã nt",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nt",
+              "alias": "ten_nt",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ty_gia",
+              "alias": "ty_gia",
+              "header": "Tỷ giá",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "status",
+              "alias": "status",
+              "header": "Trạng thái",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "d81",
+              "alias": "d81",
+              "header": "Chi tiết",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_hd",
+              "alias": "so_hd",
+              "header": "Số hợp đồng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_hd",
+              "alias": "ngay_hd",
+              "header": "Ngày hợp đồng",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ht_tt",
+              "alias": "ht_tt",
+              "header": "Hình thức tt",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dd_gh",
+              "alias": "dd_gh",
+              "header": "Địa điểm giao",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dd_nh",
+              "alias": "dd_nh",
+              "header": "Địa điểm nhận",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_vd",
+              "alias": "so_vd",
+              "header": "Số vận đơn",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_con",
+              "alias": "so_con",
+              "header": "Tên tàu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dv_vc",
+              "alias": "dv_vc",
+              "header": "Đơn vị vận chuyển",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "du_kien",
+              "alias": "du_kien",
+              "header": "Est. Time of Arr. At",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_dk",
+              "alias": "ngay_dk",
+              "header": "Ngày dự kiến",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_hdtm",
+              "alias": "so_hdtm",
+              "header": "Số HĐTM",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_hdtm",
+              "alias": "ngay_hdtm",
+              "header": "Ngày HĐTM",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "thuyen_truong",
+              "alias": "thuyen_truong",
+              "header": "Thuyền trưởng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_dinh_danh",
+              "alias": "so_dinh_danh",
+              "header": "CMND/CCCD/H.chiếu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "cua_khau",
+              "alias": "cua_khau",
+              "header": "Cửa khẩu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ht_vc",
+              "alias": "ht_vc",
+              "header": "H.thức v.chuyển",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_thong_quan",
+              "alias": "ngay_thong_quan",
+              "header": "Ngày thông quan",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_to_khai",
+              "alias": "so_to_khai",
+              "header": "Số tờ khai",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_to_khai",
+              "alias": "ngay_to_khai",
+              "header": "Ngày mở tờ khai",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "loai_hinh",
+              "alias": "loai_hinh",
+              "header": "Loại hình",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_giam_sat",
+              "alias": "ngay_giam_sat",
+              "header": "Ngày giám sát",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_thue",
+              "alias": "ma_thue",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_thue",
+              "alias": "ten_thue",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "tk_thue_no",
+              "alias": "tk_thue_no",
+              "header": "Tk thuế nợ",
+              "type": "String",
+              "allowNulls": false,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_tk_thue_no",
+              "alias": "ten_tk_thue_no",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "tk_thue_co",
+              "alias": "tk_thue_co",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_tk_thue_co",
+              "alias": "ten_tk_thue_co",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "thue_suat",
+              "alias": "thue_suat",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "thue_cn",
+              "alias": "thue_cn",
+              "header": "",
+              "type": "Byte",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_kh2",
+              "alias": "ma_kh2",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_kh_thue",
+              "alias": "ten_kh_thue",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "t_so_luong",
+              "alias": "t_so_luong",
+              "header": "Tổng cộng",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien_nt2",
+              "alias": "t_tien_nt2",
+              "header": "Tiền hàng nt",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien2",
+              "alias": "t_tien2",
+              "header": "Tiền hàng",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_thue_nt",
+              "alias": "t_thue_nt",
+              "header": "Tiền thuế",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_thue",
+              "alias": "t_thue",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tt_nt",
+              "alias": "t_tt_nt",
+              "header": "Tổng thanh toán",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tt",
+              "alias": "t_tt",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "sd_hddt_yn",
+              "alias": "sd_hddt_yn",
+              "header": "Xác thực",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "xu_ly",
+              "alias": "xu_ly",
+              "header": "Xử lý",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ghi_chuhoadon",
+              "alias": "ghi_chuhoadon",
+              "header": "Ghi chú",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "mau_hddt",
+              "alias": "mau_hddt",
+              "header": "Mẫu hóa đơn",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_seri_hddt",
+              "alias": "so_seri_hddt",
+              "header": "Ký hiệu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_ct_hddt",
+              "alias": "so_ct_hddt",
+              "header": "Số chứng từ",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "tinh_trang_hddt",
+              "alias": "tinh_trang_hddt",
+              "header": "Tình trạng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_tt_hddt",
+              "alias": "ten_tt_hddt",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "e_mail",
+              "alias": "e_mail",
+              "header": "Thư <span class=\"LabelDescription\">(Email)</span>",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_cmnd",
+              "alias": "so_cmnd",
+              "header": "Số CMND/CCCD",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_hc",
+              "alias": "so_hc",
+              "header": "Số hộ chiếu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_dv_mua",
+              "alias": "ma_dv_mua",
+              "header": "Mã đơn vị mua",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_nvbh",
+              "alias": "ma_nvbh",
+              "header": "Nhân viên bán",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_nvbh",
+              "alias": "ten_nvbh",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_khthue",
+              "alias": "ten_khthue",
+              "header": "Tên khách hàng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dia_chithue",
+              "alias": "dia_chithue",
+              "header": "Địa chỉ",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_so_thue",
+              "alias": "ma_so_thue",
+              "header": "Mã số thuế",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_vtthue",
+              "alias": "ten_vtthue",
+              "header": "Nhóm hàng",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ghi_chuthue",
+              "alias": "ghi_chuthue",
+              "header": "Ghi chú",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien_nt",
+              "alias": "t_tien_nt",
+              "header": "Tổng tiền vốn",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien",
+              "alias": "t_tien",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tc_tien_nt2",
+              "alias": "t_tc_tien_nt2",
+              "header": "Tổng doanh thu",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tc_tien2",
+              "alias": "t_tc_tien2",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_ck_nt",
+              "alias": "t_ck_nt",
+              "header": "Tổng chiết khấu",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_ck",
+              "alias": "t_ck",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_km_nt",
+              "alias": "t_km_nt",
+              "header": "Tổng khuyến mãi",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_km",
+              "alias": "t_km",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_km_ct_nt",
+              "alias": "t_km_ct_nt",
+              "header": "Tổng khuyến mãi ct",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_km_ct",
+              "alias": "t_km_ct",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_thue_km_nt",
+              "alias": "t_thue_km_nt",
+              "header": "Thuế khuyến mãi",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_thue_km",
+              "alias": "t_thue_km",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien_km_nt",
+              "alias": "t_tien_km_nt",
+              "header": "Cộng khuyến mãi",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien_km",
+              "alias": "t_tien_km",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "t_tien_giam_nt",
+              "alias": "t_tien_giam_nt",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "t_tien_giam",
+              "alias": "t_tien_giam",
+              "header": "",
+              "type": "Decimal",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "so_ct_goc",
+              "alias": "so_ct_goc",
+              "header": "Kèm theo",
+              "type": "Int32",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "dien_giai_ct_goc",
+              "alias": "dien_giai_ct_goc",
+              "header": "Chứng từ gốc",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "so_bk",
+              "alias": "so_bk",
+              "header": "Số bảng kê",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_bk",
+              "alias": "ngay_bk",
+              "header": "Ngày bảng kê",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "post",
+              "alias": "post",
+              "header": "<div style='height:228px;padding:0;margin:0;' class='ViewPostWrapper' id='ViewPostID'></div>",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "recordID",
+              "alias": "recordID",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_dvcs",
+              "alias": "ma_dvcs",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "cookie",
+              "alias": "cookie",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": true,
+              "visible": false
+            },
+            {
+              "name": "ma_dc",
+              "alias": "ma_dc",
+              "header": "Nơi giao",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_dc",
+              "alias": "ten_dc",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ma_htvc",
+              "alias": "ma_htvc",
+              "header": "H.thức v.chuyển",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ten_htvc",
+              "alias": "ten_htvc",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": true,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_giao_tu",
+              "alias": "ngay_giao_tu",
+              "header": "Ngày giao từ/đến",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ngay_giao_den",
+              "alias": "ngay_giao_den",
+              "header": "",
+              "type": "DateTime",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "phuong_tien_vc",
+              "alias": "phuong_tien_vc",
+              "header": "Số phương tiện VC",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "pna_yn",
+              "alias": "a",
+              "header": "",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "d81kt",
+              "alias": "d81kt",
+              "header": "Lấy dữ liệu",
+              "type": "String",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "phi_mau_dich",
+              "alias": "phi_mau_dich",
+              "header": "Phi mậu dịch",
+              "type": "Boolean",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ck_ky_yn",
+              "alias": "ck_ky_yn",
+              "header": "Tham gia ck kỳ",
+              "type": "Boolean",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "ck_cuoi_nam_yn",
+              "alias": "ck_cuoi_nam_yn",
+              "header": "Tham gia ck cuối năm",
+              "type": "Boolean",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            },
+            {
+              "name": "s6",
+              "alias": "s6",
+              "header": "",
+              "type": "Int16",
+              "allowNulls": true,
+              "readOnly": false,
+              "hidden": false,
+              "visible": true
+            }
+          ],
+          "toolbar_buttons": [
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_New",
+              "text": "Mới",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'New',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Edit",
+              "text": "Sửa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Edit',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Delete",
+              "text": "Xóa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Delete',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Clone",
+              "text": "Chép dữ liệu",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Clone',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Search",
+              "text": "Tìm",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'Search',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_View",
+              "text": "Xem",
+              "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'View',commandArgument:'0'});return false"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_ToolbarButton_Print",
+              "text": "In",
+              "onclick": ""
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81_ToolbarButton_Remove",
+              "text": "Xóa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport_dirExtender_FormGridd81').executeCommand({commandName:'Remove',commandArgument:'0'}"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81_ToolbarButton_Lookup",
+              "text": "Xem phiếu nhập",
+              "onclick": "$find('ctl00_FastBusiness_MainReport_dirExtender_FormGridd81').executeCommand({commandName:'Lookup',commandArgument:'0'}"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81_ToolbarButton_Retrieve",
+              "text": "Lấy dữ liệu",
+              "onclick": ""
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81kt_ToolbarButton_Remove",
+              "text": "Xóa",
+              "onclick": "$find('ctl00_FastBusiness_MainReport_dirExtender_FormGridd81kt').executeCommand({commandName:'Remove',commandArgument:'0"
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81kt_ToolbarButton_Retrieve",
+              "text": "Lấy dữ liệu",
+              "onclick": ""
+            },
+            {
+              "id": "ctl00_FastBusiness_MainReport_dirExtender_FormGridd81kt_ToolbarButton_TransferDetail",
+              "text": "Chuyển tab chi tiết",
+              "onclick": "$find('ctl00_FastBusiness_MainReport_dirExtender_FormGridd81kt').executeCommand({commandName:'TransferDetail',commandArg"
+            }
+          ],
+          "modal_visible": true,
+          "has_f": false,
+          "g_type": "boolean"
+        }
+      }
+    ],
+    "moi_button": {
+      "found": true,
+      "id": "ctl00_FastBusiness_MainReport_ToolbarButton_New",
+      "text": "Mới",
+      "onclick": "$find('ctl00_FastBusiness_MainReport').executeCommand({commandName:'New',commandArgument:'0'});return false"
+    },
+    "ma_kh_fill": {
+      "found": true,
+      "id": "ctl00_FastBusiness_MainReport_dirExtender_form_ma_kh",
+      "value": "TKH001"
+    },
+    "ten_kh_after": ""
+  }
+]

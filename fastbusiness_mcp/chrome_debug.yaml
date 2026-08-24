@@ -1,0 +1,31 @@
+# fastbusiness_mcp/chrome_debug.yaml
+# Cấu hình mặc định cho Chrome CDP Debug MCP
+
+enabled: true
+
+# CDP endpoint — Chrome khởi động với --remote-debugging-port=9222
+cdp_url: "http://localhost:9222"
+
+# Tuỳ chọn khởi chạy Chrome (phase sau)
+chrome_path: ""          # Đường dẫn chrome.exe
+user_data_dir: ""        # Thư mục profile riêng debug
+
+snapshot:
+  max_nodes: 120         # Số phần tử tương tác tối đa / frame
+  max_label_chars: 120   # Độ dài nhãn tối đa
+  mode: "interactive"    # interactive | fields_only
+
+network:
+  max_response_chars: 4000
+  capture_status_from: 400   # Chỉ ghi nhận response HTTP status >= 400
+
+console:
+  max_lines: 200             # Số dòng console tối đa lưu trong ring buffer
+
+execute_js:
+  max_result_chars: 2000     # Độ dài kết quả JSON tối đa trả về
+
+launch:
+  auto_launch: false
+  port: 9222
+  headless: false

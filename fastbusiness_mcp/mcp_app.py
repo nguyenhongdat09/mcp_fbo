@@ -456,6 +456,16 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
 
 
 # ============================================================================
+# TOOL 6: chrome_debug (CDP Runtime Debugging)
+# ============================================================================
+try:
+    from fastbusiness_mcp.chrome_debug.tools import register_chrome_tools
+    register_chrome_tools(server, get_config)
+except Exception as e:
+    logger.warning(f"Failed to register chrome_debug tools: {e}")
+
+
+# ============================================================================
 # Intercept ToolError để trả thông báo tiếng Việt chuẩn cho Agent
 # ============================================================================
 _orig_call_tool = server.call_tool
