@@ -15,14 +15,32 @@ alwaysApply: true
    - query_type=1: SQL inline ngắn
    - query_type=2: path file `.sql` (script dài)
 2. `get_xml_entities` - Đọc entity XML (mode=content / path / list)
+3. `clone_things` - Clone SQL (table/proc/func/view) **thiếu ở project đích** từ project nguồn → **1 file .sql** (append + GO). Target-first, đệ quy dependency, partition `m41$` → `m41$000000`.
 
 ### FBOGraph (XML index Kuzu)
-3. `query_radar` - Cypher ad-hoc (chỉ khi cần)
-4. `read_local_file` - Đọc file XML trong project
+4. `query_radar` - Cypher ad-hoc (chỉ khi cần)
+5. `read_local_file` - Đọc file XML trong project
+
+## Khi nào BẮT BUỘC dùng `clone_things` (không tự loop query_database)
+
+Agent **phải** gọi `clone_things` khi user nói / ý nghĩa gần với:
+- mang / clone / kéo / copy **proc, func, view, table, SQL** từ dự án A sang dự án B
+- đã copy XML controller (Dir/Grid/Filter) sang project khác → **check còn thiếu proc/SQL nào** mang theo
+- “nhét sql vào file `.sql`”, “xuất script thiếu”, “object nào chưa có ở đích”
+- so 2 project: nguồn (đã có) vs đích (mới / thiếu)
+
+**CẤM:** tự `query_database` từng object rồi paste tay; CẤM tạo nhiều file `.sql` mỗi object một file.
+
+**Cách gọi chuẩn:**
+- `object` = absolute path 1 file `.xml` (seed) **hoặc** tên object SQL
+- `project_source` / `project_target` = absolute path project **hoặc** path file XML trong project (tool tự cắt `App_Data`)
+- `path_to_pasted` = file `.sql` đích nếu user chỉ định; rỗng → sql temp theo `clone_things.sql_temp_folder` (tên kiểu `vlotus_sp228 (4).sql`)
+- Nhiều XML: gọi `clone_things` **lần lượt từng XML**, **cùng** `path_to_pasted` để nhét chung 1 file
 
 ## Agent habit
 - Chưa biết file → query_radar (Template 1 / 5 / 11), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
 - Đọc file controller FBO: MẶC ĐỊNH dùng `read_local_file(..., read_option=3)` (hoặc không truyền `read_option`) để nhận JSON summary siêu gọn (~29ms, tiết kiệm 95% token). CHỈ gọi `read_option=2` khi cần đọc full flat để sửa code.
+- Clone SQL giữa 2 project / thiếu proc sau khi copy XML → **`clone_things` trước**, rồi mới đọc file `.sql` tại `path_to_pasted` để review.
 
 - Entity Include → get_xml_entities; schema DB → query_database
 - Thấy needs_xml / .f → đừng cố đọc XML mã hóa

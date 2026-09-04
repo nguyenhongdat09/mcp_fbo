@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Annotated, Literal
 import yaml
 from pydantic import Field
 from mcp.server import MCPServer
+from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
 
 from .utils.logger import setup_logger
@@ -26,6 +28,9 @@ from xml_fbograph.mcp_tools import (
 
 from search_qlyc import search_qlyc
 from search_qlyc.formatter import format_search_result
+
+from clone_things import clone_things
+from clone_things.formatter import format_clone_result
 
 logger = setup_logger(__name__)
 
@@ -313,7 +318,7 @@ def _format_query_radar_result(res: str) -> str:
 
 
 @server.tool(name="query_radar")
-def query_radar_tool(
+async def query_radar_tool(
     reference_file: Annotated[
         str,
         Field(description="BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu."),
@@ -326,6 +331,7 @@ def query_radar_tool(
         Literal["query", "schema"],
         Field(default="query", description="query=chạy Cypher; schema=trả schema live + hướng dẫn"),
     ] = "query",
+    ctx: Context = None,
 ) -> str:
     """Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
 Đây là tool DUY NHẤT để truy vấn Graph (các hàm cũ đã bị ẩn).
@@ -336,8 +342,39 @@ Bạn BẮT BUỘC phải đọc và tuân thủ các quy tắc, chỉ chọn 1 
 mode:
 - query (mặc định): chạy cypher_query.
 - schema: trả schema live XmlFile/Rel (Agent chỉ gọi để check cấu trúc thực tế khi cần)."""
+    loop = asyncio.get_running_loop()
+
+    async def _safe_report_progress(progress: float, total: float | None = None, message: str | None = None) -> None:
+        if ctx is not None:
+            try:
+                await ctx.report_progress(progress=progress, total=total, message=message)
+            except Exception:
+                pass
+
+    def on_progress(done: int, total: int, msg: str = "") -> None:
+        if ctx is not None:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    _safe_report_progress(
+                        progress=float(done),
+                        total=float(total) if total else None,
+                        message=msg,
+                    ),
+                    loop,
+                )
+            except Exception:
+                pass
+
     try:
-        res = mcp_query_radar(cypher_query, reference_file, mode)
+        await _safe_report_progress(progress=0.0, total=100.0, message="Bắt đầu kiểm tra Kùzu Graph DB...")
+        res = await asyncio.to_thread(
+            mcp_query_radar,
+            cypher_query,
+            reference_file,
+            mode,
+            on_progress,
+        )
+        await _safe_report_progress(progress=100.0, total=100.0, message="Thực thi hoàn tất.")
         return _format_query_radar_result(res)
     except Exception as e:
         logger.error(f"query_radar error: {e}")
@@ -362,7 +399,7 @@ def read_local_file_tool(
         Field(
             default=3,
             description=(
-                "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt toàn bộ file với chi phí token tối thiểu. Tự động switch sang option 1 raw nếu file không phải .xml (vd .sql, .js, .txt, .config). "
+                "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt cấu trúc với chi phí token tối thiểu. CHỈ áp dụng cho file .xml trực thuộc thư mục Dir, Grid, Filter (vd Dir/a.xml); tự động chuyển về option 1 (raw) nếu không phải .xml trong Dir/Grid/Filter (vd .sql, .js, Report, Templates, Dir/A/a.xml,...). "
                 "2: flat — Đọc toàn bộ XML sau khi resolve entities/includes (CHỈ DÙNG khi cần xem chi tiết từng dòng code để sửa file). "
                 "1: raw — Đọc nội dung file gốc chưa resolve."
             ),
@@ -372,7 +409,7 @@ def read_local_file_tool(
     """Đọc trực tiếp nội dung file controller FBO từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache).
 
 QUY TRÌNH AGENT (TIẾT KIỆM TOKEN):
-1) BƯỚC 1 (MẶC ĐỊNH): LUÔN LUÔN dùng read_option=3 (summary_xml) để nắm toàn bộ bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp. Lưu ý: nếu file không phải .xml (vd .sql, .js, .txt, .config), tool sẽ tự động switch sang read_option=1 (raw).
+1) BƯỚC 1 (MẶC ĐỊNH): Dùng read_option=3 (summary_xml) cho các file .xml trong Dir, Grid, Filter để nắm bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp. Lưu ý: nếu file không phải .xml trực thuộc Dir, Grid, Filter (vd .sql, .js, Report, Templates, Dir/A/a.xml), tool sẽ tự động fallback sang read_option=1 (raw).
 2) BƯỚC 2: CHỈ gọi read_option=2 (flat) khi bạn ĐÃ XÁC ĐỊNH ĐƯỢC hàm/khối lệnh cần sửa và cần xem code chi tiết để viết code thay thế.
 3) BƯỚC 3: get_xml_entities chỉ khi cần tra cứu vị trí file DTD/Entity chưa flat.
 
@@ -456,13 +493,63 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
 
 
 # ============================================================================
-# TOOL 6: chrome_debug (CDP Runtime Debugging)
+# TOOL 5: clone_things
 # ============================================================================
-try:
-    from fastbusiness_mcp.chrome_debug.tools import register_chrome_tools
-    register_chrome_tools(server, get_config)
-except Exception as e:
-    logger.warning(f"Failed to register chrome_debug tools: {e}")
+@server.tool(name="clone_things")
+def clone_things_tool(
+    object: Annotated[
+        str,
+        Field(
+            description="Tên object SQL (bảng, proc, view, function) hoặc đường dẫn file .xml controller để seed danh sách SQL"
+        ),
+    ],
+    project_source: Annotated[
+        str,
+        Field(
+            description="Đường dẫn tuyệt đối (absolute path) tới project nguồn (chứa Web.config hoặc App_Data)"
+        ),
+    ],
+    project_target: Annotated[
+        str,
+        Field(
+            description="Đường dẫn tuyệt đối (absolute path) tới project đích (chứa Web.config hoặc App_Data)"
+        ),
+    ],
+    type: Annotated[
+        int,
+        Field(
+            default=0,
+            description="Loại clone: 0=SQL clone (mặc định v1), các giá trị khác chưa hỗ trợ",
+        ),
+    ] = 0,
+    path_to_pasted: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn file .sql để append; để trống sẽ tự tạo file temp và mở lên editor",
+        ),
+    ] = "",
+) -> str:
+    """
+    BƯỚC 1 BẮT BUỘC khi cần clone object SQL (bảng, proc, view, function) giữa 2 dự án FBO và chỉnh sửa:
+    1) Agent BẮT BUỘC gọi tool này trước để kiểm tra Target-first, đệ quy dependency và xuất toàn bộ script vào file .sql temp.
+    2) Sau đó, Agent mở đọc file tại 'path_to_pasted' để xem/chỉnh sửa code tiếp. CẤM tự query từng object qua chat gây lãng phí token!
+    """
+    try:
+        cfg = get_config()
+        result = clone_things(
+            object=object,
+            project_source=project_source,
+            project_target=project_target,
+            type=type,
+            path_to_pasted=path_to_pasted,
+            config=cfg,
+        )
+        return format_clone_result(result)
+    except Exception as e:
+        logger.error(f"clone_things execution error: {e}")
+        return format_execution_error("clone_things", e)
+
 
 
 # ============================================================================

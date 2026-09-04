@@ -6,9 +6,7 @@ server:
 
 logging:
   level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
- 
-   
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 
 
 # Tùy chọn khi extract/build graph
 extract_options:
@@ -27,3 +25,21 @@ rag_qlyc:
   api_key: "fsd@@123"
   timeout_seconds: 30
   bp_lt: "FSD"
+
+# Clone SQL objects giữa 2 project (MCP tool clone_things)
+clone_things:
+  # Absolute path thư mục tạo file .sql khi path_to_pasted rỗng
+  # Parity với VS Code setting: fbo-autocomplete.sqlTempFolder
+  sql_temp_folder: "e:/SQL Temp"
+
+  # Cách mở file sau khi ghi: auto | cursor | code | os | none
+  open_editor_cmd: "auto"
+
+  # Giới hạn an toàn
+  max_objects: 50
+
+  # false = chỉ ghi file, không mở UI
+  open_file: true
+
+  # true = tự động deploy (EXECUTE DDL/definition) lên DB target; false = chỉ ghi file .sql
+  execute_clone: false
