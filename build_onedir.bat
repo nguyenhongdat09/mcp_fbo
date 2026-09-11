@@ -35,8 +35,12 @@ if not exist "dist\fastbusiness_mcp\fastbusiness_mcp.exe" (
 
 REM Copy config va file batch canh exe de user tien su dung
 copy /Y config.yaml dist\fastbusiness_mcp\config.yaml >nul
+if exist config_path.yaml (
+    copy /Y config_path.yaml dist\fastbusiness_mcp\_config_path.yaml >nul
+) else if exist config_path.yaml.example (
+    copy /Y config_path.yaml.example dist\fastbusiness_mcp\_config_path.yaml >nul
+)
 copy /Y rebuild_all.bat dist\fastbusiness_mcp\rebuild_all.bat >nul
-if exist key.json copy /Y key.json dist\fastbusiness_mcp\key.json >nul
 
 echo.
 echo [OK] Build successful: dist\fastbusiness_mcp\fastbusiness_mcp.exe

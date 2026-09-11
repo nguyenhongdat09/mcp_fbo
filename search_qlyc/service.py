@@ -13,7 +13,7 @@ def search_qlyc(
 ) -> dict:
     query_str = (query or "").strip()
     fcode1_str = (fcode1 or "").strip()
-    ma_da_str = (ma_da or "").strip()
+    ma_da_str = (ma_da or "").strip().upper()
     bp_lt_str = (bp_lt or "").strip()
 
     if not query_str and not fcode1_str and not ma_da_str:

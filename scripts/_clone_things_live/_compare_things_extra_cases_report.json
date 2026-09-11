@@ -1,0 +1,2615 @@
+{
+  "synthetic_dir": "C:\\Users\\WINDOW~1\\AppData\\Local\\Temp\\cmp_extra_9_fturb9",
+  "pass_count": 37,
+  "total": 37,
+  "cases": [
+    {
+      "name": "S-FILE self compare identical",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file hoàn toàn giống nhau về nội dung và metadata.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": true,
+          "only_line_ending_diff": false,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE CRLF vs LF only_line_ending",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file có nội dung giống nhau, chỉ khác định dạng xuống dòng (CRLF/LF).",
+        "next_actions": [
+          "ignore_line_ending_only"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": true,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "ignore_line_ending_only"
+            ],
+            "signals": null,
+            "only_line_ending_diff": true,
+            "identical_content": true,
+            "meta_diff": [
+              "size",
+              "created",
+              "sha256",
+              "line_ending"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE CRLF vs LF ignore_line_endings=false → different",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file có nội dung giống nhau, chỉ khác định dạng xuống dòng (CRLF/LF).",
+        "next_actions": [
+          "ignore_line_ending_only"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": true,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "ignore_line_ending_only"
+            ],
+            "signals": null,
+            "only_line_ending_diff": true,
+            "identical_content": true,
+            "meta_diff": [
+              "size",
+              "created",
+              "sha256",
+              "line_ending"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE BOM vs no BOM",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file có nội dung giống nhau, chỉ khác định dạng xuống dòng (CRLF/LF).",
+        "next_actions": [
+          "ignore_line_ending_only"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": true,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "ignore_line_ending_only"
+            ],
+            "signals": null,
+            "only_line_ending_diff": true,
+            "identical_content": true,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE content diff hunks",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file khác nhau về nội dung (1 vùng thay đổi).",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different",
+            "name": null,
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "size",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "a_line_start": 2,
+              "a_line_end": 4,
+              "b_line_start": 2,
+              "b_line_end": 5
+            },
+            "hunk0_preview": [
+              "  L1",
+              "- OLD",
+              "+ NEW",
+              "  L3"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE mode=body window",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file khác nhau về nội dung (1 vùng thay đổi).",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different",
+            "name": null,
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "size",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "a_line_start": 2,
+              "a_line_end": 4,
+              "b_line_start": 2,
+              "b_line_end": 5
+            },
+            "hunk0_preview": [
+              "  L1",
+              "- OLD",
+              "+ NEW",
+              "  L3"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE binary different",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file khác nhau về nội dung (0 vùng thay đổi).",
+        "next_actions": [
+          "compare_binary_meta_only"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different",
+            "name": null,
+            "next_actions": [
+              "compare_binary_meta_only"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE empty vs empty",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file hoàn toàn giống nhau về nội dung và metadata.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": true,
+          "only_line_ending_diff": false,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE ignore_whitespace true",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file có nội dung giống nhau, chỉ khác định dạng xuống dòng (CRLF/LF).",
+        "next_actions": [
+          "ignore_line_ending_only"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": true,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "ignore_line_ending_only"
+            ],
+            "signals": null,
+            "only_line_ending_diff": true,
+            "identical_content": true,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE ignore_whitespace false → likely different",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file khác nhau về nội dung (1 vùng thay đổi).",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different",
+            "name": null,
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "a_line_start": 1,
+              "a_line_end": 1,
+              "b_line_start": 1,
+              "b_line_end": 1
+            },
+            "hunk0_preview": [
+              "-   hello  ",
+              "+ hello"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FILE missing path",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "file",
+        "error_code": "file_not_found",
+        "message": "Không tìm thấy file_a trên đĩa: C:\\Users\\WINDOW~1\\AppData\\Local\\Temp\\cmp_extra_9_fturb9\\nope.txt",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "S-FOLDER missing + meta + recursive",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 5 file, Folder B có 5 file. Thiếu ở B: 1, thiếu ở A: 1, khác metadata: 3, giống metadata: 1 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 5,
+          "files_b": 5,
+          "missing_on_b": [
+            "only_a.txt"
+          ],
+          "missing_on_a": [
+            "only_b.txt"
+          ],
+          "identical_meta_count": 1,
+          "omitted_identical_count": 1,
+          "different_meta": [
+            "bigish.txt",
+            "skip.pdb",
+            "sub/x.txt"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": false
+        },
+        "compared_count": 5,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "only_a.txt",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_a",
+            "name": "only_b.txt",
+            "next_actions": [
+              "copy_missing_to_a"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "different_meta",
+            "name": "bigish.txt",
+            "next_actions": [
+              "review_meta"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FOLDER exclude *.pdb",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 4 file, Folder B có 4 file. Thiếu ở B: 1, thiếu ở A: 1, khác metadata: 2, giống metadata: 1 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 4,
+          "files_b": 4,
+          "missing_on_b": [
+            "only_a.txt"
+          ],
+          "missing_on_a": [
+            "only_b.txt"
+          ],
+          "identical_meta_count": 1,
+          "omitted_identical_count": 1,
+          "different_meta": [
+            "bigish.txt",
+            "sub/x.txt"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": false
+        },
+        "compared_count": 4,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "only_a.txt",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_a",
+            "name": "only_b.txt",
+            "next_actions": [
+              "copy_missing_to_a"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "different_meta",
+            "name": "bigish.txt",
+            "next_actions": [
+              "review_meta"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FOLDER include only *.txt recursive false",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 3 file, Folder B có 3 file. Thiếu ở B: 1, thiếu ở A: 1, khác metadata: 1, giống metadata: 1 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 3,
+          "files_b": 3,
+          "missing_on_b": [
+            "only_a.txt"
+          ],
+          "missing_on_a": [
+            "only_b.txt"
+          ],
+          "identical_meta_count": 1,
+          "omitted_identical_count": 1,
+          "different_meta": [
+            "bigish.txt"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": false
+        },
+        "compared_count": 3,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "only_a.txt",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_a",
+            "name": "only_b.txt",
+            "next_actions": [
+              "copy_missing_to_a"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "different_meta",
+            "name": "bigish.txt",
+            "next_actions": [
+              "review_meta"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FOLDER compare_content text hunks",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 4 file, Folder B có 4 file. Thiếu ở B: 1, thiếu ở A: 1, khác metadata: 0, giống metadata: 1 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a",
+          "review_hunks"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 4,
+          "files_b": 4,
+          "missing_on_b": [
+            "only_a.txt"
+          ],
+          "missing_on_a": [
+            "only_b.txt"
+          ],
+          "identical_meta_count": 1,
+          "omitted_identical_count": 1,
+          "different_meta": [],
+          "different_content": [
+            "bigish.txt",
+            "sub/x.txt"
+          ],
+          "errors": [],
+          "truncated": false
+        },
+        "compared_count": 4,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "only_a.txt",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_a",
+            "name": "only_b.txt",
+            "next_actions": [
+              "copy_missing_to_a"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "different_content",
+            "name": "bigish.txt",
+            "next_actions": [
+              "review_hunks"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "a_line_start": 1,
+              "a_line_end": 1,
+              "b_line_start": 1,
+              "b_line_end": 1
+            },
+            "hunk0_preview": [
+              "- xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "+ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "S-FOLDER hash_max_bytes tiny skip large",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 1 file, Folder B có 1 file. Thiếu ở B: 0, thiếu ở A: 0, khác metadata: 1, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 1,
+          "files_b": 1,
+          "missing_on_b": [],
+          "missing_on_a": [],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "bigish.txt"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": false
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different_meta",
+            "name": "bigish.txt",
+            "next_actions": [
+              "review_meta"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-FILE PU self FAH",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file hoàn toàn giống nhau về nội dung và metadata.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": true,
+          "only_line_ending_diff": false,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": null,
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-FILE Customer.xml FAH vs AIH",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "error_code": null,
+        "message": "Hai file khác nhau về nội dung (20 vùng thay đổi).",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "different",
+            "name": null,
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "delete",
+              "a_line_start": 2,
+              "a_line_end": 2,
+              "b_line_start": 1,
+              "b_line_end": 1
+            },
+            "hunk0_preview": [
+              "  <?xml version=\"1.0\" encoding=\"utf-8\"?>",
+              "- <!--C-->",
+              "  ",
+              "  <!DOCTYPE dir ["
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-XML Filter list if any — try common Filter name",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "error_code": null,
+        "message": "So sánh 3 file XML: 1 giống nhau, 1 khác nhau, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [
+            "Dir/PUDelegationApproval.xml"
+          ],
+          "different": [
+            "Dir/Customer.xml"
+          ],
+          "errors": [
+            "Filter/PUDelegationApprovalFilter.xml: not found on source nor target"
+          ],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 1,
+            "different": 1,
+            "errors": 1
+          }
+        },
+        "compared_count": 3,
+        "samples": [
+          {
+            "status": "error",
+            "name": "Filter/PUDelegationApprovalFilter.xml",
+            "next_actions": [
+              "fix_paths"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "different",
+            "name": "Dir/Customer.xml",
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": false,
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "delete",
+              "a_line_start": 2,
+              "a_line_end": 2,
+              "b_line_start": 1,
+              "b_line_end": 1
+            },
+            "hunk0_preview": [
+              "  <?xml version=\"1.0\" encoding=\"utf-8\"?>",
+              "- <!--C-->",
+              "  ",
+              "  <!DOCTYPE dir ["
+            ]
+          },
+          {
+            "status": "identical",
+            "name": "Dir/PUDelegationApproval.xml",
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-XML absolute-like relative App_Data prefix normalize",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "error_code": null,
+        "message": "So sánh 1 file XML: 1 giống nhau, 0 khác nhau, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [
+            "Dir/PUDelegationApproval.xml"
+          ],
+          "different": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 1,
+            "different": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": "Dir/PUDelegationApproval.xml",
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-XML project path as controller file (resolve root)",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "error_code": null,
+        "message": "So sánh 1 file XML: 1 giống nhau, 0 khác nhau, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [
+            "Dir/PUDelegationApproval.xml"
+          ],
+          "different": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 1,
+            "different": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "identical",
+            "name": "Dir/PUDelegationApproval.xml",
+            "next_actions": [
+              "noop"
+            ],
+            "signals": null,
+            "only_line_ending_diff": false,
+            "identical_content": true,
+            "meta_diff": [
+              "created"
+            ],
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-FOLDER bin exclude FastBusiness.* glob pattern",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 87 file, Folder B có 70 file. Thiếu ở B: 22, thiếu ở A: 5, khác metadata: 65, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a",
+          "investigate_version_dll"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 87,
+          "files_b": 70,
+          "missing_on_b": [
+            "BarcodeLib.dll",
+            "BouncyCastle.Crypto.dll",
+            "CalendarChartService.dll",
+            "CRMMessage.dll",
+            "fsdBarQRGenerator.dll",
+            "fsdCreateBarCode.dll",
+            "fsdGalleryManager.dll",
+            "fsdMail.dll",
+            "FTSMailMerge.dll",
+            "ftsSQLData.dll",
+            "Ionic.Zip.dll",
+            "Mail.dll",
+            "MailApprove.dll",
+            "Microsoft.Office.Interop.Excel.dll",
+            "Office.dll",
+            "Post.dll",
+            "ViewHeader.dll",
+            "zcv_EmailDoc.dll",
+            "zhrOpenFile.dll",
+            "zxing.dll",
+            "zxing.presentation.dll",
+            "zzapprove.dll"
+          ],
+          "missing_on_a": [
+            "iPosLibary.dll",
+            "iPosModel.dll",
+            "JsonConverterCustom.dll",
+            "Provider.dll",
+            "WebServiceConnectiPos.dll"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "About.dll",
+            "AccessRight.dll",
+            "AjaxControlToolkit.dll",
+            "AjaxMin.dll",
+            "AllocationExtender.dll",
+            "APIExtender.dll",
+            "BankHubClient.dll",
+            "Common.Logging.Core.dll",
+            "Common.Logging.dll",
+            "ConvertXmlExtender.dll",
+            "Dashboard.dll",
+            "Decompress.dll",
+            "DocumentFormat.OpenXml.dll",
+            "EInvoice.dll",
+            "EMessage.dll",
+            "EPPlus.dll",
+            "Export.dll",
+            "ExternalCss.dll",
+            "ExternalScript.dll",
+            "FastEInvoice.Crypto.dll",
+            "FastEInvoice.InputInvoice.Tax.dll",
+            "Fields.dll",
+            "FileUpload.dll",
+            "FileUploadExtender.dll",
+            "Flow.dll"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 25,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "BarcodeLib.dll",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "BouncyCastle.Crypto.dll",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "CalendarChartService.dll",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-FOLDER Grid xml only non-recursive",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 530 file, Folder B có 167 file. Thiếu ở B: 493, thiếu ở A: 130, khác metadata: 37, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 530,
+          "files_b": 167,
+          "missing_on_b": [
+            "_crAccount.xml",
+            "BIPIDetail.xml",
+            "BIPITran.xml",
+            "BIPITranHistoryGrid.xml",
+            "BIPODetail.xml",
+            "BIPOTran.xml",
+            "BIPOTranHistoryGrid.xml",
+            "BIPQDetail.xml",
+            "BMDetail.xml",
+            "BMTran.xml",
+            "Contract.xml",
+            "ContractPayment.xml",
+            "crAccount.xml",
+            "crAccountCase.xml",
+            "crAccountContact.xml",
+            "crAccountDetail.xml",
+            "crAccountGroup.xml",
+            "crAccountInitialize.xml",
+            "crAccountLog.xml",
+            "crAccountOpportunity.xml",
+            "crAccountSharingGroup.xml",
+            "crAccountSharingUser.xml",
+            "crAccountTask.xml",
+            "crAccountTeam.xml",
+            "crAccountType.xml",
+            "crCampaign.xml",
+            "crCampaignDetail.xml",
+            "crCampaignType.xml",
+            "crCase.xml",
+            "crCaseReason.xml"
+          ],
+          "missing_on_a": [
+            "AdjustmentIssueDetail.xml",
+            "AdjustmentIssueTran.xml",
+            "AIDetail.xml",
+            "AIInvoice.xml",
+            "AITran.xml",
+            "APDetail.xml",
+            "APDownPayment.xml",
+            "APInvoiceOpeningBalance.xml",
+            "APMultiAllocation.xml",
+            "ApprovalCategory.xml",
+            "ApprovalCategoryDetail.xml",
+            "ApprovalIndicator.xml",
+            "ApprovalRoles.xml",
+            "ApprovalRolesDetail.xml",
+            "ApprovingOfficers.xml",
+            "APTran.xml",
+            "ASDetail.xml",
+            "ASTax.xml",
+            "CDDeductible.xml",
+            "CDDetail.xml",
+            "CDInvoiceMultiGrid.xml",
+            "CDTax.xml",
+            "CDTran.xml",
+            "CDTranImportGrid.xml",
+            "CIDetail - Copy.xml",
+            "CIDetail.xml",
+            "CITran.xml",
+            "CPCharge.xml",
+            "CPDeductible.xml",
+            "CPDetail.xml"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "APTax.xml",
+            "APTranImportGrid.xml",
+            "CBDetail.xml",
+            "CRDetail.xml",
+            "Customer.xml",
+            "EITran.xml",
+            "GLDetail.xml",
+            "GNApprovalCategory.xml",
+            "GNApprovalCategoryDetail.xml",
+            "IRDetail.xml",
+            "IRTran.xml",
+            "PMTax.xml",
+            "PRDetail.xml",
+            "PRTran.xml",
+            "PUDelegationApproval.xml",
+            "PVDetail.xml",
+            "PVIRGrid.xml",
+            "PVIRMultiGrid.xml",
+            "PVOrderGrid.xml",
+            "PVOrderMultiGrid.xml",
+            "PVTax.xml",
+            "rptAccountsLedger.xml",
+            "rptCustomerBalanceOfMultiAccount.xml",
+            "rptIssueTransactionList.xml",
+            "rptReceiptTransactionList.xml",
+            "rptReceivableAgingReportByInvoice.xml",
+            "rptReceivableReportByInvoice.xml",
+            "SOBlanketGrid.xml",
+            "SOCharges.xml",
+            "SODetail.xml"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 30,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "_crAccount.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "BIPIDetail.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "BIPITran.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-FOLDER Filter compare_content small sample",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "error_code": null,
+        "message": "Folder A có 22 file, Folder B có 10 file. Thiếu ở B: 20, thiếu ở A: 8, khác metadata: 0, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a",
+          "review_hunks"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 22,
+          "files_b": 10,
+          "missing_on_b": [
+            "GNApprovalCategory_Copy1.xml",
+            "hrEmployeeLeaveApproval.xml",
+            "hrOvertimeApproval.xml",
+            "hrRMApproval.xml",
+            "hrShiftScheduleApproval.xml",
+            "hrTimeAdjustApproval.xml",
+            "hrWorkAddApproval.xml",
+            "SOApproval.xml",
+            "SOApprovalCategory.xml",
+            "SOApprovalCategoryDetail.xml",
+            "SQApprovalDetailForm.xml",
+            "ZBApproval.xml",
+            "zcSQApproval.xml",
+            "zcSQApprovalReason.xml",
+            "zcv_TextApproval.xml"
+          ],
+          "missing_on_a": [
+            "ApprovalCategory.xml",
+            "ApprovalCategoryDetail.xml",
+            "ApprovalIndicator.xml",
+            "ApprovalIndicatorImport.xml",
+            "ApprovalRoles.xml",
+            "ApprovalRolesImport.xml",
+            "POApproval.xml",
+            "PRApproval.xml"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [],
+          "different_content": [
+            "GNApprovalCategory.xml",
+            "GNApprovalCategoryDetail.xml"
+          ],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 15,
+        "samples": [
+          {
+            "status": "missing_on_b",
+            "name": "GNApprovalCategory_Copy1.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "hrEmployeeLeaveApproval.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_b",
+            "name": "hrOvertimeApproval.xml",
+            "next_actions": [
+              "copy_missing_to_b"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-SQL object explicit GetApprovalRole",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "error_code": null,
+        "message": "So sánh 2 đối tượng SQL: 0 giống nhau, 2 khác nhau, 0 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "review_hunks_before_alter",
+          "clone_things_type1_mode_read_0"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "dbo.FastBusiness$App$GetApprovalRole"
+          ],
+          "encrypted_skip": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 2,
+            "encrypted_skip": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 2,
+        "samples": [
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "insert",
+              "source_line_start": 1,
+              "source_line_end": 1,
+              "target_line_start": 1,
+              "target_line_end": 2
+            },
+            "hunk0_preview": [
+              "+ ",
+              "+ -- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalRole]",
+              "  \t@voucherType VARCHAR(32),"
+            ]
+          },
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$App$GetApprovalRole",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "source_line_start": 1,
+              "source_line_end": 7,
+              "target_line_start": 1,
+              "target_line_end": 9
+            },
+            "hunk0_preview": [
+              "+ ",
+              "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalRole]",
+              "  \t@VoucherType VARCHAR(32),"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-SQL seed Authorize only max_objects=5",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "error_code": null,
+        "message": "So sánh 5 đối tượng SQL: 0 giống nhau, 0 khác nhau, 5 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "clone_things_type0"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [
+            "dbo.cs_CFAutoGenerationVentureAdjustmentProcess",
+            "dbo.cs_CFExtractDataClosingStockBalance",
+            "dbo.cs_CFExtractDataClosingStockBalanceDelete",
+            "dbo.cs_CFExtractDataInternalTradingDelete",
+            "dbo.cs_CFExtractDataInternalTradingRetrieve"
+          ],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [],
+          "encrypted_skip": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 5,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 0,
+            "encrypted_skip": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 5,
+        "samples": [
+          {
+            "status": "missing_on_target",
+            "name": "dbo.cs_CFAutoGenerationVentureAdjustmentProcess",
+            "next_actions": [
+              "clone_things_type0"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_target",
+            "name": "dbo.cs_CFExtractDataClosingStockBalance",
+            "next_actions": [
+              "clone_things_type0"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          },
+          {
+            "status": "missing_on_target",
+            "name": "dbo.cs_CFExtractDataClosingStockBalanceDelete",
+            "next_actions": [
+              "clone_things_type0"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-SQL db_type=both seed vdmduyetuq max 8",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "error_code": null,
+        "message": "So sánh 8 đối tượng SQL: 0 giống nhau, 8 khác nhau, 0 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "review_hunks_before_alter",
+          "clone_things_type1_mode_read_0"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.FastBusiness$App$GetApprovalMailList",
+            "dbo.FastBusiness$App$GetApprovalRole",
+            "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "dbo.FastBusiness$Function$APV$PU$Authorize",
+            "dbo.ff_POAuthorize",
+            "dbo.ff_PRAuthorize",
+            "dbo.fs_POAuthorize"
+          ],
+          "encrypted_skip": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 8,
+            "encrypted_skip": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 8,
+        "samples": [
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$App$GetApprovalMailList",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "insert",
+              "source_line_start": 1,
+              "source_line_end": 1,
+              "target_line_start": 1,
+              "target_line_end": 2
+            },
+            "hunk0_preview": [
+              "+ ",
+              "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalMailList]",
+              "  \t@idNumber CHAR(13),"
+            ]
+          },
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$App$GetApprovalRole",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "source_line_start": 1,
+              "source_line_end": 7,
+              "target_line_start": 1,
+              "target_line_end": 9
+            },
+            "hunk0_preview": [
+              "+ ",
+              "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalRole]",
+              "  \t@VoucherType VARCHAR(32),"
+            ]
+          },
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "insert",
+              "source_line_start": 1,
+              "source_line_end": 1,
+              "target_line_start": 1,
+              "target_line_end": 2
+            },
+            "hunk0_preview": [
+              "+ ",
+              "+ -- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalMailList]",
+              "  \t@idNumber CHAR(13),"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-SQL missing object name",
+      "passed": true,
+      "expect_success": null,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "error_code": null,
+        "message": "So sánh 1 đối tượng SQL: 0 giống nhau, 0 khác nhau, 0 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [],
+          "encrypted_skip": [],
+          "errors": [
+            "dbo.ThisObjectDefinitelyDoesNotExist_XYZ_999: not found on source nor target"
+          ],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 0,
+            "encrypted_skip": 0,
+            "errors": 1
+          }
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "error",
+            "name": "dbo.ThisObjectDefinitelyDoesNotExist_XYZ_999",
+            "next_actions": [
+              "fix_paths"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-TABLE multi dmkh,dmvt,dmdvkd",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "error_code": null,
+        "message": "So sánh 3 bảng: 0 giống nhau, 2 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "alter_add_column",
+          "review_column_type"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.dmkh",
+            "dbo.dmvt"
+          ],
+          "errors": [
+            "dbo.dmdvkd: not found on source nor target"
+          ],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 2,
+            "errors": 1
+          }
+        },
+        "compared_count": 3,
+        "samples": [
+          {
+            "status": "different",
+            "name": "dbo.dmkh",
+            "next_actions": [
+              "alter_add_column",
+              "review_column_type"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": {
+              "columns_only_source": [
+                "chuc_vu_dd",
+                "chuc_vu_lh",
+                "id_hrv",
+                "kh_crm_yn",
+                "nguoi_dd",
+                "nguoi_lh",
+                "nguoi_thu_huong",
+                "stt_rec_kh",
+                "ten_ngan",
+                "user_ref",
+                "viet_tat"
+              ],
+              "columns_only_target": [
+                "gom_bill_yn",
+                "id_doitac"
+              ],
+              "columns_type_mismatch": [
+                {
+                  "column": "du13",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "du_nt13",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "ma_kh",
+                  "source": "char(16) not null",
+                  "target": "char(32) not null"
+                },
+                {
+                  "column": "ma_td3",
+                  "source": "char(16) null",
+                  "target": "varchar(32) null"
+                },
+                {
+                  "column": "ma_tt",
+                  "source": "char(2) null",
+                  "target": "char(8) null"
+                },
+                {
+                  "column": "t_tien_cn",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "t_tien_hd",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "ten_kh",
+                  "source": "nvarchar(128) not null",
+                  "target": "nvarchar(512) null"
+                },
+                {
+                  "column": "ten_kh2",
+                  "source": "nvarchar(128) not null",
+                  "target": "nvarchar(512) null"
+                }
+              ],
+              "pk_source": [
+                "ma_kh"
+              ],
+              "pk_target": [
+                "ma_kh"
+              ],
+              "indexes_only_target": [
+                "id_doitac"
+              ]
+            }
+          },
+          {
+            "status": "different",
+            "name": "dbo.dmvt",
+            "next_actions": [
+              "alter_add_column",
+              "review_column_type"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": {
+              "columns_only_source": [
+                "barcode",
+                "ck_mua_ncc",
+                "ck_mua_po",
+                "id_hrv",
+                "id_hrv_variants",
+                "ma_cb",
+                "ma_ncc",
+                "ma_nhan",
+                "ma_thue_dr",
+                "ma_tp",
+                "ma_vach",
+                "nh_vt4",
+                "nh_vt5"
+              ],
+              "columns_only_target": [
+                "id_doitac",
+                "so_ngay_hh_dt",
+                "ten_vt_in"
+              ],
+              "columns_type_mismatch": [
+                {
+                  "column": "co_lo",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "density",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "depth",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "diameter",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "dvt",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvt2",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvt3",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtdensity",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtdepth",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtdiameter",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtgauge",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtheight",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtheight0",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtlength",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtlength0",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtpacks",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtsl_lo_chuan",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvttg_th",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtvolume",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtvolume0",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtweight",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtweight0",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtweight2",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtwidth",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "dvtwidth0",
+                  "source": "nvarchar(32) null",
+                  "target": "nchar(10) null"
+                },
+                {
+                  "column": "gauge",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "height",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "height0",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "length",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "length0",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "ma_kh",
+                  "source": "char(16) null",
+                  "target": "char(32) null"
+                },
+                {
+                  "column": "ma_kh0",
+                  "source": "char(16) null",
+                  "target": "char(32) null"
+                },
+                {
+                  "column": "ma_kh2",
+                  "source": "char(16) null",
+                  "target": "char(32) null"
+                },
+                {
+                  "column": "ma_kho",
+                  "source": "char(16) null",
+                  "target": "char(32) null"
+                },
+                {
+                  "column": "ma_td3",
+                  "source": "char(16) null",
+                  "target": "varchar(32) null"
+                },
+                {
+                  "column": "ma_vt",
+                  "source": "char(16) not null",
+                  "target": "char(24) not null"
+                },
+                {
+                  "column": "ma_vt2",
+                  "source": "char(16) not null",
+                  "target": "char(24) not null"
+                },
+                {
+                  "column": "packs",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "sl_dat_kt",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "sl_lo_chuan",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "sl_max",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "sl_min",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "so_ngay_dh",
+                  "source": "int null",
+                  "target": "numeric(3,0) null"
+                },
+                {
+                  "column": "ten_vt",
+                  "source": "nvarchar(450) null",
+                  "target": "nvarchar(500) null"
+                },
+                {
+                  "column": "ten_vt2",
+                  "source": "nvarchar(450) null",
+                  "target": "nvarchar(500) null"
+                },
+                {
+                  "column": "tg_th",
+                  "source": "int null",
+                  "target": "numeric(3,0) null"
+                },
+                {
+                  "column": "ton_at",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "volume",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "volume0",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "vung_hd",
+                  "source": "int null",
+                  "target": "numeric(3,0) null"
+                },
+                {
+                  "column": "weight",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "weight0",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "weight2",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "width",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                },
+                {
+                  "column": "width0",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,3) null"
+                }
+              ],
+              "pk_source": [
+                "ma_vt"
+              ],
+              "pk_target": [
+                "ma_vt"
+              ],
+              "indexes_only_target": [
+                "id_doitac"
+              ]
+            }
+          },
+          {
+            "status": "error",
+            "name": "dbo.dmdvkd",
+            "next_actions": [
+              "fix_paths"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-TABLE missing table",
+      "passed": true,
+      "expect_success": null,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "error_code": null,
+        "message": "So sánh 1 bảng: 0 giống nhau, 0 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [],
+          "errors": [
+            "dbo.zz_table_not_exist_cmp_things: not found on source nor target"
+          ],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 0,
+            "errors": 1
+          }
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "error",
+            "name": "dbo.zz_table_not_exist_cmp_things",
+            "next_actions": [
+              "fix_paths"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "L-TABLE db_type=sys try sys table syschecks or options",
+      "passed": true,
+      "expect_success": null,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "error_code": null,
+        "message": "So sánh 1 bảng: 0 giống nhau, 0 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [],
+          "errors": [
+            "dbo.options: not found on source nor target"
+          ],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 0,
+            "errors": 1
+          }
+        },
+        "compared_count": 1,
+        "samples": [
+          {
+            "status": "error",
+            "name": "dbo.options",
+            "next_actions": [
+              "fix_paths"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "V-invalid mode",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "file",
+        "error_code": "invalid_mode",
+        "message": "Tham số mode 'full' không hợp lệ. Chỉ chấp nhận: summary, hunks, body.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "V-sql missing project",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "sql",
+        "error_code": "invalid_project_source",
+        "message": "Thiếu tham số project_source.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "V-folder not dir",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "folder",
+        "error_code": "folder_not_found",
+        "message": "Không tìm thấy thư mục folder_a: C:\\Users\\WINDOW~1\\AppData\\Local\\Temp\\cmp_extra_9_fturb9\\same_lf.txt",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "V-max_objects 0",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "file",
+        "error_code": "invalid_limit",
+        "message": "Tham số max_objects phải lớn hơn 0.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "V-xml empty object",
+      "passed": true,
+      "expect_success": false,
+      "result": {
+        "success": false,
+        "kind": "xml",
+        "error_code": "invalid_object",
+        "message": "Thiếu tham số object (đường dẫn relative dưới Controllers/) cho kind=xml.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "samples": []
+      }
+    },
+    {
+      "name": "L-SQL reverse AIH→FAH seed dmduyet",
+      "passed": true,
+      "expect_success": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "error_code": null,
+        "message": "So sánh 12 đối tượng SQL: 1 giống nhau, 7 khác nhau, 3 thiếu trên target, 0 thiếu trên source, 1 mã hóa (bỏ qua).",
+        "next_actions": [
+          "clone_things_type0",
+          "review_hunks_before_alter",
+          "clone_things_type1_mode_read_0",
+          "skip_encrypted"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [
+            "dbo.FastBusiness$App$GetApprovalMailList_Stock_20250227_082032",
+            "dbo.FastBusiness$APV$GetApprovalMailList_Stock_20250227_082032",
+            "dbo.FastBusiness$APV$PostAuthorize_Stock_20250227_082032"
+          ],
+          "missing_on_source": [],
+          "identical": [
+            "dbo.FastBusiness$APV$PostAuthorize"
+          ],
+          "different": [
+            "dbo.bs_UnPostBIILClosed",
+            "dbo.FastBusiness$App$GetApprovalMailList",
+            "dbo.FastBusiness$App$GetApprovalRole",
+            "dbo.FastBusiness$APV$GetApprovalMailList",
+            "dbo.FastBusiness$APV$GetApprovalRole",
+            "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "dbo.FastBusiness$APV$PU$GetApprovalRole"
+          ],
+          "encrypted_skip": [
+            "dbo.FastBusiness$APV$GetProcessApprove"
+          ],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 3,
+            "missing_on_source": 0,
+            "identical": 1,
+            "different": 7,
+            "encrypted_skip": 1,
+            "errors": 0
+          }
+        },
+        "compared_count": 12,
+        "samples": [
+          {
+            "status": "different",
+            "name": "dbo.bs_UnPostBIILClosed",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "replace",
+              "source_line_start": 47,
+              "source_line_end": 77,
+              "target_line_start": 47,
+              "target_line_end": 78
+            },
+            "hunk0_preview": [
+              "  \t-- History",
+              "  \tEXEC FastBusiness$App$Voucher$ApprovalHistory @idNumber, @masterTable, @HisTable, '2'",
+              "  ",
+              "- \tIF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN"
+            ]
+          },
+          {
+            "status": "different",
+            "name": "dbo.FastBusiness$App$GetApprovalMailList",
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ],
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null,
+            "hunk0": {
+              "change_type": "delete",
+              "source_line_start": 1,
+              "source_line_end": 2,
+              "target_line_start": 1,
+              "target_line_end": 1
+            },
+            "hunk0_preview": [
+              "- ",
+              "- -- clone_things type=1: dbo.FastBusiness$App$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+              "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalMailList]",
+              "  \t@idNumber CHAR(13),"
+            ]
+          },
+          {
+            "status": "missing_on_target",
+            "name": "dbo.FastBusiness$App$GetApprovalMailList_Stock_20250227_082032",
+            "next_actions": [
+              "clone_things_type0"
+            ],
+            "signals": null,
+            "only_line_ending_diff": null,
+            "identical_content": null,
+            "meta_diff": null,
+            "schema_diff_nonzero": null
+          }
+        ]
+      }
+    }
+  ]
+}

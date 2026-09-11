@@ -221,10 +221,19 @@ def build_f_only_stub_node(path: Path, controllers_root: Path) -> GraphNode:
 
 
 class GraphBuilder:
-    def __init__(self, controllers_root: Path, cache_path: Optional[Path] = None, shared_include: Optional[int] = None, progress=None, project_label: str = ""):
+    def __init__(
+        self,
+        controllers_root: Path,
+        cache_path: Optional[Path] = None,
+        shared_include: Optional[int] = None,
+        progress=None,
+        project_label: str = "",
+        progress_callback=None
+    ):
         self.controllers_root = Path(controllers_root).resolve()
         self.progress = progress
         self.project_label = project_label
+        self.progress_callback = progress_callback
         self.xml_parser = XmlControllerParser(self.controllers_root)
         self.sql_parser = SqlBlockParser()
         self.js_parser = JsBlockParser()
@@ -369,11 +378,17 @@ class GraphBuilder:
                 elapsed = time.perf_counter() - t_parse
                 rate = done_parse / elapsed if elapsed > 0 else 0.0
                 eta_s = (total_parse - done_parse) / rate if rate > 0 else 0.0
+                pct = (done_parse * 100) // total_parse if total_parse else 100
                 
+                if self.progress_callback:
+                    try:
+                        self.progress_callback(done_parse, total_parse, f"Parsing XML {done_parse}/{total_parse} ({pct}%)")
+                    except Exception:
+                        pass
+
                 if self.progress and task_id is not None:
                     self.progress.update(task_id, done_parse, total_parse, rate, eta_s)
                 else:
-                    pct = (done_parse * 100) // total_parse if total_parse else 100
                     bar_width = 30
                     filled = (done_parse * bar_width) // total_parse if total_parse else bar_width
                     bar = "=" * filled + "-" * (bar_width - filled)
@@ -605,7 +620,13 @@ class GraphBuilder:
         print(f"[TIMING] edges: {time.perf_counter()-t_edges:.2f}s")
         return graph
 
-def build_and_save_graph(controllers_dir: Path, output_dir: Path, progress=None, project_label: str = "") -> XmlGraph:
+def build_and_save_graph(
+    controllers_dir: Path,
+    output_dir: Path,
+    progress=None,
+    project_label: str = "",
+    progress_callback=None
+) -> XmlGraph:
     """Build graph va luu vao Kuzu."""
     controllers_dir = Path(controllers_dir).resolve()
     output_dir = Path(output_dir).resolve()
@@ -613,9 +634,27 @@ def build_and_save_graph(controllers_dir: Path, output_dir: Path, progress=None,
 
     db_path = output_dir / "kuzu"
 
+    if progress_callback:
+        try:
+            progress_callback(0, 100, "Đang quét danh sách file Controllers...")
+        except Exception:
+            pass
+
     # Dung Kuzu lam incremental cache neu co
-    builder = GraphBuilder(controllers_dir, cache_path=db_path, progress=progress, project_label=project_label)
+    builder = GraphBuilder(
+        controllers_dir,
+        cache_path=db_path,
+        progress=progress,
+        project_label=project_label,
+        progress_callback=progress_callback
+    )
     graph = builder.build()
+
+    if progress_callback:
+        try:
+            progress_callback(90, 100, "Đang lưu cấu trúc đồ thị vào Kùzu DB...")
+        except Exception:
+            pass
 
     t_kuzu = time.perf_counter()
     kuzu_store = KuzuIndexStore(db_path)
@@ -625,6 +664,12 @@ def build_and_save_graph(controllers_dir: Path, output_dir: Path, progress=None,
     # Touch access log for the project
     if project_label:
         touch_kuzu_access(project_label)
+        
+    if progress_callback:
+        try:
+            progress_callback(100, 100, "Khởi tạo Kùzu Graph DB hoàn tất!")
+        except Exception:
+            pass
     
     return graph
 

@@ -1,0 +1,101 @@
+{
+  "passed": 19,
+  "total": 19,
+  "results": [
+    {
+      "name": "CRLF ignore=True → identical_content + only_line_ending_diff",
+      "passed": true,
+      "detail": "ic=True ole=True reason=line_ending"
+    },
+    {
+      "name": "CRLF ignore=False → NOT identical_content",
+      "passed": true,
+      "detail": "ic=False status=different hunks=1"
+    },
+    {
+      "name": "BOM-only → identical_content, NOT only_line_ending_diff (or diff_reason=bom)",
+      "passed": true,
+      "detail": "ole=False reason=bom msg=Hai file có nội dung giống nhau sau khi normalize; khác BOM hoặc bytes gốc."
+    },
+    {
+      "name": "BOM message not claim CRLF-only incorrectly",
+      "passed": true,
+      "detail": "Hai file có nội dung giống nhau sau khi normalize; khác BOM hoặc bytes gốc."
+    },
+    {
+      "name": "whitespace ignore → identical_content; only_line_ending_diff false if not LE",
+      "passed": true,
+      "detail": "ole=False reason=whitespace"
+    },
+    {
+      "name": "SQL missing both → missing_both",
+      "passed": true,
+      "detail": "summary={'missing_on_target': [], 'missing_on_source': [], 'missing_both': ['dbo.ThisObjectDefinitelyDoesNotExist_XYZ_999'], 'identical': [], 'different': [], 'encrypted_skip': [], 'errors': [], 'truncated': False, 'counts': {'missing_on_target': 0, 'missing_on_source': 0, 'missing_both': 1, 'identical': 0, 'different': 0, 'encrypted_skip': 0, 'errors': 0}}"
+    },
+    {
+      "name": "TABLE missing both → missing_both",
+      "passed": true,
+      "detail": "summary={'missing_on_target': [], 'missing_on_source': [], 'missing_both': ['dbo.zz_table_not_exist_cmp_xyz'], 'identical': [], 'different': [], 'errors': [], 'truncated': False, 'counts': {'missing_on_target': 0, 'missing_on_source': 0, 'missing_both': 1, 'identical': 0, 'different': 0, 'errors': 0}}"
+    },
+    {
+      "name": "xml_view=original works",
+      "passed": true,
+      "detail": "success=True xml_view=original err=None"
+    },
+    {
+      "name": "xml_view=flat works",
+      "passed": true,
+      "detail": "success=True xml_view=flat msg=So sánh 1 file XML ở chế độ flat (đã expand entity): 1 giống nhau, 0 khác nhau, 0 thiếu trên target, compared={'relative_path': 'Dir/T.xml', 'path_source': 'E:\\\\Window10\\\\AppData\\\\Local\\\\Temp\\\\cmp_postfix_i5r_ul0_\\\\proj\\\\App_Data\\\\Controllers\\\\Dir\\\\T.xml', 'path_target': 'E:\\\\Window10\\\\AppData\\\\Local\\\\Temp\\\\cmp_postfix_i5r_ul0_\\\\proj2\\\\App_Data\\\\Controllers\\\\Dir\\\\T.xml', 'xml_view': 'flat', 'status': 'identical', 'identical_content': True, 'identical_meta': True, 'only_line_ending_diff': False, 'file_a': {'path': 'E:\\\\Window10\\\\AppData\\\\Local\\\\Temp\\\\cmp_postfix_i5r_ul0_\\\\proj\\\\App_Data\\\\Controllers\\\\Dir\\\\T.xml', 'exists': True, 'size': 139, 'created': '2026-09-10T16:19:07.392947', 'modified': '2026-09-10T16:19:07.392947', 'sha256': 'a127c5ebb24d7e1572292d611400983ae8797289d5c6b8e250db201c81f90782', 'encoding': 'utf-8', 'line_ending': 'crlf', 'is_binary': False}, 'file_b': {'path': 'E:\\\\Window10\\\\AppData\\\\Local\\\\Temp\\\\cmp_postfix_i5r_ul0_\\\\proj2\\\\App_Data\\\\Controllers\\\\Dir\\\\T.xml', 'exists': True, 'size': 139, 'created': '2026-09-10T16:19:07.394952', 'modified': '2026-09-10T16:19:07.395957', 'sha256': 'a127c5ebb24d7e1572292d611400983ae8797289d5c6b8e250db201c81f90782', 'encoding': 'utf-8', 'line_ending': 'crlf', 'is_binary': False}, 'meta_diff': ['modified'], 'content': {'lines_a': 5, 'lines_b': 5, 'lines_added': 0, 'lines_removed': 0, 'hunk_count': 0, 'hunks': [], 'diff_truncated': False, 'unified_diff': '', 'line_basis': 'flat'}, 'next_actions': ['noop']}"
+    },
+    {
+      "name": "xml_view invalid → invalid_xml_view",
+      "passed": true,
+      "detail": "err=invalid_xml_view"
+    },
+    {
+      "name": "xml_view=raw alias → original success",
+      "passed": true,
+      "detail": "xml_view=original"
+    },
+    {
+      "name": "flat: Include khác → different (or not identical)",
+      "passed": true,
+      "detail": "status=different summary={'missing_on_target': [], 'missing_on_source': [], 'missing_both': [], 'identical': [], 'different': ['Dir/T.xml'], 'errors': [], 'truncated': False, 'counts': {'missing_on_target': 0, 'missing_on_source': 0, 'missing_both': 0, 'identical': 0, 'different': 1, 'errors': 0}} xml_view=flat"
+    },
+    {
+      "name": "LIVE Customer.xml xml_view=original",
+      "passed": true,
+      "detail": "status=different hunks=20 line_basis=original msg=So sánh 1 file XML ở chế độ original (file gốc): 0 giống nhau, 1 khác nhau, 0 th"
+    },
+    {
+      "name": "LIVE Customer.xml xml_view=flat",
+      "passed": true,
+      "detail": "status=different hunks=30 line_basis=flat msg=So sánh 1 file XML ở chế độ flat (đã expand entity): 0 giống nhau, 1 khác nhau, "
+    },
+    {
+      "name": "seed Authorize: ưu tiên tên Authorize/Approval hơn cs_CF*",
+      "passed": true,
+      "detail": "authish=['dbo.fastbusiness$function$apv$authorize', 'dbo.fastbusiness$function$apv$so$authorize', 'dbo.fastbusiness$apv$pu$unpostauthorize', 'dbo.fastbusiness$apv$so$postauthorize', 'dbo.fastbusiness$apv$so$unpostauthorize'] cs_cf=[] all_sample=['dbo.FastBusiness$Function$APV$Authorize', 'dbo.FastBusiness$Function$APV$SO$Authorize', 'dbo.FastBusiness$APV$PU$UnPostAuthorize', 'dbo.FastBusiness$APV$SO$PostAuthorize', 'dbo.FastBusiness$APV$SO$UnPostAuthorize', 'dbo.FastBusiness$Function$APV$PU$Authorize', 'dbo.FastBusiness$APV$PostAuthorize', 'dbo.FastBusiness$APV$PU$PostAuthorize']"
+    },
+    {
+      "name": "explicit GetApprovalRole compare success",
+      "passed": true,
+      "detail": "status=identical signals=None"
+    },
+    {
+      "name": "PU file still identical",
+      "passed": true,
+      "detail": "status=identical"
+    },
+    {
+      "name": "bin folder compare success",
+      "passed": true,
+      "detail": "files_a=129 missing_b=20"
+    },
+    {
+      "name": "table dmuqduyet compare success",
+      "passed": true,
+      "detail": "status=different next=['review_pk']"
+    }
+  ]
+}

@@ -6,19 +6,18 @@ server:
 
 logging:
   level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
- 
-   
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 
 
 # Tùy chọn khi extract/build graph
 extract_options:
   shared_include: 0
 
-# Cấu hình lưu trữ Kuzu DB cục bộ
+# Cấu hình Kuzu / graph (options). Path máy: config_path.yaml → fbograph.kuzu_db_base
+# (thiếu/rỗng → {MCP_BASE}/KuzuDB)
 fbograph:
-  kuzu_db_base: "C:/KuzuDB"
   user_multi_db_yn: 1
   access_log_retention_days: 30
+  query_timeout_seconds: 1800  # 30 phút timeout cho truy vấn Kùzu DB
 
 # RAG QLYC Search API (MCP tool search_qlyc)
 rag_qlyc:
@@ -27,3 +26,18 @@ rag_qlyc:
   api_key: "fsd@@123"
   timeout_seconds: 30
   bp_lt: "FSD"
+
+# Clone SQL objects giữa 2 project (MCP tool clone_things)
+# Path máy: config_path.yaml → clone_things.sql_temp_folder (thiếu/rỗng → {MCP_BASE}/Scripts)
+clone_things:
+  # Cách mở file sau khi ghi: auto | cursor | code | os | none
+  open_editor_cmd: "auto"
+
+  # Giới hạn an toàn
+  max_objects: 50
+
+  # false = chỉ ghi file, không mở UI
+  open_file: true
+
+  # true = tự động deploy (EXECUTE DDL/definition) lên DB target; false = chỉ ghi file .sql
+  execute_clone: false

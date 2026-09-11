@@ -42,11 +42,31 @@ def test_connection_error_with_fcode1_only():
     assert res["error"] == "khong_ket_noi_api"
 
 
+def test_ma_da_uppercased(monkeypatch=None):
+    from unittest.mock import patch
+
+    captured_payload = {}
+
+    def mock_post_search_api(base_url, api_key, timeout, payload):
+        captured_payload.update(payload)
+        return {"ok": True, "data": []}
+
+    with patch("search_qlyc.service.post_search_api", side_effect=mock_post_search_api):
+        res = search_qlyc(
+            query="test",
+            ma_da="liksin_fbo_2024",
+            config={"base_url": "http://mock-api", "api_key": "secret"}
+        )
+        assert res["ok"] is True
+        assert captured_payload.get("ma_da") == "LIKSIN_FBO_2024"
+
+
 if __name__ == "__main__":
     test_missing_all_criteria()
     test_missing_config()
     test_missing_api_key_in_config()
     test_connection_error_with_query()
     test_connection_error_with_fcode1_only()
+    test_ma_da_uppercased()
     print("All search_qlyc tests passed!")
 

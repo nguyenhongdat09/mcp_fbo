@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 import yaml
 from pydantic import Field
 from mcp.server import MCPServer
@@ -32,6 +32,9 @@ from search_qlyc.formatter import format_search_result
 from clone_things import clone_things
 from clone_things.formatter import format_clone_result
 
+from compare_things import compare_things
+from compare_things.formatter import format_compare_result
+
 logger = setup_logger(__name__)
 
 # Khởi tạo instance MCPServer
@@ -41,29 +44,42 @@ _CONFIG: dict | None = None
 
 
 def load_config(config_path: str = "config.yaml") -> dict:
-    """Tải file cấu hình config.yaml từ các đường dẫn khả dụng."""
+    """Tải file cấu hình config.yaml và merge đường dẫn máy từ config_path.yaml."""
     global _CONFIG
-    from fastbusiness_mcp.config_paths import resolve_config_path
+    from fastbusiness_mcp.config_paths import (
+        resolve_config_path,
+        load_machine_paths,
+        merge_config_with_machine_paths,
+    )
 
     resolved = resolve_config_path(config_path)
+    cfg: dict = {}
     if resolved is None:
         logger.warning(f"Config not found: {config_path}, using defaults")
-        _CONFIG = {}
-        return _CONFIG
-    try:
-        with open(resolved, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        rag = cfg.get("rag_qlyc") or {}
-        if rag.get("base_url"):
-            logger.info(f"Loaded config from {resolved} (rag_qlyc.base_url={rag.get('base_url')})")
-        else:
-            logger.info(f"Loaded config from {resolved}")
-        _CONFIG = cfg
-        return _CONFIG
-    except Exception as e:
-        logger.warning(f"Failed to load config {resolved}: {e}, using defaults")
-        _CONFIG = {}
-        return _CONFIG
+    else:
+        try:
+            with open(resolved, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            rag = cfg.get("rag_qlyc") or {}
+            if rag.get("base_url"):
+                logger.info(f"Loaded config from {resolved} (rag_qlyc.base_url={rag.get('base_url')})")
+            else:
+                logger.info(f"Loaded config from {resolved}")
+        except Exception as e:
+            logger.warning(f"Failed to load config {resolved}: {e}, using defaults")
+            cfg = {}
+
+    machine = load_machine_paths()
+    if machine:
+        logger.info(f"Loaded machine paths: {list(machine.keys())}")
+    cfg = merge_config_with_machine_paths(cfg, machine)
+
+    kuzu_path = cfg.get("fbograph", {}).get("kuzu_db_base", "")
+    sql_path = cfg.get("clone_things", {}).get("sql_temp_folder", "")
+    logger.info(f"Effective paths: kuzu_db_base='{kuzu_path}', sql_temp_folder='{sql_path}'")
+
+    _CONFIG = cfg
+    return _CONFIG
 
 
 def get_config() -> dict:
@@ -365,17 +381,26 @@ mode:
             except Exception:
                 pass
 
+    cfg = get_config()
+    timeout_sec = cfg.get("fbograph", {}).get("query_timeout_seconds", 1800)
     try:
         await _safe_report_progress(progress=0.0, total=100.0, message="Bắt đầu kiểm tra Kùzu Graph DB...")
-        res = await asyncio.to_thread(
-            mcp_query_radar,
-            cypher_query,
-            reference_file,
-            mode,
-            on_progress,
+        res = await asyncio.wait_for(
+            asyncio.to_thread(
+                mcp_query_radar,
+                cypher_query,
+                reference_file,
+                mode,
+                on_progress,
+            ),
+            timeout=float(timeout_sec) if timeout_sec else 1800.0,
         )
         await _safe_report_progress(progress=100.0, total=100.0, message="Thực thi hoàn tất.")
         return _format_query_radar_result(res)
+    except asyncio.TimeoutError:
+        err_msg = f"Truy vấn query_radar bị timeout sau {timeout_sec}s (30 phút)."
+        logger.error(err_msg)
+        return QUERY_RADAR_ERROR_MSG.format(error_detail=err_msg)
     except Exception as e:
         logger.error(f"query_radar error: {e}")
         return QUERY_RADAR_ERROR_MSG.format(error_detail=str(e))
@@ -500,7 +525,7 @@ def clone_things_tool(
     object: Annotated[
         str,
         Field(
-            description="Tên object SQL (bảng, proc, view, function) hoặc đường dẫn file .xml controller để seed danh sách SQL"
+            description="type=0: tên SQL hoặc đường dẫn file .xml controller để seed; type=1: tên SQL / danh sách tên SQL hoặc đường dẫn file .xml"
         ),
     ],
     project_source: Annotated[
@@ -512,14 +537,15 @@ def clone_things_tool(
     project_target: Annotated[
         str,
         Field(
-            description="Đường dẫn tuyệt đối (absolute path) tới project đích (chứa Web.config hoặc App_Data)"
+            default="",
+            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc khi type=0; type=1 được phép để trống)",
         ),
-    ],
+    ] = "",
     type: Annotated[
         int,
         Field(
             default=0,
-            description="Loại clone: 0=SQL clone (mặc định v1), các giá trị khác chưa hỗ trợ",
+            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp)",
         ),
     ] = 0,
     path_to_pasted: Annotated[
@@ -529,11 +555,40 @@ def clone_things_tool(
             description="Đường dẫn file .sql để append; để trống sẽ tự tạo file temp và mở lên editor",
         ),
     ] = "",
+    mode_get: Annotated[
+        str,
+        Field(
+            default="proc",
+            description="Chỉ dùng khi type=1 và object là file XML: lọc loại object khi lấy seed ('proc', 'func', 'view', 'table', 'full' hoặc kết hợp 'proc,table'). Mặc định 'proc'.",
+        ),
+    ] = "proc",
+    mode_recursion: Annotated[
+        str,
+        Field(
+            default="0",
+            description="Chỉ dùng khi type=1: '0'=không đệ quy dependency (mặc định), '1'=đệ quy lấy dependency con từ source.",
+        ),
+    ] = "0",
+    mode_read: Annotated[
+        int,
+        Field(
+            default=1,
+            description="Chỉ dùng khi type=1: 1=summary/analyze không ghi file (mặc định), 0=ghi file .sql để sửa (paste-for-edit), 3=trả full definition trong JSON (tối đa 3 object, recursion=0). Type=0 bỏ qua.",
+        ),
+    ] = 1,
 ) -> str:
     """
-    BƯỚC 1 BẮT BUỘC khi cần clone object SQL (bảng, proc, view, function) giữa 2 dự án FBO và chỉnh sửa:
-    1) Agent BẮT BUỘC gọi tool này trước để kiểm tra Target-first, đệ quy dependency và xuất toàn bộ script vào file .sql temp.
-    2) Sau đó, Agent mở đọc file tại 'path_to_pasted' để xem/chỉnh sửa code tiếp. CẤM tự query từng object qua chat gây lãng phí token!
+    BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa:
+
+    1) type=0 (SQL clone giữa 2 dự án):
+       - Kiểm tra Target-first, đệ quy dependency và xuất toàn bộ script thiếu vào file .sql temp.
+       - Tự động resolve và quét cả hai Database (App DB và Sys DB theo Web.config) cho cả Source và Target.
+    2) type=1 (paste-for-edit / analyze):
+       - mode_read=1 (mặc định): Phân tích dependency con/cha (child_*/parent_*), phát hiện mã hóa mà KHÔNG ghi file .sql.
+       - mode_read=0: Lấy object từ project_source ra file .sql dưới dạng ALTER (proc/func/view) hoặc CREATE (table) để chỉnh sửa trực tiếp (có line_start, line_end).
+       - mode_read=3: Trả full SQL body trong JSON analyzed[].definition (tối đa 3 object, mode_recursion=0).
+       - object có thể là tên SQL, danh sách tên SQL, hoặc đường dẫn file .xml controller (hỗ trợ mode_get để lọc proc/table/view/func và mode_recursion=1 để đệ quy dependency).
+       - project_target được phép để trống. Không deploy lên database.
     """
     try:
         cfg = get_config()
@@ -543,12 +598,326 @@ def clone_things_tool(
             project_target=project_target,
             type=type,
             path_to_pasted=path_to_pasted,
+            mode_get=mode_get,
+            mode_recursion=mode_recursion,
+            mode_read=mode_read,
             config=cfg,
         )
         return format_clone_result(result)
     except Exception as e:
         logger.error(f"clone_things execution error: {e}")
         return format_execution_error("clone_things", e)
+
+
+# ============================================================================
+# TOOL 6: compare_things
+# ============================================================================
+@server.tool(name="compare_things")
+async def compare_things_tool(
+    kind: Annotated[
+        str,
+        Field(
+            description="Loại so sánh: 'file' (so 2 file bất kỳ trừ .f) | 'folder' (quét thư mục trừ .f) | 'xml' (tiện ích relative Controllers/ XML) | 'sql' | 'table'"
+        ),
+    ],
+    project_source: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn tuyệt đối (absolute path) tới project nguồn (bắt buộc với kind='sql', 'table', 'xml')",
+        ),
+    ] = "",
+    project_target: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc với kind='sql', 'table', 'xml')",
+        ),
+    ] = "",
+    object: Annotated[
+        str,
+        Field(
+            default="",
+            description="Tên SQL / danh sách tên SQL / relative XML path(s) dưới Controllers/ (phân cách bởi dấu phẩy hoặc chấm phẩy). Lưu ý: file .ent/.txt hãy dùng kind='file' hoặc kind='folder'",
+        ),
+    ] = "",
+    seed: Annotated[
+        str,
+        Field(
+            default="",
+            description="Từ khóa tìm kiếm candidate: 'sql' (tìm proc/func/view); 'xml' (quét tìm file XML dưới Controllers/ khi chưa biết path cụ thể); 'folder' (lọc file theo tên/relative path chứa từ khóa, kết hợp include_glob).",
+        ),
+    ] = "",
+    db_type: Annotated[
+        str,
+        Field(
+            default="app",
+            description="Loại database: 'app' | 'sys' | 'both' (mặc định 'app')",
+        ),
+    ] = "app",
+    mode: Annotated[
+        str,
+        Field(
+            default="summary",
+            description="Độ chi tiết trả về: 'summary' (mặc định có hunks line ranges + preview) | 'hunks' (thêm unified_diff) | 'body' (thêm context snippet quanh hunk)",
+        ),
+    ] = "summary",
+    file_a: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn tuyệt đối file A trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa)",
+        ),
+    ] = "",
+    file_b: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn tuyệt đối file B trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa)",
+        ),
+    ] = "",
+    folder_a: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn thư mục A trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa)",
+        ),
+    ] = "",
+    folder_b: Annotated[
+        str,
+        Field(
+            default="",
+            description="Đường dẫn thư mục B trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa)",
+        ),
+    ] = "",
+    detail: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng cho kind='folder': mặc định False (chỉ trả summary inventory tên file theo bucket, so bin/folder cực gọn); True (kèm compared[] chi tiết per-file). Với kind khác: giữ nguyên.",
+        ),
+    ] = False,
+    detail_status: Annotated[
+        str,
+        Field(
+            default="",
+            description="Chỉ dùng khi kind='folder' và detail=True: lọc status xuất ra compared[] bằng danh sách CSV (ví dụ 'different_content' hoặc 'missing_on_b,different_content'). Rỗng = mọi status.",
+        ),
+    ] = "",
+    include_compared: Annotated[
+        Optional[bool],
+        Field(
+            default=None,
+            description="Alias của detail (khi được truyền, giá trị này sẽ ghi đè detail).",
+        ),
+    ] = None,
+    ignore_line_endings: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Bỏ qua khác biệt xuống dòng CRLF vs LF khi so sánh nội dung text (mặc định True)",
+        ),
+    ] = True,
+    ignore_whitespace: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Bỏ qua khoảng trắng đầu/cuối mỗi dòng khi so sánh text (mặc định False)",
+        ),
+    ] = False,
+    max_diff_lines: Annotated[
+        int,
+        Field(
+            default=200,
+            description="Giới hạn số dòng unified_diff hoặc preview (mặc định 200)",
+        ),
+    ] = 200,
+    max_objects: Annotated[
+        Optional[int],
+        Field(
+            default=None,
+            description="Giới hạn số object/file chi tiết được trả về (mặc định 50 cho sql/table/xml, 200 cho folder)",
+        ),
+    ] = None,
+    recursive: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Quét đệ quy thư mục con (chỉ dùng cho kind='folder', mặc định True)",
+        ),
+    ] = True,
+    compare_content: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="So sánh nội dung hash/hunks cho file trong folder (chỉ dùng cho kind='folder', mặc định False)",
+        ),
+    ] = False,
+    hash_max_bytes: Annotated[
+        int,
+        Field(
+            default=1048576,
+            description="Kích thước tối đa của file để tính hash khi compare_content=True (mặc định 1MB)",
+        ),
+    ] = 1048576,
+    include_glob: Annotated[
+        str,
+        Field(
+            default="*",
+            description="Pattern lọc file trong folder, ví dụ '*.dll' (mặc định '*')",
+        ),
+    ] = "*",
+    exclude_glob: Annotated[
+        str,
+        Field(
+            default="",
+            description="Pattern loại trừ file trong folder, ví dụ '*.pdb' (mặc định '')",
+        ),
+    ] = "",
+    name_compare: Annotated[
+        str,
+        Field(
+            default="case_insensitive",
+            description="So sánh tên file relative: 'case_insensitive' hoặc 'case_sensitive'",
+        ),
+    ] = "case_insensitive",
+    meta_tolerance_seconds: Annotated[
+        int,
+        Field(
+            default=0,
+            description="Dung sai thời gian (giây) cho created/modified (mặc định 0)",
+        ),
+    ] = 0,
+    context_lines: Annotated[
+        int,
+        Field(
+            default=3,
+            description="Số dòng ngữ cảnh quanh vùng thay đổi (mặc định 3)",
+        ),
+    ] = 3,
+    schema: Annotated[
+        str,
+        Field(
+            default="dbo",
+            description="Database schema mặc định khi tên object không có tiền tố (chỉ dùng cho sql/table, mặc định 'dbo')",
+        ),
+    ] = "dbo",
+    xml_view: Annotated[
+        str,
+        Field(
+            default="original",
+            description="Chỉ dùng cho kind='xml': 'original' (hoặc 'raw')=so file gốc trên đĩa; 'flat' (hoặc 'expanded')=so sau khi expand ENTITY/Include (giống read_local_file option=2)",
+        ),
+    ] = "original",
+    include_unified_diff: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Bật xuất chuỗi unified_diff (mặc định False để tiết kiệm token chat)",
+        ),
+    ] = False,
+    include_text_snippets: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Bật trích xuất dòng code preview/snippet trong hunk (mặc định False, tool chỉ báo điểm khác biệt qua line ranges)",
+        ),
+    ] = False,
+    max_hunks_summary: Annotated[
+        int,
+        Field(
+            default=5,
+            description="Số lượng hunk tối đa trả về trong mode='summary' (mặc định 5, kèm hunk_count thật và hunks_omitted)",
+        ),
+    ] = 5,
+    max_hunks_detail: Annotated[
+        int,
+        Field(
+            default=30,
+            description="Số lượng hunk tối đa trả về trong mode='hunks' hoặc 'body' (mặc định 30)",
+        ),
+    ] = 30,
+    ctx: Context = None,
+) -> str:
+    """
+    MCP Tool compare_things: So sánh file bất kỳ trên đĩa (.xml, .ent, .txt, .sql, .js, .config...) trừ .f mã hóa; folder tương tự; xml = convenience controller relative; sql/table = database objects.
+    - kind='file': So sánh 2 file bất kỳ trên đĩa hoặc UNC trừ file .f mã hóa FBO. Tự động phát hiện diff_reason (bom, line_ending, whitespace, binary, text_lines).
+    - kind='folder': Quét và so sánh thư mục (loại trừ *.f mã hóa). Hỗ trợ 'seed' để lọc relative path / filename chứa từ khóa. 'detail'=False mặc định trả về summary gọn (chỉ danh sách tên file theo từng bucket missing_on_b/missing_on_a/different_content/different_meta), compared=[]. Đặt 'detail'=True để nhận compared[] chi tiết từng file kèm diff_reason. Khi byte khác nhưng normalized line bằng nhau, xếp vào different_meta với diff_reason (bom, line_ending, whitespace, encoding_or_bytes), không báo review_hunks giả.
+    - kind='xml': Tiện ích so sánh controller XML relative dưới Controllers/ (không dùng cho .ent/.txt). Hỗ trợ 'seed' để tự discover relative path theo từ khóa (union hits 2 bên) khi chưa biết đường dẫn chính xác.
+    - kind='sql', kind='table': So sánh procedure/function/view hoặc schema bảng giữa 2 database.
+    Tư duy: Tool CHỈ BÁO ĐIỂM KHÁC BIỆT (khoảng dòng thay đổi, schema_diff, signals, metadata). CẤM preview/dump nội dung mặc định để tiết kiệm token chat.
+    Semantics: project_source là nguồn clone/tham chiếu, project_target là project đang sửa.
+    Tool là READ-ONLY, hoàn toàn không tự ý clone, ALTER, deploy hay copy/sửa file.
+    """
+    loop = asyncio.get_running_loop()
+
+    async def _safe_report_progress(progress: float, total: float | None = None, message: str | None = None) -> None:
+        if ctx is not None:
+            try:
+                await ctx.report_progress(progress=progress, total=total, message=message)
+            except Exception:
+                pass
+
+    def on_progress(done: int, total: int, msg: str = "") -> None:
+        if ctx is not None:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    _safe_report_progress(
+                        progress=float(done),
+                        total=float(total) if total else None,
+                        message=msg,
+                    ),
+                    loop,
+                )
+            except Exception:
+                pass
+
+    try:
+        cfg = get_config()
+        await _safe_report_progress(progress=0.0, total=100.0, message=f"Bắt đầu so sánh ({kind})...")
+        result = await asyncio.to_thread(
+            compare_things,
+            kind=kind,
+            project_source=project_source,
+            project_target=project_target,
+            object=object,
+            seed=seed,
+            db_type=db_type,
+            mode=mode,
+            file_a=file_a,
+            file_b=file_b,
+            folder_a=folder_a,
+            folder_b=folder_b,
+            detail=detail,
+            detail_status=detail_status,
+            include_compared=include_compared,
+            ignore_line_endings=ignore_line_endings,
+            ignore_whitespace=ignore_whitespace,
+            max_diff_lines=max_diff_lines,
+            max_objects=max_objects,
+            recursive=recursive,
+            compare_content=compare_content,
+            hash_max_bytes=hash_max_bytes,
+            include_glob=include_glob,
+            exclude_glob=exclude_glob,
+            name_compare=name_compare,
+            meta_tolerance_seconds=meta_tolerance_seconds,
+            context_lines=context_lines,
+            schema=schema,
+            xml_view=xml_view,
+            include_unified_diff=include_unified_diff,
+            include_text_snippets=include_text_snippets,
+            max_hunks_summary=max_hunks_summary,
+            max_hunks_detail=max_hunks_detail,
+            config=cfg,
+            on_progress=on_progress,
+        )
+        await _safe_report_progress(progress=100.0, total=100.0, message="So sánh hoàn tất.")
+
+        return format_compare_result(result)
+    except Exception as e:
+        logger.error(f"compare_things execution error: {e}")
+        return format_execution_error("compare_things", e)
 
 
 

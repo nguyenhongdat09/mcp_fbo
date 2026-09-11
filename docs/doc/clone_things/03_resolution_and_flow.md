@@ -127,31 +127,16 @@ Nếu sau normalize vẫn không lookup được → `warnings` + không đẩy 
 
 **CẤM** dùng `ObjectCatalogFetcher.fetch_one` cho exists/table: hàm đó `JOIN sys.sql_modules` — bảng `USER_TABLE` **không** có trong `sys.sql_modules` → luôn “không tồn tại” (xem `06`).
 
-Exists / classify **bắt buộc** qua `sys.objects` (giống `query_database` / `build_object_lookup_sql`):
+Exists / classify **bắt buộc** qua `sys.objects` (giống `query_database` / `build_object_lookup_sql`).
 
-```sql
-SELECT type, type_desc FROM sys.objects WHERE name = N'{clean_name}'
--- kèm filter schema khi đã tách schema
-```
+**Dual DB (app + sys):** mỗi project resolve cả `app` và `sys` từ Web.config (cùng `find_connect_by_path` / `query_database`). Thứ tự mặc định **app → sys**; nếu `db_type=sys` thì **sys → app**.
 
-- Object **tồn tại** nếu có hàng trong `sys.objects`.
-- Table: type `U` / `USER_TABLE`
-- Proc: `P`
-- Func: `FN` / `IF` / `TF`
-- View: `V`
+Thứ tự **bắt buộc** mỗi object:
 
-Thứ tự **bắt buộc**:
-
-1. `exists(target, name)` → nếu true: `skipped_exists`, **không** gọi source fetch, **không** enqueue deps của object đó (v1 cố ý — xem §5.1).
-2. Else `exists(source, name)` → nếu false: `not_found_both` (accumulate only).
-3. Else fetch full từ **source only**.
-
-### 5.1. Root / object đã có ở target — không quét dependency con
-
-**BA chốt v1 (cố ý, không phải bug):** nếu object đang xét (kể cả root seed) đã có ở target → chỉ ghi `skipped_exists` rồi `continue`. Tool **không** phân tích body để kéo proc/func con còn thiếu trên target.
-
-Kịch bản “proc cha đã có target nhưng func con thiếu” → out of scope v1; user/Agent seed riêng func con, hoặc phase sau (suggestion diff / force-deps).
-
+1. Noise (`tempdb`, `systypes`, `master`…) → `skipped_noise`, không vào `not_found_both`
+2. `exists(target app/sys)` → nếu true: `skipped_exists` (+ field `db`), không fetch source, không quét deps
+3. Else `exists(source app/sys)` → nếu false: `not_found_both`
+4. Else fetch full từ **source** đúng `db` tìm thấy; deploy (nếu bật) vào **target** cùng loại `db`
 ## 6. Fetch full script
 
 | object_type | Cách lấy (reuse) | Field / hình dạng kết quả |

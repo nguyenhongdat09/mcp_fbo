@@ -20,10 +20,11 @@ Fixture khuyến nghị: mock catalog fetcher + temp dirs — không bắt buộ
 - **Steps:** Gọi tool với `project_source=""`.
 - **Expected:** `success=false`, `error_code=invalid_project_source`, không tạo file.
 
-### TC-VAL-02 — type khác 0
+### TC-VAL-02 — type không hỗ trợ
 
-- **Steps:** `type=1`.
+- **Steps:** `type=2` (hoặc bất kỳ ∉ `{0,1}`).
 - **Expected:** `success=false`, `error_code=unsupported_type`.
+- **Note:** `type=1` **hợp lệ** (paste-for-edit) — xem [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md) và TC-T1-* bên dưới. **Không** còn expect `unsupported_type` cho type=1.
 
 ### TC-VAL-03 — sql_temp_folder chưa cấu hình
 
@@ -106,6 +107,34 @@ Fixture khuyến nghị: mock catalog fetcher + temp dirs — không bắt buộ
 
 - **Unit:** Mock/spy — đường exists cho `dmkh` phải query `sys.objects` (hoặc `query_database` lookup), **không** gọi `ObjectCatalogFetcher.fetch_one`.
 - **Expected:** Table tồn tại trên target được `skipped_exists`, không `not_found_both`.
+
+### TC-CORE-07 — dual lookup: object đã có trên target sys (skipped_exists)
+
+- **Given:** `userinfo2` không có ở app DB nhưng có ở target sys DB.
+- **Steps:** Seed `userinfo2`.
+- **Expected:**
+  - `skipped_exists` có `dbo.userinfo2`, `where="target"`, `db="sys"`
+  - `cloned` rỗng, `not_found_both` rỗng
+  - Không fetch source script
+
+### TC-CORE-08 — dual lookup: object chỉ có trên source sys (cloned sys)
+
+- **Given:** `syscheckfields` thiếu ở cả target app và sys; source app không có, nhưng source sys có.
+- **Steps:** Seed `syscheckfields`.
+- **Expected:**
+  - `cloned` có `dbo.syscheckfields`, `from="source"`, `db="sys"`
+  - `fetch_object_script` gọi với `db_type="sys"`
+  - Nếu `execute_clone=true`: deploy vào target sys connection
+  - `not_found_both` rỗng
+
+### TC-CORE-09 — lọc system noise (tempdb, systypes, master...)
+
+- **Given:** Seed hoặc extracted dependency chứa `tempdb`, `systypes`, `master`...
+- **Expected:**
+  - Xuất hiện trong `skipped_noise`
+  - Không gọi database catalog / `sys.objects`
+  - Không nằm trong `not_found_both`
+  - Không ghi comment `-- not found in 2 project` vào file `.sql`
 
 ---
 
@@ -209,16 +238,33 @@ Fixture khuyến nghị: mock catalog fetcher + temp dirs — không bắt buộ
 
 Trước khi coi v1 done:
 
-- [ ] TC-VAL-01..06 pass
-- [ ] TC-CORE-01..06 pass (gồm GO, normalize, exists table)
+- [ ] TC-VAL-01..06 pass (TC-VAL-02: type∉{0,1} → unsupported; **type=1 hợp lệ**)
+- [ ] TC-CORE-01..09 pass (gồm GO, normalize, exists table, dual app/sys, system noise)
 - [ ] TC-DEP-01..04b pass
 - [ ] TC-XML-01..02 pass
 - [ ] TC-FILE-01..03 pass
-- [ ] JSON schema khớp `04_json_response.md`
-- [ ] Tool description MCP nêu rõ không deploy DB
+- [ ] TC-T1-01..09 pass (paste-for-edit — chi tiết [11](./11_type1_paste_for_edit.md) §12)
+- [ ] JSON schema khớp `04_json_response.md` (+ nhánh type=1)
+- [ ] Tool description MCP nêu rõ type=0/1; type=1 không deploy DB
 - [ ] `config.yaml` có block `clone_things` mẫu (có thể để `sql_temp_folder` rỗng trong repo mẫu + doc)
 
-## 9. Gợi ý fixture unit
+## 9. type=1 — Paste-for-edit (P0)
+
+Chi tiết AC + pseudo: **[11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md)**.
+
+| ID | Expected ngắn |
+|----|----------------|
+| TC-T1-01 | `CREATE`→`ALTER` transform unit |
+| TC-T1-02 | Dedup detect đã có trong file |
+| TC-T1-03 | `line_start`/`line_end` đúng |
+| TC-T1-04 | Service mock JSON type=1 + `agent_message` |
+| TC-T1-05 | Lần 2 cùng object → `skipped_already_in_file` |
+| TC-T1-06 | `project_target=""` OK; type=0 thiếu target vẫn fail |
+| TC-T1-07 | Parse list `a, b; c` |
+| TC-T1-08 | `execute_clone` config true nhưng type=1 không deploy |
+| TC-T1-09 | Sys object → sau `USE [source_sys]` |
+
+## 10. Gợi ý fixture unit
 
 ```text
 tests/clone_things/
@@ -228,6 +274,7 @@ tests/clone_things/
   test_target_first_mock.py
   test_open_editor_fallback.py
   test_response_schema.py
+  test_type1_paste_for_edit.py
 ```
 
 Mock: `exists(project, name)`, `fetch_full(project, name)`, `summarize_deps(name)`.

@@ -1,0 +1,11 @@
+# Machine-local paths for FastBusiness MCP.
+# Copy this file to config_path.yaml and edit once per machine.
+# Do NOT commit config_path.yaml (gitignored).
+
+fbograph:
+  # Absolute path; empty or omit = {MCP_BASE}/KuzuDB
+  kuzu_db_base: ""
+
+clone_things:
+  # Absolute path; empty or omit = {MCP_BASE}/Scripts
+  sql_temp_folder: ""

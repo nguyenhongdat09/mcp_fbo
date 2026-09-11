@@ -27,6 +27,7 @@ def cmd_build(args):
         print(f"Lỗi: Không tìm thấy App_Data\\Controllers dưới: {root_arg}")
         print(f"  Đã thử: {controllers_dir}")
         sys.exit(1)
+ 
 
     helper = ProjectPathHelper(str(controllers_dir / "dummy.xml"))
     graph_dir = helper.get_graph_dir()

@@ -28,7 +28,7 @@ def test_validation_relative_project_path():
 
 
 def test_validation_unsupported_type():
-    res = clone_things(object="zc_test", project_source="E:\\FBO\\P1", project_target="E:\\FBO\\P2", type=1)
+    res = clone_things(object="zc_test", project_source="E:\\FBO\\P1", project_target="E:\\FBO\\P2", type=2)
     assert res["success"] is False
     assert res["error_code"] == "unsupported_type"
 

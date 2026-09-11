@@ -104,36 +104,44 @@ def _find_config_file() -> Optional[Path]:
 
 
 def resolve_kuzu_db_base() -> Path:
-    """
+    r"""
     Trả về thư mục gốc lưu Kuzu DB local.
-    Ưu tiên: biến môi trường FBOGRAPH_KUZU_BASE > config.yaml fbograph.kuzu_db_base > C:/KuzuDB
+    Ưu tiên: biến môi trường FBOGRAPH_KUZU_BASE > config_path.yaml/config.yaml fbograph.kuzu_db_base > KuzuDB trong folder chứa mcp.
+    Nếu kuzu_db_base rỗng, tự động tạo folder KuzuDB trong folder chứa mcp (vd: E:\fastbusiness_mcp\KuzuDB).
     """
     global _kuzu_db_base_cache
     if _kuzu_db_base_cache is not None:
         return _kuzu_db_base_cache
 
-    default_base = "C:/KuzuDB"
     env_base = os.environ.get("FBOGRAPH_KUZU_BASE", "").strip()
     if env_base:
-        _kuzu_db_base_cache = Path(env_base)
+        p = Path(env_base)
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        _kuzu_db_base_cache = p
         return _kuzu_db_base_cache
 
-    kuzu_db_base = default_base
     try:
-        import yaml
-
+        from fastbusiness_mcp.config_paths import get_effective_kuzu_db_base
+        base_path = Path(get_effective_kuzu_db_base())
+    except Exception:
         config_file = _find_config_file()
         if config_file:
-            with open(config_file, "r", encoding="utf-8") as f:
-                cfg = yaml.safe_load(f) or {}
-            kuzu_db_base = (
-                cfg.get("fbograph", {}).get("kuzu_db_base")
-                or default_base
-            )
+            mcp_base = config_file.parent.resolve()
+        elif getattr(sys, "frozen", False):
+            mcp_base = Path(sys.executable).resolve().parent
+        else:
+            mcp_base = Path(__file__).resolve().parent.parent.parent
+        base_path = mcp_base / "KuzuDB"
+
+    try:
+        base_path.mkdir(parents=True, exist_ok=True)
     except Exception:
         pass
 
-    _kuzu_db_base_cache = Path(kuzu_db_base)
+    _kuzu_db_base_cache = base_path
     return _kuzu_db_base_cache
 
 

@@ -1,0 +1,2545 @@
+{
+  "projects": {
+    "FAHASA": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24",
+    "AIH": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228"
+  },
+  "path_checks": {
+    "FAH_root": true,
+    "AIH_root": true,
+    "FAH_PU": true,
+    "AIH_PU": true,
+    "FAH_PO": false,
+    "AIH_PO": true,
+    "FAH_bin": true,
+    "AIH_bin": true
+  },
+  "cases": [
+    {
+      "name": "FILE-01 user paths (PU Dir FAH vs PO Grid AIH) — expect different",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "Hai file khác nhau về nội dung (2 vùng thay đổi).",
+        "next_actions": [
+          "review_hunks",
+          "edit_target_file"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": false,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "different"
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "status": "different",
+            "identical_content": false,
+            "identical_meta": false,
+            "only_line_ending_diff": false,
+            "file_a": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:16:35.570332",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "file_b": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Grid\\POTran.xml",
+              "exists": true,
+              "size": 9380,
+              "created": "2026-09-10T08:18:35.828751",
+              "modified": "2026-09-10T11:05:51.650403",
+              "sha256": "fd71e69cd570e6e0144dcd0fa6f5848475dbd365c956b52ba2b2b1e868e3e675",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "meta_diff": [
+              "size",
+              "modified",
+              "created",
+              "sha256"
+            ],
+            "content": {
+              "lines_a": 227,
+              "lines_b": 247,
+              "lines_added": 207,
+              "lines_removed": 187,
+              "hunk_count": 2,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "replace",
+                  "a_line_start": 3,
+                  "a_line_end": 176,
+                  "b_line_start": 3,
+                  "b_line_end": 104,
+                  "source_line_start": null,
+                  "source_line_end": null,
+                  "target_line_start": null,
+                  "target_line_end": null,
+                  "preview": [
+                    "  <?xml version=\"1.0\" encoding=\"utf-8\"?>",
+                    "  ",
+                    "- <dir table=\"dmuqduyet\" code=\"loai_duyet, u_id4, ngay_hl\" order=\"loai_duyet, u_id4, ngay_hl\" xmlns=\"urn:schemas-fast-com:data-dir\">",
+                    "-   <title v=\"khai báo ủy quyền duyệt\" e=\"Approval Delegation Declaration\"></title>",
+                    "+ <!DOCTYPE grid [",
+                    "+   <!ENTITY CommandWhenVoucherBeforeInit SYSTEM \"..\\Include\\Command\\WhenVoucherBeforeInit.txt\">"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": 184,
+                  "a_line_end": 227,
+                  "b_line_start": 112,
+                  "b_line_end": 247,
+                  "source_line_start": null,
+                  "source_line_end": null,
+                  "target_line_start": null,
+                  "target_line_end": null,
+                  "preview": [
+                    "    <script>",
+                    "      <text>",
+                    "        <![CDATA[/* <flatten type=\"Javascript\"> */",
+                    "- function init$FormPUDelegationApproval(f) {",
+                    "-   if (f._action == 'New') f.setItemValue('ngay_hl', new Date());",
+                    "- }"
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks",
+              "edit_target_file"
+            ],
+            "warnings": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "FILE-02 same relative PUDelegationApproval.xml FAH vs AIH",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "mode": "hunks",
+        "error_code": null,
+        "error": null,
+        "message": "Hai file hoàn toàn giống nhau về nội dung và metadata.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "status": "identical",
+            "identical_content": true,
+            "identical_meta": false,
+            "only_line_ending_diff": false,
+            "file_a": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:16:35.570332",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "file_b": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:18:18.335425",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "meta_diff": [
+              "created"
+            ],
+            "content": {
+              "lines_a": 227,
+              "lines_b": 227,
+              "lines_added": 0,
+              "lines_removed": 0,
+              "hunk_count": 0,
+              "diff_truncated": false,
+              "hunks_preview": [],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "noop"
+            ],
+            "warnings": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "FILE-03 PU CRLF ignore + body mode sample",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "file",
+        "mode": "body",
+        "error_code": null,
+        "error": null,
+        "message": "Hai file hoàn toàn giống nhau về nội dung và metadata.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "identical_content": true,
+          "identical_meta": false,
+          "only_line_ending_diff": false,
+          "status": "identical"
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "status": "identical",
+            "identical_content": true,
+            "identical_meta": false,
+            "only_line_ending_diff": false,
+            "file_a": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:16:35.570332",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "file_b": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:18:18.335425",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "meta_diff": [
+              "created"
+            ],
+            "content": {
+              "lines_a": 227,
+              "lines_b": 227,
+              "lines_added": 0,
+              "lines_removed": 0,
+              "hunk_count": 0,
+              "diff_truncated": false,
+              "hunks_preview": [],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "noop"
+            ],
+            "warnings": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "XML-01 Dir/PUDelegationApproval.xml (project roots)",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 1 file XML: 1 giống nhau, 0 khác nhau, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "noop"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [
+            "Dir/PUDelegationApproval.xml"
+          ],
+          "different": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 1,
+            "different": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "relative_path": "Dir/PUDelegationApproval.xml",
+            "path_source": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+            "path_target": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+            "status": "identical",
+            "identical_content": true,
+            "identical_meta": false,
+            "only_line_ending_diff": false,
+            "file_a": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:16:35.570332",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "file_b": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:18:18.335425",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "meta_diff": [
+              "created"
+            ],
+            "content": {
+              "lines_a": 227,
+              "lines_b": 227,
+              "lines_added": 0,
+              "lines_removed": 0,
+              "hunk_count": 0,
+              "diff_truncated": false,
+              "hunks_preview": [],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "noop"
+            ],
+            "warnings": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "XML-02 Grid/POTran.xml",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 1 file XML: 0 giống nhau, 0 khác nhau, 0 thiếu trên target, 1 thiếu trên source.",
+        "next_actions": [
+          "investigate_source"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [
+            "Grid/POTran.xml"
+          ],
+          "identical": [],
+          "different": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 1,
+            "identical": 0,
+            "different": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "relative_path": "Grid/POTran.xml",
+            "path_source": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Grid\\POTran.xml",
+            "path_target": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Grid\\POTran.xml",
+            "status": "missing_on_source",
+            "next_actions": [
+              "investigate_source"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "XML-03 multi object list",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "xml",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 2 file XML: 1 giống nhau, 0 khác nhau, 0 thiếu trên target, 1 thiếu trên source.",
+        "next_actions": [
+          "investigate_source"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [
+            "Grid/POTran.xml"
+          ],
+          "identical": [
+            "Dir/PUDelegationApproval.xml"
+          ],
+          "different": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 1,
+            "identical": 1,
+            "different": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 2,
+        "compared_sample": [
+          {
+            "relative_path": "Dir/PUDelegationApproval.xml",
+            "path_source": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+            "path_target": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+            "status": "identical",
+            "identical_content": true,
+            "identical_meta": false,
+            "only_line_ending_diff": false,
+            "file_a": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:16:35.570332",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "file_b": {
+              "path": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Dir\\PUDelegationApproval.xml",
+              "exists": true,
+              "size": 10982,
+              "created": "2026-09-10T13:18:18.335425",
+              "modified": "2025-03-17T09:23:48",
+              "sha256": "9496eb19c3b069da83ebae327d2f49c3f4120f9b0ca00afad107fd7116d9e095",
+              "encoding": "utf-8-sig",
+              "line_ending": "crlf",
+              "is_binary": false
+            },
+            "meta_diff": [
+              "created"
+            ],
+            "content": {
+              "lines_a": 227,
+              "lines_b": 227,
+              "lines_added": 0,
+              "lines_removed": 0,
+              "hunk_count": 0,
+              "diff_truncated": false,
+              "hunks_preview": [],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "noop"
+            ],
+            "warnings": []
+          },
+          {
+            "relative_path": "Grid/POTran.xml",
+            "path_source": "\\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24\\App_Data\\Controllers\\Grid\\POTran.xml",
+            "path_target": "\\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228\\App_Data\\Controllers\\Grid\\POTran.xml",
+            "status": "missing_on_source",
+            "next_actions": [
+              "investigate_source"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "XML-04 path traversal reject",
+      "ok": false,
+      "result": {
+        "success": false,
+        "kind": "xml",
+        "mode": null,
+        "error_code": "invalid_object",
+        "error": "Path traversal '..' is not allowed: Dir/../Web.config",
+        "message": "Đường dẫn object không hợp lệ: Dir/../Web.config (Path traversal '..' is not allowed: Dir/../Web.config)",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "compared_sample": []
+      }
+    },
+    {
+      "name": "FOLDER-01 bin meta-only (*.dll)",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "Folder A có 129 file, Folder B có 107 file. Thiếu ở B: 27, thiếu ở A: 5, khác metadata: 102, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a",
+          "investigate_version_dll"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 129,
+          "files_b": 107,
+          "missing_on_b": [
+            "BarcodeLib.dll",
+            "BouncyCastle.Crypto.dll",
+            "CalendarChartService.dll",
+            "CRMMessage.dll",
+            "FastBusiness.ChangePassword.dll",
+            "FastBusiness.Clipboard.dll",
+            "FastBusiness.EInvoice.ServiceInvoiceInformation.dll",
+            "FastBusiness.Parse.dll",
+            "FastBusiness.ViewHtml.dll",
+            "fsdBarQRGenerator.dll",
+            "fsdCreateBarCode.dll",
+            "fsdGalleryManager.dll",
+            "fsdMail.dll",
+            "FTSMailMerge.dll",
+            "ftsSQLData.dll",
+            "Ionic.Zip.dll",
+            "Mail.dll",
+            "MailApprove.dll",
+            "Microsoft.Office.Interop.Excel.dll",
+            "Office.dll",
+            "Post.dll",
+            "ViewHeader.dll",
+            "zcv_EmailDoc.dll",
+            "zhrOpenFile.dll",
+            "zxing.dll",
+            "zxing.presentation.dll",
+            "zzapprove.dll"
+          ],
+          "missing_on_a": [
+            "iPosLibary.dll",
+            "iPosModel.dll",
+            "JsonConverterCustom.dll",
+            "Provider.dll",
+            "WebServiceConnectiPos.dll"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "About.dll",
+            "AccessRight.dll",
+            "AjaxControlToolkit.dll",
+            "AjaxMin.dll",
+            "AllocationExtender.dll",
+            "APIExtender.dll",
+            "BankHubClient.dll",
+            "Common.Logging.Core.dll",
+            "Common.Logging.dll",
+            "ConvertXmlExtender.dll",
+            "Dashboard.dll",
+            "Decompress.dll",
+            "DocumentFormat.OpenXml.dll",
+            "EInvoice.dll",
+            "EMessage.dll",
+            "EPPlus.dll",
+            "Export.dll",
+            "ExternalCss.dll",
+            "ExternalScript.dll",
+            "FastBusiness.AjaxControlExtender.dll",
+            "FastBusiness.Authentication.dll",
+            "FastBusiness.BankHub.Client.dll",
+            "FastBusiness.ChatExtender.dll",
+            "FastBusiness.Client.dll",
+            "FastBusiness.Crypto.dll",
+            "FastBusiness.Data.Query.dll",
+            "FastBusiness.EInvoice.CashService.dll",
+            "FastBusiness.EInvoice.Data.dll",
+            "FastBusiness.EInvoice.Function.dll",
+            "FastBusiness.EInvoice.Handler.dll",
+            "FastBusiness.EInvoice.HandlerTaxDeduction.dll",
+            "FastBusiness.EInvoice.HandlerTicket.dll",
+            "FastBusiness.EInvoice.InputInvoice.dll",
+            "FastBusiness.EInvoice.Service.dll",
+            "FastBusiness.EInvoice.ServiceGetInformation.dll",
+            "FastBusiness.EInvoice.ServiceInputInvoice.dll",
+            "FastBusiness.EInvoice.ServiceTaxDeduction.dll",
+            "FastBusiness.EInvoice.ServiceTicket.dll",
+            "FastBusiness.EInvoice.Xml.dll",
+            "FastBusiness.Export.dll",
+            "FastBusiness.Expression.dll",
+            "FastBusiness.FastMessage.dll",
+            "FastBusiness.Gantt.dll",
+            "FastBusiness.GetInvoiceData.dll",
+            "FastBusiness.LoginExtender.dll",
+            "FastBusiness.MailClient.dll",
+            "FastBusiness.MenuExtender.dll",
+            "FastBusiness.Mobile.PrintAPI.dll",
+            "FastBusiness.NotifyExtender.dll",
+            "FastBusiness.PasswordRecoveryExtender.dll"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 50,
+        "compared_sample": [
+          {
+            "relative_path": "BarcodeLib.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 108032,
+              "created": "2025-11-11T15:07:30.674186",
+              "modified": "2025-11-11T15:07:30.689850"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BouncyCastle.Crypto.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 2621440,
+              "created": "2025-11-11T15:07:30.689850",
+              "modified": "2025-11-11T15:07:30.705487"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "CalendarChartService.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 32768,
+              "created": "2025-11-24T16:10:01.273192",
+              "modified": "2015-06-13T09:32:24"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "CRMMessage.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 39936,
+              "created": "2025-11-24T14:55:42.112001",
+              "modified": "2015-06-13T09:32:24"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "FastBusiness.ChangePassword.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 150528,
+              "created": "2025-11-11T15:07:31.017984",
+              "modified": "2025-11-11T15:07:31.033652"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "FOLDER-02 bin *.dll max_objects=15 truncation",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "Folder A có 129 file, Folder B có 107 file. Thiếu ở B: 27, thiếu ở A: 5, khác metadata: 102, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a",
+          "investigate_version_dll"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 129,
+          "files_b": 107,
+          "missing_on_b": [
+            "BarcodeLib.dll",
+            "BouncyCastle.Crypto.dll",
+            "CalendarChartService.dll",
+            "CRMMessage.dll",
+            "FastBusiness.ChangePassword.dll",
+            "FastBusiness.Clipboard.dll",
+            "FastBusiness.EInvoice.ServiceInvoiceInformation.dll",
+            "FastBusiness.Parse.dll",
+            "FastBusiness.ViewHtml.dll",
+            "fsdBarQRGenerator.dll",
+            "fsdCreateBarCode.dll",
+            "fsdGalleryManager.dll",
+            "fsdMail.dll",
+            "FTSMailMerge.dll",
+            "ftsSQLData.dll"
+          ],
+          "missing_on_a": [
+            "iPosLibary.dll",
+            "iPosModel.dll",
+            "JsonConverterCustom.dll",
+            "Provider.dll",
+            "WebServiceConnectiPos.dll"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "About.dll",
+            "AccessRight.dll",
+            "AjaxControlToolkit.dll",
+            "AjaxMin.dll",
+            "AllocationExtender.dll",
+            "APIExtender.dll",
+            "BankHubClient.dll",
+            "Common.Logging.Core.dll",
+            "Common.Logging.dll",
+            "ConvertXmlExtender.dll",
+            "Dashboard.dll",
+            "Decompress.dll",
+            "DocumentFormat.OpenXml.dll",
+            "EInvoice.dll",
+            "EMessage.dll"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 15,
+        "compared_sample": [
+          {
+            "relative_path": "BarcodeLib.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 108032,
+              "created": "2025-11-11T15:07:30.674186",
+              "modified": "2025-11-11T15:07:30.689850"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BouncyCastle.Crypto.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 2621440,
+              "created": "2025-11-11T15:07:30.689850",
+              "modified": "2025-11-11T15:07:30.705487"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "CalendarChartService.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 32768,
+              "created": "2025-11-24T16:10:01.273192",
+              "modified": "2015-06-13T09:32:24"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "CRMMessage.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 39936,
+              "created": "2025-11-24T14:55:42.112001",
+              "modified": "2015-06-13T09:32:24"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "FastBusiness.ChangePassword.dll",
+            "status": "missing_on_b",
+            "a": {
+              "size": 150528,
+              "created": "2025-11-11T15:07:31.017984",
+              "modified": "2025-11-11T15:07:31.033652"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "FOLDER-03 Controllers/Dir *.xml meta",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "folder",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "Folder A có 242 file, Folder B có 59 file. Thiếu ở B: 215, thiếu ở A: 32, khác metadata: 27, giống metadata: 0 (ẩn).",
+        "next_actions": [
+          "copy_missing_to_b",
+          "copy_missing_to_a"
+        ],
+        "warnings": [],
+        "summary": {
+          "files_a": 242,
+          "files_b": 59,
+          "missing_on_b": [
+            "BIPITran.xml",
+            "BIPOTran.xml",
+            "BIPOTran_bk.xml",
+            "BIPQTran.xml",
+            "BMTran.xml",
+            "Contract.xml",
+            "crAccount.xml",
+            "crAccountCase.xml",
+            "crAccountContact.xml",
+            "crAccountDetail.xml",
+            "crAccountGroup.xml",
+            "crAccountOpportunity.xml",
+            "crAccountSharingGroup.xml",
+            "crAccountSharingUser.xml",
+            "crAccountTask.xml",
+            "crAccountTeam.xml",
+            "crAccountType.xml",
+            "crCampaign.xml",
+            "crCampaignTask.xml",
+            "crCampaignType.xml",
+            "crCase.xml",
+            "crCaseReason.xml",
+            "crCaseSharingUser.xml",
+            "crCaseTask.xml",
+            "crChangeOwner.xml",
+            "crContact.xml",
+            "crContactCase.xml",
+            "crContactDetail.xml",
+            "crContactOpportunity.xml",
+            "crContactSharingGroup.xml",
+            "crContactSharingUser.xml",
+            "crContactTask.xml",
+            "crContract.xml",
+            "crContractDetail.xml",
+            "crContractPrint.xml",
+            "crContractTask.xml",
+            "crEvents.xml",
+            "crEvents_old (2).xml",
+            "crEventsHome.xml",
+            "crItem.xml"
+          ],
+          "missing_on_a": [
+            "AdjustmentIssueTran.xml",
+            "APInvoiceOpeningBalance.xml",
+            "ApprovalCategory.xml",
+            "ApprovalCategoryDetail.xml",
+            "ApprovalIndicator.xml",
+            "ApprovalRoles.xml",
+            "ApprovingOfficers.xml",
+            "ASTran.xml",
+            "CDTran.xml",
+            "CITran.xml",
+            "CPTran.xml",
+            "DDTran.xml",
+            "EIVoucherBook.xml",
+            "FAAllocationCoefficient.xml",
+            "FADepartment.xml",
+            "FATran.xml",
+            "JPTran.xml",
+            "JRTran.xml",
+            "PITran.xml",
+            "POTran.xml",
+            "PRApproval.xml",
+            "RDTran.xml",
+            "ReplacementIssueRegistration.xml",
+            "zcCashRegisterSchedule.xml",
+            "zccnthxldtcth.xml",
+            "zcdmloaitt.xml",
+            "zcdmmttpvf.xml",
+            "zcdmngaynghi.xml",
+            "zcdmnghiepvu.xml",
+            "zcdmpttt.xml",
+            "zcdmtkipos.xml",
+            "zcEInvoiceSchedule.xml"
+          ],
+          "identical_meta_count": 0,
+          "omitted_identical_count": 0,
+          "different_meta": [
+            "AITran.xml",
+            "APTran.xml",
+            "ARTran.xml",
+            "CBTran.xml",
+            "CRTran.xml",
+            "Customer.xml",
+            "Department.xml",
+            "GLTran.xml",
+            "GNApprovalCategory.xml",
+            "GNApprovalCategoryDetail.xml",
+            "GRTran.xml",
+            "IRTran.xml",
+            "ISTran.xml",
+            "Item.xml",
+            "ItemGroup.xml",
+            "PRTran.xml",
+            "PSTran.xml",
+            "PUDelegationApproval.xml",
+            "PVTran.xml",
+            "PXTran.xml",
+            "SDTran.xml",
+            "SOTran.xml",
+            "SPTran.xml",
+            "SRTran.xml",
+            "SVTran.xml",
+            "User.xml",
+            "VATran.xml"
+          ],
+          "different_content": [],
+          "errors": [],
+          "truncated": true
+        },
+        "compared_count": 40,
+        "compared_sample": [
+          {
+            "relative_path": "BIPITran.xml",
+            "status": "missing_on_b",
+            "a": {
+              "size": 84050,
+              "created": "2025-08-25T13:18:28.843827",
+              "modified": "2025-08-29T13:20:41.778536"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BIPOTran.xml",
+            "status": "missing_on_b",
+            "a": {
+              "size": 83601,
+              "created": "2025-08-25T13:17:50.400731",
+              "modified": "2026-09-08T10:36:01.095316"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BIPOTran_bk.xml",
+            "status": "missing_on_b",
+            "a": {
+              "size": 83633,
+              "created": "2026-09-08T10:27:36.475684",
+              "modified": "2026-08-28T13:33:49.053215"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BIPQTran.xml",
+            "status": "missing_on_b",
+            "a": {
+              "size": 35426,
+              "created": "2025-09-03T09:55:47.202464",
+              "modified": "2025-09-03T11:26:40.665315"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          },
+          {
+            "relative_path": "BMTran.xml",
+            "status": "missing_on_b",
+            "a": {
+              "size": 12085,
+              "created": "2025-08-28T15:34:16.762896",
+              "modified": "2024-04-02T15:14:40.149375"
+            },
+            "b": null,
+            "next_actions": [
+              "copy_missing_to_b"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SQL-01 seed dmuqduyet,vdmduyetuq (acceptance)",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 17 đối tượng SQL: 0 giống nhau, 17 khác nhau, 0 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "review_hunks_before_alter",
+          "clone_things_type1_mode_read_0"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.FastBusiness$App$GetApprovalMailList",
+            "dbo.FastBusiness$APV$GetApprovalMailList",
+            "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "dbo.FastBusiness$APV$SO$GetApprovalMailList",
+            "dbo.vdmduyetuq",
+            "dbo.vdmuqduyet",
+            "dbo.vgndmduyetuq",
+            "dbo.vgndmuqduyet",
+            "dbo.vsodmduyetuq",
+            "dbo.vsodmuqduyet",
+            "dbo.FastBusiness$App$GetApprovalRole",
+            "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "dbo.FastBusiness$Function$APV$PU$Authorize",
+            "dbo.ff_POAuthorize",
+            "dbo.ff_PRAuthorize",
+            "dbo.fs_POAuthorize",
+            "dbo.fs_PRAuthorize"
+          ],
+          "encrypted_skip": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 17,
+            "encrypted_skip": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 17,
+        "compared_sample": [
+          {
+            "name": "dbo.FastBusiness$App$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:dd8baacbfe1505ea78d6def375c718c88293be5661d5ff6f0ea4567697520c0f",
+            "fingerprint_target": "sha256:5f9395df44e4c4451ed939238f2b3a78be7942503b7dda4f5d0a2db8b9ec7209",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 142,
+              "lines_target": 134,
+              "lines_added": 10,
+              "lines_removed": 18,
+              "hunk_count": 5,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@masterTable VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 15,
+                  "source_line_end": 19,
+                  "target_line_start": 17,
+                  "target_line_end": 21,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @now VARCHAR(8), @userID0 INT, @userID3 INT",
+                    "  "
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 56,
+                  "source_line_end": 62,
+                  "target_line_start": 58,
+                  "target_line_end": 63,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM dmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM dmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @vcCode VARCHAR(32)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 88,
+                  "source_line_end": 95,
+                  "target_line_start": 88,
+                  "target_line_end": 88,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM kbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 142,
+                  "source_line_end": 142,
+                  "target_line_start": 134,
+                  "target_line_end": 134,
+                  "preview": [
+                    "  \tSET ANSI_NULLS ON",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$APV$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:b30fdf949764b34f0827ed36d678a5228db5f524f389c0b38a4fc2fe426a8b64",
+            "fingerprint_target": "sha256:5f35527314db1a62cf2d8406572ca9649e2c0323a1619b1b427d9dcff0b50242",
+            "signals": [],
+            "content": {
+              "lines_source": 133,
+              "lines_target": 126,
+              "lines_added": 11,
+              "lines_removed": 18,
+              "hunk_count": 6,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$APV$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$APV$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@partition VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 14,
+                  "source_line_end": 17,
+                  "target_line_start": 16,
+                  "target_line_end": 19,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @now VARCHAR(8), @userID0 INT, @userID3 INT",
+                    "  "
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 51,
+                  "source_line_end": 56,
+                  "target_line_start": 53,
+                  "target_line_end": 58,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM gndmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM gndmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @voucherCode CHAR(3)",
+                    "- \tSELECT @voucherCode = ma_ct FROM gndmloaiduyet WHERE loai_duyet = @voucherType"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 79,
+                  "source_line_end": 86,
+                  "target_line_start": 80,
+                  "target_line_end": 80,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM gnkbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 119,
+                  "source_line_end": 119,
+                  "target_line_start": 113,
+                  "target_line_end": 113,
+                  "preview": [
+                    "  \t\tSET @q = 'insert into ' + @sysDatabaseName + '..dbxn values(''' + @c1 + ''', ''1'', ''' + DB_NAME() + ''')'",
+                    "  \t\tSET @q = @q + CHAR(13) + 'insert into ' + @sysDatabaseName + '..dbxn values(''' + @c2 + ''', ''0'', ''' + DB_NAME() + ''')'",
+                    "  \t\tEXEC sp_executesql @q",
+                    "- \t\tSELECT @p = MIN(id) FROM #m WHERE id > @p",
+                    "+ \t\tSELECT @p = min(id) FROM #m WHERE id > @p",
+                    "  \tEND"
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:f6ee80c24797a7ac8e14ae797939167e7c3bb76de7e7fb9090b8d30b661542fe",
+            "fingerprint_target": "sha256:f3b98b47a5b9f00b284a98146eb8ce861463ad4b8cc5416aec6f27ec6b521e2d",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 133,
+              "lines_target": 126,
+              "lines_added": 9,
+              "lines_removed": 16,
+              "hunk_count": 5,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@partition VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 14,
+                  "source_line_end": 14,
+                  "target_line_start": 16,
+                  "target_line_end": 16,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @now VARCHAR(8), @userID0 INT, @userID3 INT",
+                    "  "
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 51,
+                  "source_line_end": 56,
+                  "target_line_start": 53,
+                  "target_line_end": 58,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM dmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM dmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @voucherCode CHAR(3)",
+                    "- \tSELECT @voucherCode = ma_ct FROM dmloaiduyet WHERE loai_duyet = @voucherType"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 79,
+                  "source_line_end": 86,
+                  "target_line_start": 80,
+                  "target_line_end": 80,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM kbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 133,
+                  "source_line_end": 133,
+                  "target_line_start": 126,
+                  "target_line_end": 126,
+                  "preview": [
+                    "  \tSET ANSI_NULLS ON",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$APV$SO$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:c3bcf837a18edc52ef87a70994b4703443ac93872bbd2db25f497f91be4cb7b2",
+            "fingerprint_target": "sha256:7b5cb9ac55b2ade868d5f96a92e5b7d59dfec737120d1e7c08a9f1d831b6cb69",
+            "signals": [],
+            "content": {
+              "lines_source": 133,
+              "lines_target": 126,
+              "lines_added": 10,
+              "lines_removed": 17,
+              "hunk_count": 5,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$APV$SO$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$APV$SO$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@partition VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 14,
+                  "source_line_end": 15,
+                  "target_line_start": 16,
+                  "target_line_end": 17,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "- \t, @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 52,
+                  "source_line_end": 57,
+                  "target_line_start": 54,
+                  "target_line_end": 59,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM sodmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM sodmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @voucherCode CHAR(3)",
+                    "- \tSELECT @voucherCode = ma_ct FROM sodmloaiduyet WHERE loai_duyet = @voucherType"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 79,
+                  "source_line_end": 86,
+                  "target_line_start": 80,
+                  "target_line_end": 80,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM sokbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 133,
+                  "source_line_end": 133,
+                  "target_line_start": 126,
+                  "target_line_end": 126,
+                  "preview": [
+                    "  \tSET ANSI_NULLS ON",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.vdmduyetuq",
+            "object_type": "view",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:52ca7e50a1200dda329834b511ea4e9292049e738211a63bc258f425e9c539fa",
+            "fingerprint_target": "sha256:664c46280f66bb9489ac1689140f8f53b6ae648b94618ed1815c995bc5cbeec6",
+            "signals": [
+              "source_refs_vdmduyetuq",
+              "target_refs_dmduyet"
+            ],
+            "content": {
+              "lines_source": 17,
+              "lines_target": 13,
+              "lines_added": 0,
+              "lines_removed": 4,
+              "hunk_count": 2,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 3,
+                  "target_line_start": 1,
+                  "target_line_end": 1,
+                  "preview": [
+                    "- ",
+                    "- ",
+                    "- ",
+                    "  CREATE VIEW [dbo].[vdmduyetuq]",
+                    "  AS",
+                    "  "
+                  ],
+                  "signals_in_hunk": [
+                    "dmduyet_vs_vdmduyetuq"
+                  ]
+                },
+                {
+                  "id": 2,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 17,
+                  "source_line_end": 17,
+                  "target_line_start": 13,
+                  "target_line_end": 13,
+                  "preview": [
+                    "  \t\tLEFT JOIN dbo.dmquyen b ON a.ma_quyen = b.ma_quyen AND a.loai_duyet = b.loai_duyet",
+                    "  \t\t\tJOIN (SELECT * FROM dmuqduyet WHERE status = '1' AND ngay_hl <= GETDATE() AND (ngay_hl2 IS NULL OR ngay_hl2 >= CONVERT(VARCHAR(8), GETDATE(), 112))) c ON (a.loai_duyet = c.loai_duyet OR c.loai_duyet = '') AND a.user_id = c.u_id0",
+                    "  \t\t\t\tWHERE b.status = 1",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": ""
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SQL-02 seed with mode=hunks",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "sql",
+        "mode": "hunks",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 10 đối tượng SQL: 0 giống nhau, 10 khác nhau, 0 thiếu trên target, 0 thiếu trên source, 0 mã hóa (bỏ qua).",
+        "next_actions": [
+          "review_hunks_before_alter",
+          "clone_things_type1_mode_read_0"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.FastBusiness$App$GetApprovalMailList",
+            "dbo.FastBusiness$App$GetApprovalRole",
+            "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "dbo.FastBusiness$Function$APV$PU$Authorize",
+            "dbo.ff_POAuthorize",
+            "dbo.ff_PRAuthorize",
+            "dbo.fs_POAuthorize",
+            "dbo.fs_PRAuthorize",
+            "dbo.vdmduyetuq"
+          ],
+          "encrypted_skip": [],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 10,
+            "encrypted_skip": 0,
+            "errors": 0
+          }
+        },
+        "compared_count": 10,
+        "compared_sample": [
+          {
+            "name": "dbo.FastBusiness$App$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:dd8baacbfe1505ea78d6def375c718c88293be5661d5ff6f0ea4567697520c0f",
+            "fingerprint_target": "sha256:5f9395df44e4c4451ed939238f2b3a78be7942503b7dda4f5d0a2db8b9ec7209",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 142,
+              "lines_target": 134,
+              "lines_added": 10,
+              "lines_removed": 18,
+              "hunk_count": 5,
+              "diff_truncated": true,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@masterTable VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 15,
+                  "source_line_end": 19,
+                  "target_line_start": 17,
+                  "target_line_end": 21,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @now VARCHAR(8), @userID0 INT, @userID3 INT",
+                    "  "
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 56,
+                  "source_line_end": 62,
+                  "target_line_start": 58,
+                  "target_line_end": 63,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM dmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM dmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @vcCode VARCHAR(32)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 88,
+                  "source_line_end": 95,
+                  "target_line_start": 88,
+                  "target_line_end": 88,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM kbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 142,
+                  "source_line_end": 142,
+                  "target_line_start": 134,
+                  "target_line_end": 134,
+                  "preview": [
+                    "  \tSET ANSI_NULLS ON",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": "--- \\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24:dbo.FastBusiness$App$GetApprovalMailList\n+++ \\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228:dbo.FastBusiness$App$GetApprovalMailList\n@@ -1,3 +1,5 @@\n+\n+-- clone_things type=1: dbo.FastBusiness$App$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source\n CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalMailList]\n \t@idNumber CHAR(13),\n \t@masterTable VARCHAR(32),\n@@ -12,11 +14,11 @@\n \tSET NOCOUNT ON\n \tSET ANSI_NULLS OFF\n \n-\tDE"
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$App$GetApprovalRole",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:47d7d4fc9543fcc7ce3b0ae7763f85c9db715975fc6c335d125730a09879fb16",
+            "fingerprint_target": "sha256:f0078c722b9a01f4ca5b050327153d8e1596ae932ba897449480bfc284f683b0",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 38,
+              "lines_target": 39,
+              "lines_added": 3,
+              "lines_removed": 2,
+              "hunk_count": 2,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 7,
+                  "target_line_start": 1,
+                  "target_line_end": 9,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$App$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalRole]",
+                    "  \t@VoucherType VARCHAR(32),",
+                    "  \t@VoucherCode VARCHAR(32),",
+                    "  \t@UserID INT,"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 38,
+                  "source_line_end": 38,
+                  "target_line_start": 39,
+                  "target_line_end": 39,
+                  "preview": [
+                    "  ",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": "--- \\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24:dbo.FastBusiness$App$GetApprovalRole\n+++ \\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228:dbo.FastBusiness$App$GetApprovalRole\n@@ -1,10 +1,12 @@\n+\n+-- clone_things type=1: dbo.FastBusiness$App$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source\n CREATE PROCEDURE [dbo].[FastBusiness$App$GetApprovalRole]\n \t@VoucherType VARCHAR(32),\n \t@VoucherCode VARCHAR(32),\n \t@UserID INT,\n \t@Department VARCHAR(32),\n \t@FC VARCHAR(33),\n-\t@Amount N"
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$APV$PU$GetApprovalMailList",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:f6ee80c24797a7ac8e14ae797939167e7c3bb76de7e7fb9090b8d30b661542fe",
+            "fingerprint_target": "sha256:f3b98b47a5b9f00b284a98146eb8ce861463ad4b8cc5416aec6f27ec6b521e2d",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 133,
+              "lines_target": 126,
+              "lines_added": 9,
+              "lines_removed": 16,
+              "hunk_count": 5,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalMailList]",
+                    "  \t@idNumber CHAR(13),",
+                    "  \t@partition VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 14,
+                  "source_line_end": 14,
+                  "target_line_start": 16,
+                  "target_line_end": 16,
+                  "preview": [
+                    "  \tSET NOCOUNT ON",
+                    "  \tSET ANSI_NULLS OFF",
+                    "  ",
+                    "- \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(28, 6), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @userID0 INT, @userID3 INT, @now SMALLDATETIME",
+                    "+ \tDECLARE @q NVARCHAR(4000), @Dept VARCHAR(32), @FC VARCHAR(32), @Amount NUMERIC(19, 2), @CurStatus VARCHAR(32), @p INT, @c1 VARCHAR(32), @c2 VARCHAR(32), @mailUser INT, @datetime2 DATETIME, @unit VARCHAR(32), @Category VARCHAR(32), @masterTable VARCHAR(32), @hisTable VARCHAR(32), @d SMALLDATETIME, @now VARCHAR(8), @userID0 INT, @userID3 INT",
+                    "  "
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 3,
+                  "change_type": "replace",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 51,
+                  "source_line_end": 56,
+                  "target_line_start": 53,
+                  "target_line_end": 58,
+                  "preview": [
+                    "  \tDELETE #m FROM #m WHERE user_id IN (SELECT u_id0 FROM dmuqduyet WHERE status = '1' AND xtype = '1' AND loai_duyet = '' OR loai_duyet = @voucherType AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now))",
+                    "  \tINSERT INTO #m(stt_rec, user_id, type) SELECT @idNumber, u_id0, '1' FROM dmuqduyet WHERE status = '1' AND (loai_duyet = '' OR loai_duyet = @voucherType) AND ngay_hl <= @now AND (ngay_hl2 IS NULL OR ngay_hl2 >= @now) AND u_id4 = @userID3 AND u_id0 NOT IN (SELECT user_id FROM #m)",
+                    "  ",
+                    "- \t--IF EXISTS(SELECT 1 FROM options WHERE ma_phan_he = 'SM' AND name = 'd_001' AND val = '1') BEGIN",
+                    "- \tDECLARE @voucherCode CHAR(3)",
+                    "- \tSELECT @voucherCode = ma_ct FROM dmloaiduyet WHERE loai_duyet = @voucherType"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 4,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 79,
+                  "source_line_end": 86,
+                  "target_line_start": 80,
+                  "target_line_end": 80,
+                  "preview": [
+                    "  \t\t\t\tFROM #ds a",
+                    "  \t\t\t\tJOIN (SELECT user_id4 FROM kbmailduyet WHERE loai_duyet = @voucherType AND status = '1') b ON a.user_id = b.user_id4",
+                    "  \t\t\t\t\tWHERE b.user_id4 NOT IN (SELECT user_id FROM #m)",
+                    "- \tEND",
+                    "- ",
+                    "- \t-- Mail to Recipient (without link)"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 5,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 133,
+                  "source_line_end": 133,
+                  "target_line_start": 126,
+                  "target_line_end": 126,
+                  "preview": [
+                    "  \tSET ANSI_NULLS ON",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": "--- \\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24:dbo.FastBusiness$APV$PU$GetApprovalMailList\n+++ \\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228:dbo.FastBusiness$APV$PU$GetApprovalMailList\n@@ -1,3 +1,5 @@\n+\n+-- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalMailList | SQL_STORED_PROCEDURE | paste-for-edit | from source\n CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalMailList]\n \t@idNumber CHAR(13),\n \t@partition VARCHAR(32),\n@@ -11,7 +13,7 @@\n \tSET NOCOUNT ON\n \tSET ANSI_NULLS OF"
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$APV$PU$GetApprovalRole",
+            "object_type": "proc",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:c716356c9a31e60953c365864d73a88f27d26875f97ade76605ed21830a32bcd",
+            "fingerprint_target": "sha256:46126bc2678e7081cfe6eedc4ce1124e10df27dabee5b7c04995b16a65fbd79d",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 27,
+              "lines_target": 28,
+              "lines_added": 2,
+              "lines_removed": 1,
+              "hunk_count": 2,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source",
+                    "  CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalRole]",
+                    "  \t@voucherType VARCHAR(32),",
+                    "  \t@userID INT,"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 27,
+                  "source_line_end": 27,
+                  "target_line_start": 28,
+                  "target_line_end": 28,
+                  "preview": [
+                    "  ",
+                    "  \tSET NOCOUNT OFF",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": "--- \\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24:dbo.FastBusiness$APV$PU$GetApprovalRole\n+++ \\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228:dbo.FastBusiness$APV$PU$GetApprovalRole\n@@ -1,3 +1,5 @@\n+\n+-- clone_things type=1: dbo.FastBusiness$APV$PU$GetApprovalRole | SQL_STORED_PROCEDURE | paste-for-edit | from source\n CREATE PROCEDURE [dbo].[FastBusiness$APV$PU$GetApprovalRole]\n \t@voucherType VARCHAR(32),\n \t@userID INT,\n@@ -24,4 +26,3 @@\n \n \tSET NOCOUNT OFF\n END\n-"
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          },
+          {
+            "name": "dbo.FastBusiness$Function$APV$PU$Authorize",
+            "object_type": "func",
+            "status": "different",
+            "db_type_found_source": "app",
+            "db_type_found_target": "app",
+            "fingerprint_source": "sha256:70e37ba744d275ac8d8e3318a07e791dcd6dd392c10aa1b3bf63fce66779717b",
+            "fingerprint_target": "sha256:342c57d1facba643772729a0b8cf959b634f2530def9a2a58624a916b713c483",
+            "signals": [
+              "source_refs_vdmduyetuq"
+            ],
+            "content": {
+              "lines_source": 28,
+              "lines_target": 29,
+              "lines_added": 2,
+              "lines_removed": 1,
+              "hunk_count": 2,
+              "diff_truncated": false,
+              "hunks_preview": [
+                {
+                  "id": 1,
+                  "change_type": "insert",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 1,
+                  "source_line_end": 1,
+                  "target_line_start": 1,
+                  "target_line_end": 2,
+                  "preview": [
+                    "+ ",
+                    "+ -- clone_things type=1: dbo.FastBusiness$Function$APV$PU$Authorize | SQL_SCALAR_FUNCTION | paste-for-edit | from source",
+                    "  CREATE FUNCTION [dbo].[FastBusiness$Function$APV$PU$Authorize]",
+                    "  (",
+                    "  \t@voucherType VARCHAR(32),"
+                  ],
+                  "signals_in_hunk": []
+                },
+                {
+                  "id": 2,
+                  "change_type": "delete",
+                  "a_line_start": null,
+                  "a_line_end": null,
+                  "b_line_start": null,
+                  "b_line_end": null,
+                  "source_line_start": 28,
+                  "source_line_end": 28,
+                  "target_line_start": 29,
+                  "target_line_end": 29,
+                  "preview": [
+                    "  \tSELECT @nRet = 1",
+                    "  \tRETURN @nRet",
+                    "  END",
+                    "- "
+                  ],
+                  "signals_in_hunk": []
+                }
+              ],
+              "unified_diff_head": "--- \\\\172.168.5.14\\CustomerPro\\FBI\\FAHASAKHANHHOA\\FBISP24:dbo.FastBusiness$Function$APV$PU$Authorize\n+++ \\\\172.168.5.14\\CustomerPro\\FBO\\AIH\\SP228:dbo.FastBusiness$Function$APV$PU$Authorize\n@@ -1,3 +1,5 @@\n+\n+-- clone_things type=1: dbo.FastBusiness$Function$APV$PU$Authorize | SQL_SCALAR_FUNCTION | paste-for-edit | from source\n CREATE FUNCTION [dbo].[FastBusiness$Function$APV$PU$Authorize]\n (\n \t@voucherType VARCHAR(32),\n@@ -25,4 +27,3 @@\n \tSELECT @nRet = 1\n \tRETURN @nRet\n END\n-"
+            },
+            "next_actions": [
+              "review_hunks_before_alter",
+              "clone_things_type1_mode_read_0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SQL-03 invalid empty object+seed",
+      "ok": false,
+      "result": {
+        "success": false,
+        "kind": "sql",
+        "mode": null,
+        "error_code": "invalid_object_or_seed",
+        "error": "Either object or seed must be provided for kind=sql",
+        "message": "Phải cung cấp ít nhất tham số 'object' hoặc 'seed' cho kind=sql.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "compared_sample": []
+      }
+    },
+    {
+      "name": "TABLE-dmuqduyet",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 1 bảng: 0 giống nhau, 1 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "review_pk"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.dmuqduyet"
+          ],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 1,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "name": "dbo.dmuqduyet",
+            "status": "different",
+            "schema_diff": {
+              "columns_only_source": [],
+              "columns_only_target": [],
+              "columns_type_mismatch": [],
+              "pk_diff": true,
+              "pk_source": [
+                "loai_duyet",
+                "u_id4",
+                "ngay_hl"
+              ],
+              "pk_target": [
+                "loai_duyet",
+                "ngay_hl",
+                "u_id4"
+              ],
+              "indexes_only_source": [],
+              "indexes_only_target": [],
+              "indexes_mismatch": [],
+              "triggers_only_source": [],
+              "triggers_only_target": [],
+              "triggers_mismatch": []
+            },
+            "next_actions": [
+              "review_pk"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "TABLE-vdmduyetuq",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 1 bảng: 0 giống nhau, 1 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "review_column_type"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.vdmduyetuq"
+          ],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 1,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "name": "dbo.vdmduyetuq",
+            "status": "different",
+            "schema_diff": {
+              "columns_only_source": [],
+              "columns_only_target": [],
+              "columns_type_mismatch": [
+                {
+                  "column": "tien_nt",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                }
+              ],
+              "pk_diff": false,
+              "pk_source": [],
+              "pk_target": [],
+              "indexes_only_source": [],
+              "indexes_only_target": [],
+              "indexes_mismatch": [],
+              "triggers_only_source": [],
+              "triggers_only_target": [],
+              "triggers_mismatch": []
+            },
+            "next_actions": [
+              "review_column_type"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "TABLE-dmkh",
+      "ok": true,
+      "result": {
+        "success": true,
+        "kind": "table",
+        "mode": "summary",
+        "error_code": null,
+        "error": null,
+        "message": "So sánh 1 bảng: 0 giống nhau, 1 khác schema, 0 thiếu trên target, 0 thiếu trên source.",
+        "next_actions": [
+          "alter_add_column",
+          "review_column_type"
+        ],
+        "warnings": [],
+        "summary": {
+          "missing_on_target": [],
+          "missing_on_source": [],
+          "identical": [],
+          "different": [
+            "dbo.dmkh"
+          ],
+          "errors": [],
+          "truncated": false,
+          "counts": {
+            "missing_on_target": 0,
+            "missing_on_source": 0,
+            "identical": 0,
+            "different": 1,
+            "errors": 0
+          }
+        },
+        "compared_count": 1,
+        "compared_sample": [
+          {
+            "name": "dbo.dmkh",
+            "status": "different",
+            "schema_diff": {
+              "columns_only_source": [
+                "chuc_vu_dd",
+                "chuc_vu_lh",
+                "id_hrv",
+                "kh_crm_yn",
+                "nguoi_dd",
+                "nguoi_lh",
+                "nguoi_thu_huong",
+                "stt_rec_kh",
+                "ten_ngan",
+                "user_ref",
+                "viet_tat"
+              ],
+              "columns_only_target": [
+                "gom_bill_yn",
+                "id_doitac"
+              ],
+              "columns_type_mismatch": [
+                {
+                  "column": "du13",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "du_nt13",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "ma_kh",
+                  "source": "char(16) not null",
+                  "target": "char(32) not null"
+                },
+                {
+                  "column": "ma_td3",
+                  "source": "char(16) null",
+                  "target": "varchar(32) null"
+                },
+                {
+                  "column": "ma_tt",
+                  "source": "char(2) null",
+                  "target": "char(8) null"
+                },
+                {
+                  "column": "t_tien_cn",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "t_tien_hd",
+                  "source": "numeric(19,4) null",
+                  "target": "numeric(19,2) null"
+                },
+                {
+                  "column": "ten_kh",
+                  "source": "nvarchar(128) not null",
+                  "target": "nvarchar(512) null"
+                },
+                {
+                  "column": "ten_kh2",
+                  "source": "nvarchar(128) not null",
+                  "target": "nvarchar(512) null"
+                }
+              ],
+              "pk_diff": false,
+              "pk_source": [
+                "ma_kh"
+              ],
+              "pk_target": [
+                "ma_kh"
+              ],
+              "indexes_only_source": [],
+              "indexes_only_target": [
+                "id_doitac"
+              ],
+              "indexes_mismatch": [],
+              "triggers_only_source": [],
+              "triggers_only_target": [],
+              "triggers_mismatch": []
+            },
+            "next_actions": [
+              "alter_add_column",
+              "review_column_type"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "API invalid kind",
+      "ok": false,
+      "result": {
+        "success": false,
+        "kind": "nope",
+        "mode": null,
+        "error_code": "invalid_kind",
+        "error": "Kind 'nope' is not supported. Must be one of: ['file', 'folder', 'sql', 'table', 'xml']",
+        "message": "Tham số kind 'nope' không hợp lệ. Chỉ chấp nhận: sql, table, xml, file, folder.",
+        "next_actions": [
+          "fix_paths"
+        ],
+        "warnings": [],
+        "summary": null,
+        "compared_count": 0,
+        "compared_sample": []
+      }
+    }
+  ],
+  "scorecard": [
+    {
+      "name": "FILE-01 user paths (PU Dir FAH vs PO Grid AIH) — expect different",
+      "pass": true
+    },
+    {
+      "name": "FILE-02 same relative PUDelegationApproval.xml FAH vs AIH",
+      "pass": true
+    },
+    {
+      "name": "FILE-03 PU CRLF ignore + body mode sample",
+      "pass": true
+    },
+    {
+      "name": "XML-01 Dir/PUDelegationApproval.xml (project roots)",
+      "pass": true
+    },
+    {
+      "name": "XML-02 Grid/POTran.xml",
+      "pass": true
+    },
+    {
+      "name": "XML-03 multi object list",
+      "pass": true
+    },
+    {
+      "name": "XML-04 path traversal reject",
+      "pass": true
+    },
+    {
+      "name": "FOLDER-01 bin meta-only (*.dll)",
+      "pass": true
+    },
+    {
+      "name": "FOLDER-02 bin *.dll max_objects=15 truncation",
+      "pass": true
+    },
+    {
+      "name": "FOLDER-03 Controllers/Dir *.xml meta",
+      "pass": true
+    },
+    {
+      "name": "SQL-01 seed dmuqduyet,vdmduyetuq (acceptance)",
+      "pass": true
+    },
+    {
+      "name": "SQL-02 seed with mode=hunks",
+      "pass": true
+    },
+    {
+      "name": "SQL-03 invalid empty object+seed",
+      "pass": true
+    },
+    {
+      "name": "TABLE-dmuqduyet",
+      "pass": true
+    },
+    {
+      "name": "TABLE-vdmduyetuq",
+      "pass": true
+    },
+    {
+      "name": "TABLE-dmkh",
+      "pass": true
+    },
+    {
+      "name": "API invalid kind",
+      "pass": true
+    }
+  ],
+  "pass_count": 17,
+  "total": 17
+}

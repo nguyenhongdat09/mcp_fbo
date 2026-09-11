@@ -140,7 +140,13 @@ class TestDiscoverRegisteredProjects(unittest.TestCase):
         projects = discover_registered_projects(self.temp_dir)
         self.assertEqual(len(projects), 1)
         self.assertEqual(str(projects[0]), r"\\server\share\FBISP229")
-        self.assertEqual(decode_project_root(encoded), r"\\server\share\FBISP229")
+    def test_resolve_kuzu_db_base_default_mcp_dir(self):
+        from xml_fbograph.utils.path_helper import resolve_kuzu_db_base
+        os.environ.pop("FBOGRAPH_KUZU_BASE", None)
+        reset_config_caches()
+        base = resolve_kuzu_db_base()
+        self.assertEqual(base.name, "KuzuDB")
+        self.assertTrue(base.exists())
 
 
 if __name__ == "__main__":

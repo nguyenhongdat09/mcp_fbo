@@ -252,6 +252,28 @@ def _get_kuzu_max_db_size() -> int:
     p2_gb = 2 ** math.ceil(math.log2(val_gb))
     return p2_gb * 1024**3
 
+def _get_kuzu_query_timeout_ms() -> int:
+    """Đọc query_timeout_seconds từ env hoặc config.yaml (mặc định 1800s = 30 phút), trả về mili-giây."""
+    val_sec = 1800  # Mặc định 30 phút
+    env_val = os.environ.get("FBOGRAPH_QUERY_TIMEOUT_SECONDS", "").strip()
+    if env_val.isdigit():
+        val_sec = int(env_val)
+    else:
+        try:
+            import yaml
+            from xml_fbograph.utils.path_helper import _find_config_file
+            config_file = _find_config_file()
+            if config_file:
+                with open(config_file, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                fbograph_cfg = cfg.get("fbograph", {})
+                if "query_timeout_seconds" in fbograph_cfg:
+                    val_sec = int(fbograph_cfg["query_timeout_seconds"])
+        except Exception:
+            pass
+
+    return max(0, val_sec * 1000)
+
 def _create_kuzu_database(db_path: str, read_only: bool = False) -> kuzu.Database:
     """Helper tạo Kuzu Database với dung lượng VirtualAlloc an toàn."""
     import inspect
@@ -332,6 +354,14 @@ class KuzuIndexStore:
             if db_path_key not in _db_instances:
                 db = _create_kuzu_database(str(self.db_path), read_only=self.read_only)
                 conn = kuzu.Connection(db)
+                
+                # Cấu hình query timeout (mặc định 30 phút = 1800s)
+                timeout_ms = _get_kuzu_query_timeout_ms()
+                if timeout_ms > 0:
+                    try:
+                        conn.set_query_timeout(timeout_ms)
+                    except Exception as e:
+                        print(f"[FBOGraph] Warning: failed to set_query_timeout: {e}")
                 
                 # Boc conn.execute voi lock de tranh deadlock/conflict trong da luong
                 orig_execute = conn.execute

@@ -70,3 +70,19 @@ def test_is_excluded():
     assert is_excluded("sp_executesql", excludes) is True
     assert is_excluded("zc_custom_report", excludes) is False
     assert is_excluded("dmkh", excludes) is False
+
+
+def test_default_extra_excludes_allows_fastbusiness_and_fsd():
+    from clone_things.service import DEFAULT_EXTRA_EXCLUDES
+
+    # DEFAULT_EXTRA_EXCLUDES should ONLY exclude system routines (sp_, xp_, sys., sp_executesql)
+    assert is_excluded("sp_executesql", DEFAULT_EXTRA_EXCLUDES) is True
+    assert is_excluded("xp_cmdshell", DEFAULT_EXTRA_EXCLUDES) is True
+    assert is_excluded("sys.objects", DEFAULT_EXTRA_EXCLUDES) is True
+
+    # FastBusiness$, ff_, fsd_ MUST NOT be excluded by default so missing items can be cloned
+    assert is_excluded("FastBusiness$App$GetLayoutConfig", DEFAULT_EXTRA_EXCLUDES) is False
+    assert is_excluded("ff_NumberFormatConfig", DEFAULT_EXTRA_EXCLUDES) is False
+    assert is_excluded("fsd_StringToTable", DEFAULT_EXTRA_EXCLUDES) is False
+    assert is_excluded("rs_rptCheckVoucherEditLog", DEFAULT_EXTRA_EXCLUDES) is False
+

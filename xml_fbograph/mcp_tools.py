@@ -80,9 +80,9 @@ def start_watcher_for_project(reference_file: str):
         sys.stderr.write(f"[FboFBOGraph MCP] Error starting watcher: {e}\n")
 
 
-def get_kuzu_store(reference_file: str):
+def get_kuzu_store(reference_file: str, progress_callback=None):
     """Lay ket noi Kuzu read-only (gate CustomerPro; thieu DB -> sync-build in-process)."""
-    db_path = ensure_mcp_kuzu_ready(reference_file)
+    db_path = ensure_mcp_kuzu_ready(reference_file, progress_callback=progress_callback)
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()
     try:
@@ -200,6 +200,7 @@ def mcp_query_radar(
     cypher_query: str,
     reference_file: str,
     mode: str = "query",
+    progress_callback=None,
 ) -> str:
     try:
         normalized_mode = (mode or "query").strip().lower()
@@ -210,7 +211,7 @@ def mcp_query_radar(
                 ensure_ascii=False,
             )
 
-        store = get_kuzu_store(reference_file)
+        store = get_kuzu_store(reference_file, progress_callback=progress_callback)
         if normalized_mode == "schema":
             return json.dumps(_get_radar_schema(store), indent=2, ensure_ascii=False)
 
@@ -342,7 +343,24 @@ def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 
             return f"Loi: File khong ton tai: {file_path}"
 
         if read_option == 3:
-            if p.suffix.lower() != ".xml":
+            is_valid_summary_xml = False
+            if p.suffix.lower() == ".xml":
+                controllers_root = helper.get_controllers_path().resolve()
+                try:
+                    rel = p.relative_to(controllers_root)
+                except ValueError:
+                    p_str = str(p).replace("\\", "/")
+                    c_str = str(controllers_root).replace("\\", "/")
+                    if p_str.lower().startswith(c_str.lower().rstrip("/") + "/"):
+                        rel_str = p_str[len(c_str.rstrip("/")) + 1:]
+                        rel = Path(rel_str)
+                    else:
+                        rel = None
+
+                if rel and len(rel.parts) == 2 and rel.parts[0].lower() in {"dir", "grid", "filter"}:
+                    is_valid_summary_xml = True
+
+            if not is_valid_summary_xml:
                 read_option = 1
             else:
                 from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml

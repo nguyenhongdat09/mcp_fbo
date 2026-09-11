@@ -11,3 +11,5 @@ logs/
 .fbograph/
 *.log
 key.json
+config_path.yaml
+config_path.xml

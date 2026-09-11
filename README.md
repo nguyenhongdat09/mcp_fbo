@@ -22,7 +22,7 @@ pip install -r requirements.txt
 }
 ```
 
-## MCP Tools (6 tools)
+## MCP Tools (7 tools)
 
 | Tool | Mô tả |
 |---|---|
@@ -32,6 +32,7 @@ pip install -r requirements.txt
 | `read_local_file` | Đọc file controller FBO từ ổ cứng (`read_option=1`: raw, `2`: flat, `3`: summary_xml JSON gọn) |
 | `search_qlyc` | Tra cứu lịch sử ticket / yêu cầu đã thực hiện |
 | `clone_things` | Clone object SQL (table, proc, func, view) từ project nguồn sang project đích (Target-first, recursive deps, xuất file .sql) |
+| `compare_things` | So sánh đa loại (`sql`, `table`, `xml`, `file`, `folder`) giữa 2 project hoặc 2 path đĩa/UNC → JSON agent-actionable (hunks line ranges, signals, next_actions) |
 
 ## Modules
 

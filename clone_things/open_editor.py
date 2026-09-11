@@ -9,7 +9,19 @@ from pathlib import Path
 
 
 def _resolve_editor_path(cmd_name: str) -> str | None:
-    """Resolve executable path from PATH or Windows default install locations."""
+    """Resolve executable path from PATH, env var overrides, or default install locations."""
+    env_var_map = {
+        "cursor": "FBO_CURSOR_PATH",
+        "code": "FBO_VSCODE_PATH",
+        "antigravity": "FBO_ANTIGRAVITY_PATH",
+        "antigravity-ide": "FBO_ANTIGRAVITY_PATH",
+    }
+    env_var = env_var_map.get(cmd_name.lower())
+    if env_var:
+        env_path = os.environ.get(env_var)
+        if env_path and Path(env_path).exists():
+            return str(Path(env_path))
+
     found = shutil.which(cmd_name)
     if found:
         return found
@@ -24,6 +36,14 @@ def _resolve_editor_path(cmd_name: str) -> str | None:
             "code": [
                 Path(local_app_data) / "Programs" / "Microsoft VS Code" / "bin" / "code.cmd",
                 Path(local_app_data) / "Programs" / "Microsoft VS Code" / "Code.exe",
+            ],
+            "antigravity": [
+                Path(r"E:\Antigravity IDE\bin\antigravity-ide.cmd"),
+                Path(r"E:\Antigravity IDE\Antigravity IDE.exe"),
+            ],
+            "antigravity-ide": [
+                Path(r"E:\Antigravity IDE\bin\antigravity-ide.cmd"),
+                Path(r"E:\Antigravity IDE\Antigravity IDE.exe"),
             ],
         }
         for path_obj in candidates.get(cmd_name.lower(), []):
@@ -41,6 +61,16 @@ def _resolve_editor_path(cmd_name: str) -> str | None:
             Path(r"E:\Microsoft VS Code\bin\code.CMD"),
             Path(r"E:\Microsoft VS Code\bin\code.cmd"),
             Path(r"E:\Microsoft VS Code\Code.exe"),
+        ],
+        "antigravity": [
+            Path(r"E:\Antigravity IDE\bin\antigravity-ide.cmd"),
+            Path(r"E:\Antigravity IDE\bin\antigravity-ide.CMD"),
+            Path(r"E:\Antigravity IDE\Antigravity IDE.exe"),
+        ],
+        "antigravity-ide": [
+            Path(r"E:\Antigravity IDE\bin\antigravity-ide.cmd"),
+            Path(r"E:\Antigravity IDE\bin\antigravity-ide.CMD"),
+            Path(r"E:\Antigravity IDE\Antigravity IDE.exe"),
         ],
     }
     for path_obj in extra.get(cmd_name.lower(), []):
@@ -129,10 +159,16 @@ def open_file_for_user(
         spawned = _try("cursor")
     elif cmd_mode == "code":
         spawned = _try("code")
+    elif cmd_mode in ("antigravity", "antigravity-ide"):
+        spawned = _try("antigravity-ide") or _try("antigravity")
     elif cmd_mode == "os":
         spawned = False
     elif cmd_mode == "auto":
-        spawned = _try("cursor") or _try("code")
+        from .file_manager import is_antigravity_ide
+        if is_antigravity_ide():
+            spawned = _try("antigravity-ide") or _try("antigravity") or _try("cursor") or _try("code")
+        else:
+            spawned = _try("cursor") or _try("code") or _try("antigravity-ide")
     else:
         spawned = _try(cmd_mode)
 

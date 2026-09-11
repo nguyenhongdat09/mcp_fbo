@@ -160,4 +160,82 @@ def test_mcp_read_local_file_non_xml_switch_to_raw():
         assert "```json" not in res
 
 
+def test_mcp_read_local_file_read_option_3_restrictions():
+    from xml_fbograph.mcp_tools import mcp_read_local_file
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root_dir = Path(tmpdir)
+        ctrl_root = root_dir / "App_Data" / "Controllers"
+
+        # Setup folders
+        dir_folder = ctrl_root / "Dir"
+        grid_folder = ctrl_root / "Grid"
+        filter_folder = ctrl_root / "Filter"
+        nested_dir = ctrl_root / "Dir" / "A"
+        report_folder = ctrl_root / "Report"
+        lookup_folder = ctrl_root / "Lookup"
+
+        for f in [dir_folder, grid_folder, filter_folder, nested_dir, report_folder, lookup_folder]:
+            f.mkdir(parents=True, exist_ok=True)
+
+        xml_content = SAMPLE_XML
+
+        dir_xml = dir_folder / "a.xml"
+        dir_xml.write_text(xml_content, encoding="utf-8")
+
+        grid_xml = grid_folder / "b.xml"
+        grid_xml.write_text(xml_content, encoding="utf-8")
+
+        filter_xml = filter_folder / "c.xml"
+        filter_xml.write_text(xml_content, encoding="utf-8")
+
+        nested_xml = nested_dir / "a.xml"
+        nested_xml.write_text(xml_content, encoding="utf-8")
+
+        report_xml = report_folder / "r.xml"
+        report_xml.write_text(xml_content, encoding="utf-8")
+
+        lookup_xml = lookup_folder / "l.xml"
+        lookup_xml.write_text(xml_content, encoding="utf-8")
+
+        ref_file = str(dir_xml)
+
+        # 1) Dir/a.xml -> SHOULD summary (option 3)
+        res_dir = mcp_read_local_file(str(dir_xml), ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" in res_dir
+        assert "```json" in res_dir
+
+        # Relative path "Dir/a.xml"
+        res_dir_rel = mcp_read_local_file("Dir/a.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" in res_dir_rel
+
+        # 2) Grid/b.xml -> SHOULD summary (option 3)
+        res_grid = mcp_read_local_file("Grid/b.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" in res_grid
+
+        # 3) Filter/c.xml -> SHOULD summary (option 3)
+        res_filter = mcp_read_local_file("Filter/c.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" in res_filter
+
+        # 4) Dir/A/a.xml (nested) -> SHOULD NOT summary -> fallback to raw (option 1)
+        res_nested = mcp_read_local_file(str(nested_xml), ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" not in res_nested
+        assert "<dir table=" in res_nested
+
+        res_nested_rel = mcp_read_local_file("Dir/A/a.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" not in res_nested_rel
+        assert "<dir table=" in res_nested_rel
+
+        # 5) Report/r.xml -> SHOULD NOT summary -> fallback to raw (option 1)
+        res_report = mcp_read_local_file("Report/r.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" not in res_report
+        assert "<dir table=" in res_report
+
+        # 6) Lookup/l.xml -> SHOULD NOT summary -> fallback to raw (option 1)
+        res_lookup = mcp_read_local_file("Lookup/l.xml", ref_file, read_option=3)
+        assert "[OK] read_local_file summary_xml" not in res_lookup
+        assert "<dir table=" in res_lookup
+
+
+
 

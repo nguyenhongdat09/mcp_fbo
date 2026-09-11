@@ -8,11 +8,11 @@ Param `dry_run=true`: chạy toàn bộ resolve + exists + deps, **không** ghi 
 
 Dùng cho Agent ước lượng scope trước khi paste.
 
-## 2. `CREATE OR ALTER` / idempotent script
+## 2. `CREATE OR ALTER` / idempotent script (type=0)
 
-Option `script_style`: `raw` (default, giữ source) | `create_or_alter` (đổi `CREATE PROCEDURE` → `CREATE OR ALTER PROCEDURE` khi SQL Server hỗ trợ).
+Option `script_style` cho **type=0**: `raw` (default, giữ source) | `create_or_alter`.
 
-Giảm lỗi chạy lại trên target đã có object (khi user cố ý deploy dù skipped logic).
+> **Đã lấy một phần cho type=1:** paste-for-edit dùng **`ALTER`** (không phải `CREATE OR ALTER`) — xem [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md). Suggestion này chỉ còn áp dụng nếu muốn thêm style cho nhánh clone type=0.
 
 ## 3. Topological sort (GO đã là v1)
 
@@ -27,9 +27,11 @@ Nếu object **có ở cả hai** nhưng definition khác: thay vì chỉ `skipp
 
 Param rõ `db_type_source` / `db_type_target` (`app`|`sys`) khi object nằm sys DB.
 
-## 6. Clone type=1 — file XML / Controllers
+## 6. Clone type=2 — file XML / Controllers (đổi số — không dùng type=1)
 
-Phase sau: `type=1` copy file XML (và companion Grid/Filter) từ source tree sang target tree, kèm map path. Tách khỏi SQL pipeline.
+> **Thu hồi:** Trước đây gợi ý `type=1` = copy XML Controllers. **`type=1` đã dành cho paste-for-edit** ([11](./11_type1_paste_for_edit.md)).
+
+Phase sau: `type=2` (hoặc tên khác) copy file XML (và companion Grid/Filter) từ source tree sang target tree, kèm map path. Tách khỏi SQL pipeline.
 
 ## 7. Integration extension
 

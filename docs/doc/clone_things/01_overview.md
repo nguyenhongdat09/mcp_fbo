@@ -19,6 +19,8 @@ Hiện đã có:
 
 ## 2. Mục tiêu (Goals)
 
+### type=0 — clone giữa 2 project
+
 1. Clone **toàn bộ script** object SQL thiếu ở project đích (lấy từ project nguồn) vào một file `.sql`.
 2. Tự **phân loại** object (table / proc / func / view) qua catalog SQL Server.
 3. Tự **mở rộng dependency** với proc/func (và seed từ XML) bằng summary hiện có.
@@ -26,27 +28,31 @@ Hiện đã có:
 5. Báo rõ object **không có ở cả hai** project.
 6. Trả JSON gọn cho Agent; đồng thời user **nhìn thấy** file `.sql` (mở editor).
 
-## 3. Không làm gì (Out of scope — v1)
+### type=1 — paste-for-edit (1 project)
+
+1. Lấy definition proc/func/view (và table nếu cần) từ **một** `project_source` → paste vào `.sql`.
+2. Đổi `CREATE PROC/FUNC/VIEW` → **`ALTER …`** để user F5 cập nhật object đã có.
+3. JSON có `pasted[].line_start` / `line_end` + `agent_message` — agent sửa **trong file**, không dump full SQL ra chat.
+4. Dedup trong file; **không** execute/deploy. Chi tiết: [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md).
+
+## 3. Không làm gì (Out of scope)
 
 | Hạng mục | Ghi chú |
 |----------|---------|
-| `type != 0` (clone file XML / copy Controllers) | Để dành phase sau; param `type` vẫn có, default `0` |
-| Deploy / EXECUTE script lên DB target | Chỉ **ghi file** — không chạy DDL trên target |
-| Sửa / ALTER object đã có ở target | Object đã có → `skipped_exists`, không overwrite |
+| Clone file XML / copy Controllers (`type=2` dự phòng) | **Không** dùng `type=1` cho việc này — type=1 = paste-for-edit |
+| Deploy / EXECUTE mặc định lên DB | type=0: theo config; type=1: **luôn tắt** |
+| type=0: overwrite object đã có ở target | → `skipped_exists` |
 | Decrypt / đọc `.f` mã hóa | Giống summary_xml: không hỗ trợ |
 | Clone data (INSERT rows) | Chỉ schema / definition |
-| UI VS Code extension command | Parity UX NewSqlTemp ở phía MCP Python; không bắt buộc sửa extension |
+| UI VS Code extension command | Parity UX NewSqlTemp ở phía MCP Python |
 
-## 4. In scope — v1
+## 4. In scope
 
-- MCP tool mới `clone_things`
-- Input: `type`, `object`, `project_source`, `project_target`, `path_to_pasted`
+- MCP tool `clone_things` với `type` ∈ `{0, 1}`
+- Input: `type`, `object`, `project_source`, `project_target` (optional khi type=1), `path_to_pasted`
 - Config: `clone_things.sql_temp_folder`, `clone_things.open_editor_cmd`
-- Seed từ tên SQL **hoặc** path XML (summary)
-- Queue đệ quy dependency
-- Append script + blank line separator
-- Open file cho user
-- JSON response đầy đủ (`cloned`, `skipped_exists`, `not_found_both`, …)
+- **type=0:** seed SQL name hoặc XML; queue deps; `CREATE`; target-first; JSON `cloned` / …
+- **type=1:** list tên SQL; `ALTER`; dedup file; line range; JSON `pasted` / …
 
 ## 5. Ví dụ end-to-end
 
@@ -108,6 +114,20 @@ Source không có `funcGhost`, target cũng không →:
 
 → summary_xml lấy `sql.tables`, `sql.procs`, `sql.views`, `controller.db_table` → đưa vào queue → cùng luật target-first.
 
+### 5.4. type=1 — paste proc để chỉnh
+
+```json
+{
+  "type": 1,
+  "object": "dbo.zc_bkctnb",
+  "project_source": "E:\\FBO\\SHOWA\\FBISP242\\App_Data\\Controllers\\Templates\\Upload\\SVTran.xml",
+  "project_target": "",
+  "path_to_pasted": "E:\\SQL Temp\\showa_fbisp242 (5).sql"
+}
+```
+
+→ Append `ALTER PROCEDURE …` vào file; JSON `pasted` kèm `line_start`/`line_end`; user tự F5. Xem [11](./11_type1_paste_for_edit.md).
+
 ## 6. Actors
 
 | Actor | Vai trò |
@@ -127,3 +147,4 @@ Source không có `funcGhost`, target cũng không →:
 | **Seed** | Danh sách object ban đầu đưa vào queue |
 | **sql temp** | File `.sql` tạo mới khi `path_to_pasted` trống, trong `sql_temp_folder` |
 | **Open for visibility** | Mở file bằng editor CLI / shell association — khác `open()` chỉ đọc bytes trong process |
+| **paste-for-edit (type=1)** | Xuất definition ra `.sql` dạng ALTER để chỉnh; không clone sang project khác |

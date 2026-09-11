@@ -16,10 +16,11 @@ alwaysApply: true
    - query_type=2: path file `.sql` (script dài)
 2. `get_xml_entities` - Đọc entity XML (mode=content / path / list)
 3. `clone_things` - Clone SQL (table/proc/func/view) **thiếu ở project đích** từ project nguồn → **1 file .sql** (append + GO). Target-first, đệ quy dependency, partition `m41$` → `m41$000000`.
+4. `compare_things` - So sánh đa loại (`sql`, `table`, `xml`, `file`, `folder`) giữa 2 project hoặc 2 path đĩa/UNC → JSON agent-actionable (hunks line ranges, signals, next_actions). READ-ONLY: không clone, không ALTER, không deploy.
 
 ### FBOGraph (XML index Kuzu)
-4. `query_radar` - Cypher ad-hoc (chỉ khi cần)
-5. `read_local_file` - Đọc file XML trong project
+5. `query_radar` - Cypher ad-hoc (chỉ khi cần)
+6. `read_local_file` - Đọc file XML trong project
 
 ## Khi nào BẮT BUỘC dùng `clone_things` (không tự loop query_database)
 
@@ -38,6 +39,7 @@ Agent **phải** gọi `clone_things` khi user nói / ý nghĩa gần với:
 - Nhiều XML: gọi `clone_things` **lần lượt từng XML**, **cùng** `path_to_pasted` để nhét chung 1 file
 
 ## Agent habit
+- So sánh / tìm khác biệt giữa 2 project / 2 bin UNC → **`compare_things` trước** để biết chi tiết lệch / thiếu và khoảng dòng, rồi mới gọi `clone_things` nếu cần mang sang hoặc paste ALTER để sửa.
 - Chưa biết file → query_radar (Template 1 / 5 / 11), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
 - Đọc file controller FBO: MẶC ĐỊNH dùng `read_local_file(..., read_option=3)` (hoặc không truyền `read_option`) để nhận JSON summary siêu gọn (~29ms, tiết kiệm 95% token). CHỈ gọi `read_option=2` khi cần đọc full flat để sửa code.
 - Clone SQL giữa 2 project / thiếu proc sau khi copy XML → **`clone_things` trước**, rồi mới đọc file `.sql` tại `path_to_pasted` để review.

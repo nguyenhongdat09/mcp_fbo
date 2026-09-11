@@ -41,63 +41,76 @@
 - [ ] Chạy full acceptance `07` P0
 - [ ] Không commit secrets / connection string
 
+### Phase G — type=1 paste-for-edit
+
+Spec: [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md).
+
+- [x] Branch `type==1` trong service + MCP description (`0=clone`, `1=paste-for-edit`)
+- [x] `project_target` optional; XML-as-object → `invalid_object`
+- [x] `parse_object_list` + `transform_create_to_alter` + `object_already_in_sql_file`
+- [x] Append trả `line_start`/`line_end`; USE sections từ **source** DB names
+- [x] Force `execute_clone=False`; JSON `pasted` / `skipped_already_in_file` / `not_found_source` / `agent_message`
+- [x] **Cấm** full SQL trong JSON; **cấm** deploy
+- [x] Tests `tests/clone_things/test_type1_paste_for_edit.py` (TC-T1-*)
+- [x] Không regress type=0
+- [ ] *(Sau code)* Cập nhật `.cursorrules` / skill `fbo-clone-things` — agent habit type=1
+
 ## 2. Definition of Done
 
-1. Agent gọi `clone_things` với 2 project path thật → nhận JSON đúng schema.
+1. Agent gọi `clone_things` type=0 với 2 project path thật → nhận JSON đúng schema.
 2. User thấy file `.sql` mở trên editor (hoặc warning rõ nếu CLI thiếu).
 3. Object đã có target không bị paste lại; có trong `skipped_exists`.
 4. Missing cả hai xuất hiện trong JSON + comment tổng hợp trong file.
-5. Không có thao tác DDL execute trên DB target.
+5. Không có thao tác DDL execute trên DB target (type=0 theo config; type=1 luôn không).
+6. type=1: paste ALTER + line range + dedup; AC-T1-* pass.
 
 ## 3. Anti-patterns (nhắc lại)
 
 Xem `06_reuse_existing.md` §8. Đặc biệt:
 
 - Không implement “clone” chỉ bằng hướng dẫn Agent tự làm tay.
-- Không bỏ `skipped_exists`.
+- Không bỏ `skipped_exists` (type=0).
 - Không dùng `open()` như là “đã mở file cho user”.
 - Không dùng `ObjectCatalogFetcher.fetch_one` để exists bảng.
-- Không quên `GO` giữa các CREATE PROCEDURE/FUNCTION/VIEW.
+- Không quên `GO` giữa các CREATE/ALTER PROCEDURE/FUNCTION/VIEW.
+- **type=1:** không trả full definition trong JSON; không execute; không dùng type=1 cho clone XML Controllers.
 
-## 4. Prompt Gemini (copy-paste)
+## 4. Prompt Gemini — type=0 (đã có / regression)
 
 ```text
 Bạn là implementer FastBusiness MCP (repo E:\PythonProject\mcp_fbo).
 
-Nhiệm vụ: implement MCP tool `clone_things` theo đúng bộ spec:
-docs/doc/clone_things/ (đọc theo thứ tự README.md).
+Nhiệm vụ: maintain/regression clone_things type=0 theo docs/doc/clone_things/.
 
-Yêu cầu cứng:
-1. type mặc định 0 (SQL only). object = tên SQL hoặc path .xml (XML chỉ để seed SQL qua summary_xml).
-2. project_source + project_target bắt buộc absolute; resolve Web.config bằng module hiện có.
-3. Target-first: có ở target → skipped_exists, không lấy source; v1 không quét deps của object đã có ở target.
-4. Không có target → lấy full script từ source.
-5. Không có cả hai → not_found_both + 1 dòng comment tổng hợp cuối file "-- not found in 2 project: ...".
-6. Proc/func: dùng summary để enqueue dependency; loop + visited (normalize dbo.name) + max_objects; exclude FastBusiness$/ff_/fsd_ (root seed vẫn xử lý). Lọc tên bắt đầu # hoặc @.
-7. path_to_pasted rỗng → tạo .sql trong clone_things.sql_temp_folder (parity createSqlTempFile); mở file bằng cursor/code (PATH + default LocalAppData *.cmd), Popen non-blocking, fallback os.startfile. open() không đủ. Fail mở → warnings, success vẫn true.
-8. Append: 1 dòng trống + chèn GO giữa các block (CREATE PROC/FUNC/VIEW phải đầu batch).
-9. Response JSON đúng 04_json_response.md.
-10. Tách package clone_things/; mcp_app.py chỉ wire tool. Reuse query_database + summary_xml.
+Yêu cầu cứng type=0:
+1. type mặc định 0. object = tên SQL hoặc path .xml (XML chỉ seed).
+2. project_source + project_target bắt buộc absolute.
+3. Target-first + deps + not_found_both + GO + USE target DB names.
+4. Không phá khi thêm type=1.
+```
 
-Lưu ý kỹ thuật bắt buộc khi implement:
-- Kiểm tra tồn tại (exists) và phân loại object: tra cứu sys.objects trực tiếp (CẤM ObjectCatalogFetcher.fetch_one cho bảng vì sys.sql_modules không chứa Table).
-- Lấy script Table: đọc result_sets cột val (reuse _extract_script_text / resolved_as=table_schema), không tìm field "definition".
-- Phân cách block: chèn \n\nGO\n\n giữa các block CREATE PROCEDURE / FUNCTION / VIEW.
-- Lọc dependency: bỏ qua bảng tạm / biến bắt đầu bằng '#' hoặc '@'.
-- Normalize visited key: luôn schema-qualified lowercase (default dbo).
+## 4b. Prompt Gemini — type=1 (copy-paste)
 
-Làm theo checklist Phase A→F trong 08_implementation_checklist.md.
-Viết tests theo 07_test_cases.md (ưu tiên P0).
-Không deploy/execute DDL lên database target.
-Không sửa docs trừ khi phát hiện mâu thuẫn — khi đó ghi chú trong PR.
+Xem prompt đầy đủ ở [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md) §14. Tóm tắt:
+
+```text
+Implement clone_things type=1 theo docs/doc/clone_things/11_type1_paste_for_edit.md.
+Paste-for-edit: project_target rỗng OK; object = SQL name/list; CREATE→ALTER;
+dedup file; line_start/line_end; execute_clone=false; không full SQL trong JSON;
+USE theo source DB; tests TC-T1-*. Không regress type=0.
 ```
 
 ## 5. Smoke manual (sau code)
 
 ```text
+type=0:
 1. Điền clone_things.sql_temp_folder = thư mục có thật
 2. Restart MCP server
-3. Gọi clone_things với object proc biết thiếu ở target
-4. Xác nhận: file mở, JSON cloned đúng, skipped_exists đúng với bảng chung
-5. Gọi với object giả → not_found_both
+3. Gọi clone_things type=0 với object proc biết thiếu ở target
+4. Xác nhận: file mở, JSON cloned đúng, skipped_exists đúng
+
+type=1:
+5. Gọi type=1 object=proc thật, project_target="", path_to_pasted có sẵn hoặc ""
+6. Xác nhận: ALTER trong file, pasted[].line_*, agent_message; gọi lại → skipped_already_in_file
+7. F5 thủ công — tool không tự execute
 ```

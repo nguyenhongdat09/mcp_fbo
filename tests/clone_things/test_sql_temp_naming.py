@@ -55,3 +55,116 @@ def test_resolve_output_file_prefers_target(tmp_path):
     assert err is None
     assert Path(out_file).name == "showa_fbisp242.sql"
 
+
+def test_resolve_output_file_empty_config():
+    from clone_things.file_manager import resolve_output_file
+
+    config = {"clone_things": {"sql_temp_folder": ""}}
+    out_file, err = resolve_output_file(
+        "",
+        "zc_test_empty",
+        config,
+        project_target=r"E:\FBO\SHOWA\FBISP242",
+        project_source=r"E:\FBO\VLOTUS\SP228",
+    )
+    assert err is None
+    out_path = Path(out_file)
+    assert out_path.exists()
+    assert out_path.parent.name.lower() == "scripts"
+    # Dọn dẹp file test
+    try:
+        out_path.unlink()
+    except Exception:
+        pass
+
+
+def test_is_antigravity_ide(monkeypatch):
+    from clone_things.file_manager import is_antigravity_ide
+
+    # Override MCP_CLIENT = antigravity
+    monkeypatch.setenv("MCP_CLIENT", "antigravity")
+    assert is_antigravity_ide() is True
+
+    # Override MCP_CLIENT = cursor
+    monkeypatch.setenv("MCP_CLIENT", "cursor")
+    assert is_antigravity_ide() is False
+
+    monkeypatch.delenv("MCP_CLIENT", raising=False)
+    monkeypatch.setenv("TEST_ANTIGRAVITY", "1")
+    monkeypatch.setenv("ANTIGRAVITY_AGENT", "1")
+    assert is_antigravity_ide() is True
+
+
+def test_resolve_sql_temp_folder_cursor():
+    from clone_things.file_manager import resolve_sql_temp_folder
+
+    # Khi không phải Antigravity -> trả về nguyên folder_path
+    res = resolve_sql_temp_folder(r"E:\SQL Temp", is_antigravity=False)
+    assert res == r"E:\SQL Temp"
+
+
+def test_resolve_sql_temp_folder_antigravity(tmp_path):
+    from clone_things.file_manager import resolve_sql_temp_folder
+
+    skills_root = tmp_path / "skills"
+    # Giả lập setting là 'E:\SQL Temp'
+    res = resolve_sql_temp_folder(
+        r"E:\SQL Temp",
+        is_antigravity=True,
+        custom_skills_root=str(skills_root),
+    )
+    expected_dir = skills_root / "SQL Temp"
+    assert Path(res) == expected_dir
+    assert expected_dir.exists()
+    assert expected_dir.is_dir()
+
+    # Gọi lại lần 2 khi folder đã tồn tại -> vẫn trỏ đúng và không lỗi
+    res2 = resolve_sql_temp_folder(
+        r"E:/SQL Temp",
+        is_antigravity=True,
+        custom_skills_root=str(skills_root),
+    )
+    assert Path(res2) == expected_dir
+
+
+def test_resolve_output_file_antigravity_skills(tmp_path):
+    from clone_things.file_manager import resolve_output_file
+
+    skills_root = tmp_path / "skills"
+    config = {
+        "clone_things": {
+            "sql_temp_folder": r"E:\SQL Temp",
+        }
+    }
+
+    # Tạo file đầu tiên
+    f1, err1 = resolve_output_file(
+        "",
+        "zc_test",
+        config,
+        project_target=r"E:\FBO\SHOWA\FBISP242",
+        is_antigravity=True,
+        custom_skills_root=str(skills_root),
+    )
+    assert err1 is None
+    p1 = Path(f1)
+    assert p1.parent == skills_root / "SQL Temp"
+    assert p1.name == "showa_fbisp242.sql"
+    assert p1.exists()
+
+    # Tạo file thứ 2 -> tự động sinh (2).sql trong cùng folder SQL Temp
+    f2, err2 = resolve_output_file(
+        "",
+        "zc_test",
+        config,
+        project_target=r"E:\FBO\SHOWA\FBISP242",
+        is_antigravity=True,
+        custom_skills_root=str(skills_root),
+    )
+    assert err2 is None
+    p2 = Path(f2)
+    assert p2.parent == skills_root / "SQL Temp"
+    assert p2.name == "showa_fbisp242 (2).sql"
+    assert p2.exists()
+
+

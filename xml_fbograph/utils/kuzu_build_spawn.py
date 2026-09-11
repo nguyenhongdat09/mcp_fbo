@@ -16,7 +16,7 @@ from xml_fbograph.utils.path_helper import (
 )
 
 BUILDING_MARKER_NAME = ".building"
-BUILDING_MARKER_MAX_AGE_SEC = 45 * 60  # 45 phut
+BUILDING_MARKER_MAX_AGE_SEC = 10 * 60  # 10 phut
 
 
 class InvalidReferenceFileError(Exception):
@@ -225,7 +225,7 @@ def _validate_and_resolve_reference_file(reference_file: str) -> str:
     return ref_str
 
 
-def _sync_build_kuzu_in_mcp(reference_file: str, graph_dir: Path) -> None:
+def _sync_build_kuzu_in_mcp(reference_file: str, graph_dir: Path, progress_callback=None) -> None:
     helper = ProjectPathHelper(reference_file)
     project_root = str(helper.get_project_root())
     
@@ -269,7 +269,8 @@ def _sync_build_kuzu_in_mcp(reference_file: str, graph_dir: Path) -> None:
             build_and_save_graph(
                 helper.get_controllers_path(),
                 graph_dir,
-                project_label=project_root
+                project_label=project_root,
+                progress_callback=progress_callback
             )
         sys.stderr.write("[FboFBOGraph MCP] Sync-build finished.\n")
         sys.stderr.flush()
@@ -290,7 +291,7 @@ def _graph_build_lock(graph_dir: Path) -> threading.Lock:
             _sync_build_locks[key] = lock
         return lock
 
-def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
+def ensure_mcp_kuzu_ready(reference_file: str, progress_callback=None) -> Path:
     """
     Gate MCP: validate reference_file + dam bao Kuzu ready.
     - invalid path -> InvalidReferenceFileError (KHONG build)
@@ -320,6 +321,7 @@ def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
                 clear_building_marker(graph_dir)
                 return db_path
             if time.time() - start_wait > BUILDING_MARKER_MAX_AGE_SEC:
+                clear_building_marker(graph_dir)
                 break
         
         if kuzu_db_ready(db_path):
@@ -333,7 +335,7 @@ def ensure_mcp_kuzu_ready(reference_file: str) -> Path:
             return db_path
 
         try:
-            _sync_build_kuzu_in_mcp(reference_file, graph_dir)
+            _sync_build_kuzu_in_mcp(reference_file, graph_dir, progress_callback=progress_callback)
         except Exception as e:
             clear_building_marker(graph_dir)
             raise KuzuBuildFailedError({
