@@ -398,13 +398,17 @@ def main() -> int:
         )
 
     # ------------------------------------------------------------------
-    # MCP High-level Tools Verification
+    # High-level Tools Verification (engine level — mcp_server.py đã gỡ,
+    # các tool cũ chỉ là wrapper mỏng quanh xml_graph_query)
     # ------------------------------------------------------------------
-    import mcp_server
-    
+    from xml_fbograph.query.engine import xml_graph_query
+
     # Tool 1: search_nodes with synonyms
     try:
-        search_res = json.loads(mcp_server.search_nodes("gia ban", str(REF)))
+        search_res = xml_graph_query(
+            "search", "gia ban", str(REF),
+            match_type="all", folder_filter="Dir,Grid,Filter,Report,Lookup", limit=20,
+        )
         has_hits = len(search_res.get("field_matches", [])) > 0 or len(search_res.get("code_matches", [])) > 0
         if has_hits:
             results.append(_ok("mcp_tool:search_nodes_synonyms", f"Found synonyms: {search_res.get('expanded_query')}"))
@@ -412,10 +416,17 @@ def main() -> int:
             results.append(_fail("mcp_tool:search_nodes_synonyms", "No synonym results found"))
     except Exception as e:
         results.append(_fail("mcp_tool:search_nodes_synonyms", f"Error: {e}"))
-        
+
     # Tool 2: get_related_nodes (navigate without SHARED_INCLUDE)
     try:
-        rel_res = json.loads(mcp_server.get_related_nodes("Dir/CPTran.xml", str(REF), include_shared=False))
+        rel_res = xml_graph_query("navigate", "Dir/CPTran.xml", str(REF))
+        if isinstance(rel_res, dict):
+            for key in ("dependencies", "dependents", "results"):
+                if key in rel_res and isinstance(rel_res[key], list):
+                    rel_res[key] = [
+                        item for item in rel_res[key]
+                        if not (isinstance(item, dict) and item.get("type") == "SHARED_INCLUDE")
+                    ]
         grids = rel_res.get("grid_details", [])
         has_cptax_needs = any(g.get("controller") == "Grid\\CPTax.xml" and g.get("needs_xml") for g in grids)
         has_shared = any(dep.get("type") == "SHARED_INCLUDE" for dep in rel_res.get("dependencies", []))
@@ -428,7 +439,7 @@ def main() -> int:
 
     # Tool 3: query_node_details (compact context with needs_xml)
     try:
-        details_res = json.loads(mcp_server.query_node_details("Grid/CPTax.xml", str(REF)))
+        details_res = xml_graph_query("context", "Grid/CPTax.xml", str(REF), compact=True)
         needs_xml = details_res.get("needs_xml")
         source = details_res.get("source_on_disk")
         if needs_xml == ["Grid\\CPTax.xml"] and "CPTax.f" in str(source):

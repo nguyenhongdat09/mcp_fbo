@@ -1,6 +1,7 @@
 """
 Retest toàn diện sau khi Antigravity thêm MCP high-level tools.
-Gọi trực tiếp hàm trong mcp_server (nếu import được) + fallback xml_graph_query.
+mcp_server.py đã gỡ — test trực tiếp engine xml_graph_query + mcp_tools
+(logic giống hệt các MCP tool wrapper trước đây).
 """
 from __future__ import annotations
 
@@ -25,72 +26,51 @@ def _load_json(s: str):
 def main() -> int:
     results = []
 
-    # --- Import MCP tool functions (không chạy FastMCP transport) ---
-    tools = {}
-    try:
-        # Patch: tránh sys.exit nếu thiếu mcp — mcp_server vẫn cần FastMCP
-        import mcp_server as ms
+    # --- Tool-equivalent functions qua engine (mcp_server.py đã gỡ) ---
+    from xml_fbograph.query.engine import xml_graph_query
+    from xml_fbograph.mcp_tools import mcp_query_radar
 
-        tools["search_nodes"] = ms.search_nodes
-        tools["get_related_nodes"] = ms.get_related_nodes
-        tools["query_node_details"] = ms.query_node_details
-        tools["query_radar"] = ms.query_radar
-        tools["read_local_file"] = ms.read_local_file
-        import_ok = True
-        import_detail = "imported mcp_server tools"
-    except SystemExit as e:
-        import_ok = False
-        import_detail = f"mcp_server SystemExit (thiếu package mcp?): {e}"
-    except Exception as e:
-        import_ok = False
-        import_detail = f"import fail: {e}"
+    def search_nodes(query, reference_file, match_type="all", folder_filter=None, limit=20):
+        if not folder_filter:
+            folder_filter = "Dir,Grid,Filter,Report,Lookup"
+        return json.dumps(
+            xml_graph_query(
+                "search",
+                query,
+                reference_file,
+                match_type=match_type,
+                folder_filter=folder_filter,
+                limit=limit,
+            ),
+            ensure_ascii=False,
+        )
 
-    results.append(("import_mcp_server", import_ok, import_detail))
+    def get_related_nodes(target, reference_file, mode="navigate", include_shared=False):
+        res = xml_graph_query(mode, target, reference_file)
+        if not include_shared and isinstance(res, dict):
+            for key in ("dependencies", "dependents", "results"):
+                if key in res and isinstance(res[key], list):
+                    res[key] = [
+                        item
+                        for item in res[key]
+                        if not (isinstance(item, dict) and item.get("type") == "SHARED_INCLUDE")
+                    ]
+        return json.dumps(res, ensure_ascii=False)
 
-    if not import_ok:
-        # Fallback: test engine path tương đương tools
-        from xml_fbograph.query.engine import xml_graph_query
+    def query_node_details(target, reference_file, view="context"):
+        res = xml_graph_query(view, target, reference_file, compact=True)
+        if isinstance(res, dict):
+            res.setdefault("needs_xml", [])
+            res.setdefault("agent_hint", "")
+            res.setdefault("source_on_disk", "")
+        return json.dumps(res, ensure_ascii=False)
 
-        def search_nodes(query, reference_file, match_type="all", folder_filter=None, limit=20):
-            if not folder_filter:
-                folder_filter = "Dir,Grid,Filter,Report,Lookup"
-            return json.dumps(
-                xml_graph_query(
-                    "search",
-                    query,
-                    reference_file,
-                    match_type=match_type,
-                    folder_filter=folder_filter,
-                    limit=limit,
-                ),
-                ensure_ascii=False,
-            )
-
-        def get_related_nodes(target, reference_file, mode="navigate", include_shared=False):
-            res = xml_graph_query(mode, target, reference_file)
-            if not include_shared and isinstance(res, dict):
-                for key in ("dependencies", "dependents", "results"):
-                    if key in res and isinstance(res[key], list):
-                        res[key] = [
-                            item
-                            for item in res[key]
-                            if not (isinstance(item, dict) and item.get("type") == "SHARED_INCLUDE")
-                        ]
-            return json.dumps(res, ensure_ascii=False)
-
-        def query_node_details(target, reference_file, view="context"):
-            res = xml_graph_query(view, target, reference_file, compact=True)
-            if isinstance(res, dict):
-                res.setdefault("needs_xml", [])
-                res.setdefault("agent_hint", "")
-                res.setdefault("source_on_disk", "")
-            return json.dumps(res, ensure_ascii=False)
-
-        tools = {
-            "search_nodes": search_nodes,
-            "get_related_nodes": get_related_nodes,
-            "query_node_details": query_node_details,
-        }
+    tools = {
+        "search_nodes": search_nodes,
+        "get_related_nodes": get_related_nodes,
+        "query_node_details": query_node_details,
+        "query_radar": mcp_query_radar,
+    }
 
     # 1) navigate CPTran via get_related_nodes
     try:

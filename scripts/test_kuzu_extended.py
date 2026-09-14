@@ -263,28 +263,23 @@ def suite_mcp() -> SuiteReport:
     report = SuiteReport("G.mcp_surface")
 
     def tools_present():
-        # Không import mcp_server (thiếu package mcp sẽ sys.exit). Parse AST.
+        # Parse AST mcp_app (server packaged) — mcp_server.py đã gỡ.
         import ast
-        src = (ROOT / "mcp_server.py").read_text(encoding="utf-8")
+        src = (ROOT / "fastbusiness_mcp" / "mcp_app.py").read_text(encoding="utf-8")
         tree = ast.parse(src)
-        defs = {n.name for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        has_radar = "query_radar" in defs
-        has_read = "read_local_file" in defs
-        has_search = "search_nodes" in defs
-        has_navigate = "get_related_nodes" in defs
-        has_details = "query_node_details" in defs
-        missing_high = []
-        if not has_search:
-            missing_high.append("search_nodes")
-        if not has_navigate:
-            missing_high.append("get_related_nodes")
-        if not has_details:
-            missing_high.append("query_node_details")
-        # Agent workflow cần high-level tools — thiếu = fail
-        severity_ok = len(missing_high) == 0 and has_radar and has_read
+        tool_names = {
+            kw.value.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            for kw in node.keywords
+            if kw.arg == "name" and isinstance(kw.value, ast.Constant)
+        }
+        expected = {"query_radar", "read_local_file"}
+        missing = expected - tool_names
+        severity_ok = not missing
         return (
             severity_ok,
-            f"radar={has_radar} read={has_read} missing={missing_high} defs={sorted(defs)}",
+            f"tools={sorted(tool_names)} missing={sorted(missing)}",
         )
 
     def cypher_via_store():
@@ -303,7 +298,7 @@ def suite_mcp() -> SuiteReport:
         return ok, f"paths={paths}"
 
     def read_file_security_check():
-        # Simulate outside path rejection logic from mcp_server
+        # Simulate outside path rejection logic from mcp_read_local_file
         from xml_fbograph.utils.path_helper import ProjectPathHelper
         helper = ProjectPathHelper(REF)
         root = str(helper.get_project_root().resolve()).lower()

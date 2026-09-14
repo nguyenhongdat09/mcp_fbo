@@ -11,7 +11,6 @@ pip install -r requirements.txt
 ## Entry points
 
 - **`python -m fastbusiness_mcp.server`** — server chính (packaged, có license check), dùng cho Cursor/VS Code/exe.
-- **`python mcp_server.py`** — dev server "FboFBOGraph", expose thêm các graph tool (`search_nodes`, `get_related_nodes`, `query_node_details`) để dev/debug Kùzu graph.
 - **`run_server.py`** — entry point cho PyInstaller build (build/rebuild KuzuDB + chạy MCP).
 
 ## Cấu hình MCP (Cursor/VS Code)
