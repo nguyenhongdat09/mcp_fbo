@@ -14,11 +14,8 @@ from pathlib import Path
 try:
     from mcp.server import MCPServer as FastMCP
 except ImportError:
-    try:
-        from mcp.server.fastmcp import FastMCP
-    except ImportError:
-        print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
-        sys.exit(1)
+    print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
+    sys.exit(1)
 
 from mcp.types import ToolAnnotations
 
