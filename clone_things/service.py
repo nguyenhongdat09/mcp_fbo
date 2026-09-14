@@ -53,6 +53,7 @@ from .db_ops import (
 )
 from .type0_flow import execute_type0_flow
 from .type1_flow import execute_type1_flow
+from .type3_file_clone import run_type3_file_clone
 
 logger = logging.getLogger("clone_things")
 
@@ -71,18 +72,22 @@ def clone_things(
     mode_get: str = "proc",
     mode_recursion: str | int = "0",
     mode_read: str | int = 1,
+    execute: bool | str = False,
+    execute_clone: bool | str | None = None,
+    overwrite: bool | str = False,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     BƯỚC 1 BẮT BUỘC khi cần clone object SQL (table/proc/func/view) giữa 2 dự án FBO hoặc lấy ra sửa:
     - type=0: Clone thiếu từ source sang target, target-first, đệ quy dependency.
     - type=1: Paste-for-edit trên project_source ra file .sql dạng ALTER (proc/func/view) hoặc CREATE (table).
+    - type=3: Copy file bất kỳ (relative, list, glob, preset) từ project_source sang project_target.
 
     Args:
-        object: Tên object SQL hoặc path .xml controller
+        object: Tên object SQL hoặc path .xml controller (hoặc file/glob/preset cho type=3)
         project_source: Absolute path tới project FBO nguồn
-        project_target: Absolute path tới project FBO đích (bắt buộc với type=0; bỏ qua khi type=1)
-        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit (xuất object ra .sql dạng ALTER)
+        project_target: Absolute path tới project FBO đích (bắt buộc với type=0 và type=3; bỏ qua khi type=1)
+        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone
         path_to_pasted: File .sql để append; để trống = tự tạo temp và mở editor
         schema: Schema mặc định (default: "dbo")
         db_type: Ưu tiên lookup — "app" (app→sys) hoặc "sys" (sys→app). Mặc định luôn quét cả hai DB.
@@ -92,6 +97,9 @@ def clone_things(
         mode_get: Lọc loại object khi seed từ XML trong type=1 (default: "proc")
         mode_recursion: Đệ quy dependency trong type=1 ("0" hoặc "1", default: "0")
         mode_read: Chế độ đọc trong type=1 (0: ghi file .sql, 1: metadata summary, 3: full SQL body)
+        execute: Thực hiện copy file thật trong type=3 (default: False = dry-run)
+        execute_clone: Alias của execute (nếu khác None thì dùng)
+        overwrite: Cho phép ghi đè file đã tồn tại trên target trong type=3 (default: False)
         config: Cấu hình hệ thống từ config.yaml
     """
     start_time = time.perf_counter()
@@ -112,18 +120,19 @@ def clone_things(
         max_objects = int(clone_cfg["max_objects"])
     if open_file is True and "open_file" in clone_cfg:
         open_file = bool(clone_cfg["open_file"])
-    execute_clone = bool(clone_cfg.get("execute_clone", clone_cfg.get("Execute_clone", False)))
+    cfg_execute_clone = bool(clone_cfg.get("execute_clone", clone_cfg.get("Execute_clone", False)))
+    execute_clone_effective = execute_clone if execute_clone is not None else cfg_execute_clone
     open_editor_cmd = clone_cfg.get("open_editor_cmd", "auto")
 
     # 1. Validation
-    if type not in (0, 1):
+    if type not in (0, 1, 3):
         logger.warning("Unsupported type requested: %s", type)
         return {
             "success": False,
             "spec_version": "1.0",
             "type": type,
             "error_code": "unsupported_type",
-            "message": f"type={type} not implemented; only type=0 (SQL clone) and type=1 (paste-for-edit) are supported",
+            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), and type=3 (file clone) are supported",
             "path_to_pasted": None,
             "cloned": [],
             "skipped_exists": [],
@@ -271,40 +280,60 @@ def clone_things(
             err_res["not_found_both"] = []
         return err_res
 
-    if type == 0:
+    if type in (0, 3):
         if not project_target or not str(project_target).strip():
-            logger.warning("Missing project_target parameter for type=0")
-            return {
+            logger.warning("Missing project_target parameter for type=%s", type)
+            err_res = {
                 "success": False,
                 "spec_version": "1.0",
-                "type": 0,
+                "type": type,
                 "error_code": "invalid_project_target",
-                "message": "project_target is required",
+                "message": f"project_target is required when type={type}",
                 "path_to_pasted": None,
-                "cloned": [],
-                "skipped_exists": [],
-                "skipped_noise": [],
-                "not_found_both": [],
                 "warnings": [],
             }
+            if type == 0:
+                err_res.update({
+                    "cloned": [],
+                    "skipped_exists": [],
+                    "skipped_noise": [],
+                    "not_found_both": [],
+                })
+            return err_res
 
         if not Path(project_target).is_absolute():
             logger.warning("project_target is not an absolute path: %s", project_target)
-            return {
+            err_res = {
                 "success": False,
                 "spec_version": "1.0",
-                "type": 0,
+                "type": type,
                 "error_code": "invalid_project_target",
                 "message": f"project_target must be an absolute path: {project_target}",
                 "path_to_pasted": None,
-                "cloned": [],
-                "skipped_exists": [],
-                "skipped_noise": [],
-                "not_found_both": [],
                 "warnings": [],
             }
+            if type == 0:
+                err_res.update({
+                    "cloned": [],
+                    "skipped_exists": [],
+                    "skipped_noise": [],
+                    "not_found_both": [],
+                })
+            return err_res
 
     # Dispatch based on type
+    if type == 3:
+        resolved_exec = execute_clone if execute_clone is not None else execute
+        return run_type3_file_clone(
+            object=object,
+            project_source=project_source,
+            project_target=project_target,
+            execute=resolved_exec,
+            overwrite=overwrite,
+            warnings=warnings,
+            start_time=start_time,
+        )
+
     if type == 1:
         return execute_type1_flow(
             object=object,
@@ -336,7 +365,7 @@ def clone_things(
         max_objects=max_objects,
         open_file=open_file,
         open_editor_cmd=open_editor_cmd,
-        execute_clone=execute_clone,
+        execute_clone=execute_clone_effective,
         exclude_like=exclude_like,
         config=config,
         warnings=warnings,

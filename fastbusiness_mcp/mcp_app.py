@@ -525,7 +525,7 @@ def clone_things_tool(
     object: Annotated[
         str,
         Field(
-            description="type=0: tên SQL hoặc đường dẫn file .xml controller để seed; type=1: tên SQL / danh sách tên SQL hoặc đường dẫn file .xml"
+            description="type=0: tên SQL hoặc đường dẫn file .xml controller để seed; type=1: tên SQL / danh sách tên SQL hoặc đường dẫn file .xml; type=3: đường dẫn relative, danh sách path, glob (*, ?), hoặc preset ('mail')"
         ),
     ],
     project_source: Annotated[
@@ -538,14 +538,14 @@ def clone_things_tool(
         str,
         Field(
             default="",
-            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc khi type=0; type=1 được phép để trống)",
+            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc khi type=0 hoặc type=3; type=1 được phép để trống)",
         ),
     ] = "",
     type: Annotated[
         int,
         Field(
             default=0,
-            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp)",
+            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp), 3=copy file bất kỳ từ project_source sang project_target",
         ),
     ] = 0,
     path_to_pasted: Annotated[
@@ -573,12 +573,26 @@ def clone_things_tool(
         int,
         Field(
             default=1,
-            description="Chỉ dùng khi type=1: 1=summary/analyze không ghi file (mặc định), 0=ghi file .sql để sửa (paste-for-edit), 3=trả full definition trong JSON (tối đa 3 object, recursion=0). Type=0 bỏ qua.",
+            description="Chỉ dùng khi type=1: 1=summary/analyze không ghi file (mặc định), 0=ghi file .sql để sửa (paste-for-edit), 3=trả full definition trong JSON (tối đa 3 object, recursion=0). Type=0,3 bỏ qua.",
         ),
     ] = 1,
+    execute: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi type=3: false=dry-run chỉ lên danh sách planned (mặc định); true=thực hiện copy file qua shutil.copy2.",
+        ),
+    ] = False,
+    overwrite: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi type=3: false=không ghi đè file đã có trên target (mặc định); true=cho phép ghi đè sau khi user xác nhận.",
+        ),
+    ] = False,
 ) -> str:
     """
-    BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa:
+    BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa hoặc copy file:
 
     1) type=0 (SQL clone giữa 2 dự án):
        - Kiểm tra Target-first, đệ quy dependency và xuất toàn bộ script thiếu vào file .sql temp.
@@ -589,6 +603,11 @@ def clone_things_tool(
        - mode_read=3: Trả full SQL body trong JSON analyzed[].definition (tối đa 3 object, mode_recursion=0).
        - object có thể là tên SQL, danh sách tên SQL, hoặc đường dẫn file .xml controller (hỗ trợ mode_get để lọc proc/table/view/func và mode_recursion=1 để đệ quy dependency).
        - project_target được phép để trống. Không deploy lên database.
+    3) type=3 (copy file giữa 2 dự án):
+       - Copy file bất kỳ (relative path, list, glob, preset 'mail') từ project_source sang project_target.
+       - execute=False (mặc định): dry-run, không ghi đĩa.
+       - execute=True: chỉ copy file chưa có trên target (overwrite=False mặc định).
+       - File đã có: không đè, trả về exists_on_target và user_prompt để hỏi user; chỉ overwrite=True khi user xác nhận.
     """
     try:
         cfg = get_config()
@@ -601,6 +620,8 @@ def clone_things_tool(
             mode_get=mode_get,
             mode_recursion=mode_recursion,
             mode_read=mode_read,
+            execute=execute,
+            overwrite=overwrite,
             config=cfg,
         )
         return format_clone_result(result)

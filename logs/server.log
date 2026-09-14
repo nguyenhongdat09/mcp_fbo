@@ -246,3 +246,12 @@
 2026-09-09 10:51:51,092 | INFO | fastbusiness_mcp.mcp_app | Loaded config from config.yaml (rag_qlyc.base_url=http://172.168.5.14:8000)
 2026-09-09 16:51:54,955 | INFO | fastbusiness_mcp.mcp_app | Loaded config from config.yaml (rag_qlyc.base_url=http://172.168.5.14:8000)
 2026-09-09 16:51:54,957 | INFO | fastbusiness_mcp.mcp_app | Effective paths: kuzu_db_base='', sql_temp_folder=''
+2026-09-12 12:05:47,740 | INFO | fastbusiness_mcp.mcp_app | Loaded config from config.yaml (rag_qlyc.base_url=http://172.168.5.14:8000)
+2026-09-12 12:05:47,779 | INFO | fastbusiness_mcp.mcp_app | Loaded machine paths: ['fbograph', 'clone_things']
+2026-09-12 12:05:47,780 | INFO | fastbusiness_mcp.mcp_app | Effective paths: kuzu_db_base='C:/KuzuDB', sql_temp_folder='E:/SQL Temp'
+2026-09-12 12:06:04,629 | INFO | fastbusiness_mcp.mcp_app | Loaded config from config.yaml (rag_qlyc.base_url=http://172.168.5.14:8000)
+2026-09-12 12:06:04,631 | INFO | fastbusiness_mcp.mcp_app | Loaded machine paths: ['fbograph', 'clone_things']
+2026-09-12 12:06:04,631 | INFO | fastbusiness_mcp.mcp_app | Effective paths: kuzu_db_base='C:/KuzuDB', sql_temp_folder='E:/SQL Temp'
+2026-09-12 12:06:12,996 | INFO | fastbusiness_mcp.mcp_app | Loaded config from config.yaml (rag_qlyc.base_url=http://172.168.5.14:8000)
+2026-09-12 12:06:12,997 | INFO | fastbusiness_mcp.mcp_app | Loaded machine paths: ['fbograph', 'clone_things']
+2026-09-12 12:06:12,998 | INFO | fastbusiness_mcp.mcp_app | Effective paths: kuzu_db_base='C:/KuzuDB', sql_temp_folder='E:/SQL Temp'

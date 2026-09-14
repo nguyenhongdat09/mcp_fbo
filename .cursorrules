@@ -15,12 +15,22 @@ alwaysApply: true
    - query_type=1: SQL inline ngắn
    - query_type=2: path file `.sql` (script dài)
 2. `get_xml_entities` - Đọc entity XML (mode=content / path / list)
-3. `clone_things` - Clone SQL (table/proc/func/view) **thiếu ở project đích** từ project nguồn → **1 file .sql** (append + GO). Target-first, đệ quy dependency, partition `m41$` → `m41$000000`.
+3. `clone_things` - Clone SQL thiếu (type=0), paste-for-edit ALTER (type=1), copy file bất kỳ giữa 2 project (type=3, default dry-run, không đè trừ khi user confirm).
 4. `compare_things` - So sánh đa loại (`sql`, `table`, `xml`, `file`, `folder`) giữa 2 project hoặc 2 path đĩa/UNC → JSON agent-actionable (hunks line ranges, signals, next_actions). READ-ONLY: không clone, không ALTER, không deploy.
 
 ### FBOGraph (XML index Kuzu)
 5. `query_radar` - Cypher ad-hoc (chỉ khi cần)
 6. `read_local_file` - Đọc file XML trong project
+
+## CẤM Shell FBO trên UNC — BẮT BUỘC dùng MCP
+Trên share UNC (`\\server\CustomerPro\FBO\...`), Shell (`Get-ChildItem`, `Copy-Item`, `Select-String`...) hay no exit / mất output:
+- **CẤM Shell** để list, copy, hoặc đọc file trên UNC FBO.
+- Đọc file XML/aspx/js/config → `read_local_file`
+- So sánh file/folder giữa 2 project → `compare_things` (kind=folder / file)
+- Đọc/sửa proc, func, view từ DB → `clone_things` (type=1)
+- Mang SQL thiếu giữa 2 project → `clone_things` (type=0)
+- Copy file bất kỳ (DLL/aspx/js/xml...) giữa 2 project → `clone_things` (type=3). Mặc định dry-run (`execute=false`), không ghi đè (`overwrite=false`) nếu file đã có trên target trừ khi user xác nhận.
+- Shell chỉ dùng cho việc ngoài FBO (git local, npm...) không đụng UNC FBO.
 
 ## Khi nào BẮT BUỘC dùng `clone_things` (không tự loop query_database)
 
