@@ -317,15 +317,41 @@ def mcp_query_node_details(target: str, reference_file: str, view: str = "contex
         return f"Loi query_node_details: {str(e)}"
 
 
-# Tool 5
-def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 3) -> str:
+def mcp_read_local_file(file_path: str, reference_file: str = "", read_option: int = 3) -> str:
 
     try:
-        helper = ProjectPathHelper(reference_file)
-        project_root = helper.get_project_root()
+        if not file_path or not str(file_path).strip():
+            return "Loi: file_path khong duoc de trong"
 
         p = Path(file_path)
-        if not p.is_absolute():
+        if p.is_absolute():
+            p = p.resolve()
+            if not p.exists():
+                return f"Loi: File khong ton tai: {file_path}"
+
+            if reference_file and str(reference_file).strip():
+                helper = ProjectPathHelper(reference_file)
+                project_root = helper.get_project_root()
+            else:
+                from find_connect_by_path.path_resolver import get_project_root_from_path
+                resolved_root = get_project_root_from_path(str(p))
+                if resolved_root:
+                    project_root = Path(resolved_root).resolve()
+                else:
+                    project_root = p.parent
+                dummy_xml = project_root / "App_Data" / "Controllers" / "Dir" / "dummy.xml"
+                helper = ProjectPathHelper(str(dummy_xml))
+
+            # Sandbox check
+            if not str(p).lower().startswith(str(project_root.resolve()).lower()):
+                return f"Loi: Duong dan nam ngoai thu muc du an: {file_path}"
+        else:
+            # Relative path: reference_file is required
+            if not reference_file or not str(reference_file).strip():
+                return "Loi: reference_file_required: Duong dan tuong doi yeu cau tham so reference_file tuyet doi de xac dinh project root."
+
+            helper = ProjectPathHelper(reference_file)
+            project_root = helper.get_project_root()
             controllers_root = helper.get_controllers_path()
             p1 = controllers_root / file_path
             if p1.exists():
@@ -333,14 +359,12 @@ def mcp_read_local_file(file_path: str, reference_file: str, read_option: int = 
             else:
                 p = project_root / file_path
 
-        p = p.resolve()
+            p = p.resolve()
+            if not str(p).lower().startswith(str(project_root.resolve()).lower()):
+                return f"Loi: Duong dan nam ngoai thu muc du an: {file_path}"
 
-        # Sandbox check
-        if not str(p).lower().startswith(str(project_root.resolve()).lower()):
-            return f"Loi: Duong dan nam ngoai thu muc du an: {file_path}"
-
-        if not p.exists():
-            return f"Loi: File khong ton tai: {file_path}"
+            if not p.exists():
+                return f"Loi: File khong ton tai: {file_path}"
 
         if read_option == 3:
             is_valid_summary_xml = False

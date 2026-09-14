@@ -1,4 +1,5 @@
 venv/
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -6,10 +7,13 @@ __pycache__/
 *.ldb
 build/
 dist/
+*.exe
 FastBusiness-MCP-Package/
 logs/
 .fbograph/
 *.log
+.pytest_cache/
 key.json
+pass_zip.txt
 config_path.yaml
 config_path.xml

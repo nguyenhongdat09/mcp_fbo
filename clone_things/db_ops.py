@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from queryDatabase.connection import get_connection_config
-from queryDatabase.executor import execute_query
-from queryDatabase.service import query_database
-from queryDatabase.bridges.summary_bridge import summary_object
+from query_database.connection import get_connection_config
+from query_database.executor import execute_query
+from query_database.service import query_database
+from query_database.bridges.summary_bridge import summary_object
 
 from .script_transform import wrap_check_exists
 

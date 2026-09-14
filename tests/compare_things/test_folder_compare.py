@@ -125,3 +125,83 @@ def test_tc_folder_06_compare_content_with_hunks(tmp_path: Path):
     assert item["status"] == "different_content"
     assert "content" in item
     assert item["content"]["hunk_count"] >= 1
+
+
+def test_tc_folder_07_seed_mode_prefix_and_contains(tmp_path: Path):
+    """AC-SEED-1 & AC-SEED-2: seed_mode prefix vs contains vs token on stem/basename."""
+    dir_a = tmp_path / "A"
+    sub = dir_a / "App_Data" / "Controllers" / "Filter"
+    sub.mkdir(parents=True)
+
+    (sub / "zccnslkdhtpnc.xml").write_text("<xml/>", encoding="utf-8")
+    (sub / "zccnthxldtcth.xml").write_text("<xml/>", encoding="utf-8")
+    (sub / "other_zccn_report.xml").write_text("<xml/>", encoding="utf-8")
+    (sub / "test_foo_bar.xml").write_text("<xml/>", encoding="utf-8")
+    (sub / "test_foobar.xml").write_text("<xml/>", encoding="utf-8")
+
+    # AC-SEED-1: seed_mode="prefix" matches stem starting with kw
+    res_prefix = compare_things(
+        kind="folder",
+        folder_a=str(dir_a),
+        inventory=True,
+        seed="zccnslkdhtpnc",
+        seed_mode="prefix",
+    )
+    assert res_prefix["success"] is True
+    files_prefix = [f["relative"].replace("\\", "/") for f in res_prefix["files"]]
+    assert any("zccnslkdhtpnc.xml" in f for f in files_prefix)
+    assert not any("zccnthxldtcth.xml" in f for f in files_prefix)
+
+    # Prefix seed="zccn" matches zccn* files but not other_zccn_report
+    res_prefix_zccn = compare_things(
+        kind="folder",
+        folder_a=str(dir_a),
+        inventory=True,
+        seed="zccn",
+        seed_mode="prefix",
+    )
+    files_zccn = [f["relative"].replace("\\", "/") for f in res_prefix_zccn["files"]]
+    assert any("zccnslkdhtpnc.xml" in f for f in files_zccn)
+    assert any("zccnthxldtcth.xml" in f for f in files_zccn)
+    assert not any("other_zccn_report.xml" in f for f in files_zccn)
+
+    # AC-SEED-2: default seed_mode="contains" keeps old behavior
+    res_contains = compare_things(
+        kind="folder",
+        folder_a=str(dir_a),
+        inventory=True,
+        seed="zccn",
+    )
+    files_contains = [f["relative"].replace("\\", "/") for f in res_contains["files"]]
+    assert any("other_zccn_report.xml" in f for f in files_contains)
+
+    # Token boundary matching
+    res_token = compare_things(
+        kind="folder",
+        folder_a=str(dir_a),
+        inventory=True,
+        seed="foo",
+        seed_mode="token",
+    )
+    files_token = [f["relative"].replace("\\", "/") for f in res_token["files"]]
+    assert any("test_foo_bar.xml" in f for f in files_token)
+    assert not any("test_foobar.xml" in f for f in files_token)
+
+
+def test_tc_folder_08_seed_token_short_warning(tmp_path: Path):
+    """AC-SEED-OPT: short token seed (< 4 chars) triggers seed_token_short warning."""
+    dir_a = tmp_path / "A"
+    dir_a.mkdir()
+    (dir_a / "test.txt").write_text("ok", encoding="utf-8")
+
+    res = compare_things(
+        kind="folder",
+        folder_a=str(dir_a),
+        inventory=True,
+        seed="ab",
+        seed_mode="token",
+    )
+    assert res["success"] is True
+    assert any("seed_token_short" in w for w in res["warnings"])
+
+

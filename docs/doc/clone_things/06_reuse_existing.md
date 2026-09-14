@@ -12,8 +12,8 @@
 
 | Nhu cầu | Module / API hiện có | Cách dùng trong clone_things |
 |---------|----------------------|------------------------------|
-| Resolve DB từ path project | `find_connect_by_path`, `queryDatabase/connection.py` | `file_path=project_source` / `project_target` |
-| Phân loại + tồn tại object | `sys.objects` lookup giống `queryDatabase/service.py` + `build_object_lookup_sql` | **CẤM** `ObjectCatalogFetcher.fetch_one` cho table/exists |
+| Resolve DB từ path project | `find_connect_by_path`, `query_database/connection.py` | `file_path=project_source` / `project_target` |
+| Phân loại + tồn tại object | `sys.objects` lookup giống `query_database/service.py` + `build_object_lookup_sql` | **CẤM** `ObjectCatalogFetcher.fetch_one` cho table/exists |
 | DDL table | `query_database` type=0 (table branch) + ghép `val` / `_extract_script_text` | Không dùng field `definition` |
 | Full proc/func/view | `summary_object` mode=`full` | `definition` |
 | Dependency proc/func | `summary_object` mode=`summary` | `calls_*`, `tables_read`, `tables_write` (+ lọc `#`/`@`) |
@@ -70,7 +70,7 @@ Phải phân biệt:
 
 ```text
 table   → query_database(file_path=source, query=name, query_type=0)
-          → ghép result_sets[0] cột val (reuse queryDatabase.formatter._extract_script_text
+          → ghép result_sets[0] cột val (reuse query_database.formatter._extract_script_text
              khi resolved_as == "table_schema"; KHÔNG đọc field "definition")
 routine → query_database(..., query_type=0, mode="full") → field "definition"
 ```

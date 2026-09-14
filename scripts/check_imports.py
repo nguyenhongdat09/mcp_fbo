@@ -1,7 +1,7 @@
 """Check architectural layer dependency rules across packages.
 
 Rule: Dependency goes strictly one-way downwards:
-fastbusiness_mcp -> queryDatabase -> sql_object_summary -> tsql_engine -> antlr4
+fastbusiness_mcp -> query_database -> sql_object_summary -> tsql_engine -> antlr4
 """
 
 import ast
@@ -54,14 +54,14 @@ def main() -> int:
     # Layer 1: tsql_engine must not import higher layers or DB
     v1 = check_directory(
         ROOT / "tsql_engine",
-        ["queryDatabase", "sql_object_summary", "fastbusiness_mcp", "pyodbc", "find_connect_by_path"],
+        ["query_database", "sql_object_summary", "fastbusiness_mcp", "pyodbc", "find_connect_by_path"],
     )
     all_violations.extend(v1)
 
     # Layer 2: sql_object_summary must not import DB, pyodbc, or MCP
     v2 = check_directory(
         ROOT / "sql_object_summary",
-        ["queryDatabase", "fastbusiness_mcp", "pyodbc", "find_connect_by_path"],
+        ["query_database", "fastbusiness_mcp", "pyodbc", "find_connect_by_path"],
     )
     all_violations.extend(v2)
 

@@ -1,8 +1,8 @@
 """Quick check: expand infra bare name."""
 from unittest.mock import MagicMock
 
-from queryDatabase.bridges.summary_bridge import summary_object
-from queryDatabase.object_catalog.models import DbObjectMeta
+from query_database.bridges.summary_bridge import summary_object
+from query_database.object_catalog.models import DbObjectMeta
 from tests.sql_object_summary.test_analyze_proc import FIXTURE_INTEREST_PROC
 
 INFRA_NAME = "FastBusiness$Balance$BContract"

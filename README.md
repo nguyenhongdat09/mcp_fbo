@@ -8,6 +8,12 @@ MCP server cho FastBusiness (kiến trúc `mcp.server.MCPServer` / FastMCP + Pyd
 pip install -r requirements.txt
 ```
 
+## Entry points
+
+- **`python -m fastbusiness_mcp.server`** — server chính (packaged, có license check), dùng cho Cursor/VS Code/exe.
+- **`python mcp_server.py`** — dev server "FboFBOGraph", expose thêm các graph tool (`search_nodes`, `get_related_nodes`, `query_node_details`) để dev/debug Kùzu graph.
+- **`run_server.py`** — entry point cho PyInstaller build (build/rebuild KuzuDB + chạy MCP).
+
 ## Cấu hình MCP (Cursor/VS Code)
 
 ```json
@@ -38,7 +44,7 @@ pip install -r requirements.txt
 
 ```
 find_connect_by_path/   # Resolve Web.config → connection string
-queryDatabase/          # Connect + execute SQL
+query_database/          # Connect + execute SQL
 find_entity_by_xml/     # Đọc entity từ XML (lxml)
 ```
 

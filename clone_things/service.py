@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-from queryDatabase.connection import get_connection_config
-from queryDatabase.executor import execute_query
-from queryDatabase.service import query_database
-from queryDatabase.bridges.summary_bridge import summary_object, resolve_object_ref
+from query_database.connection import get_connection_config
+from query_database.executor import execute_query
+from query_database.service import query_database
+from query_database.bridges.summary_bridge import summary_object, resolve_object_ref
 from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml
 
 from .file_manager import (
@@ -59,8 +59,8 @@ logger = logging.getLogger("clone_things")
 
 
 def clone_things(
-    object: str,
-    project_source: str,
+    object: str = "",
+    project_source: str = "",
     project_target: str = "",
     type: int = 0,
     path_to_pasted: str = "",
@@ -75,6 +75,12 @@ def clone_things(
     execute: bool | str = False,
     execute_clone: bool | str | None = None,
     overwrite: bool | str = False,
+    confirm_overwrite: bool | str = False,
+    expand_dirs: bool | str = False,
+    max_files: int = 100,
+    copy_filter: str = "",
+    list_presets: bool | str = False,
+    planned_sample_size: int = 10,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -123,6 +129,15 @@ def clone_things(
     cfg_execute_clone = bool(clone_cfg.get("execute_clone", clone_cfg.get("Execute_clone", False)))
     execute_clone_effective = execute_clone if execute_clone is not None else cfg_execute_clone
     open_editor_cmd = clone_cfg.get("open_editor_cmd", "auto")
+
+    # Early check for list_presets in type=3
+    from .type3_file_clone import coerce_bool
+    if type == 3 and (coerce_bool(list_presets) or (isinstance(object, str) and object.strip().lower() == "preset:?")):
+        return run_type3_file_clone(
+            object=object,
+            list_presets=True,
+            start_time=start_time,
+        )
 
     # 1. Validation
     if type not in (0, 1, 3):
@@ -330,6 +345,12 @@ def clone_things(
             project_target=project_target,
             execute=resolved_exec,
             overwrite=overwrite,
+            confirm_overwrite=confirm_overwrite,
+            expand_dirs=expand_dirs,
+            max_files=max_files,
+            copy_filter=copy_filter,
+            list_presets=list_presets,
+            planned_sample_size=planned_sample_size,
             warnings=warnings,
             start_time=start_time,
         )

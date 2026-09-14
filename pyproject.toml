@@ -9,11 +9,14 @@ license = {text = "MIT"}
 
 dependencies = [
     "mcp>=2.0.0",
+    "pydantic>=2.0.0",
     "pyyaml>=6.0.0",
     "pyodbc>=5.0.0",
     "lxml>=5.0.0",
     "kuzu>=0.11.0",
     "watchdog>=4.0.0",
+    "py-machineid>=0.5.0",
+    "antlr4-python3-runtime==4.13.2",
 ]
 
 [project.optional-dependencies]
@@ -33,4 +36,7 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: tests cần DB/network thật (chạy riêng, không chạy mặc định)",
+]
 

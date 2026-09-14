@@ -2,7 +2,7 @@
 
 > **Mục đích:** Doc gửi **Gemini fix** — 2 lỗi live sau test `zcnkscttbt.xml` / `zc_sctnt`.  
 > **Ngày:** 2026-09-09  
-> **Phạm vi:** [`clone_things/service.py`](../../../clone_things/service.py), [`clone_things/file_manager.py`](../../../clone_things/file_manager.py), JSON response type=1; optional reuse check encrypt từ `queryDatabase` / `summary_object`.  
+> **Phạm vi:** [`clone_things/service.py`](../../../clone_things/service.py), [`clone_things/file_manager.py`](../../../clone_things/file_manager.py), JSON response type=1; optional reuse check encrypt từ `query_database` / `summary_object`.  
 > **Evidence:** live MCP + file [`scripts/_clone_things_live/case_proc_r1.sql`](../../../scripts/_clone_things_live/case_proc_r1.sql).  
 > **Không** đụng chrome_debug.
 

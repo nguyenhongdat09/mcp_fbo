@@ -1,6 +1,6 @@
 # tsql_engine — ANTLR4 T-SQL parser (portable)
 
-Engine parse T-SQL **không phụ thuộc** `queryDatabase` / MCP.
+Engine parse T-SQL **không phụ thuộc** `query_database` / MCP.
 
 ## Cấu trúc
 

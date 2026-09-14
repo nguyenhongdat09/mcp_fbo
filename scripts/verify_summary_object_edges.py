@@ -14,15 +14,15 @@ from unittest.mock import MagicMock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from queryDatabase.bridges.summary_bridge import (
+from query_database.bridges.summary_bridge import (
     summary_object,
     resolve_object_ref,
     _get_from_cache,
     _set_to_cache,
     _SUMMARY_CACHE,
 )
-from queryDatabase.object_catalog.fetcher import ObjectCatalogFetcher
-from queryDatabase.object_catalog.models import DbObjectMeta
+from query_database.object_catalog.fetcher import ObjectCatalogFetcher
+from query_database.object_catalog.models import DbObjectMeta
 from sql_object_summary import build_call_graph, extract_snippet, analyze_definition
 from sql_object_summary.options import AnalyzeOptions, DEFAULT_EXCLUDE_LIKE
 from sql_object_summary.call_graph import build_call_graph as bcg
@@ -61,7 +61,7 @@ def mock_meta(**kw):
 
 def test_execute_query_arg_order():
     """fetcher passes (sql, parsed) but executor signature is (parsed, query)."""
-    sig = inspect.signature(__import__("queryDatabase.executor", fromlist=["execute_query"]).execute_query)
+    sig = inspect.signature(__import__("query_database.executor", fromlist=["execute_query"]).execute_query)
     params = list(sig.parameters.keys())
     fetcher_src = inspect.getsource(ObjectCatalogFetcher.fetch_one)
     calls_wrong = "execute_query(sql, self._parsed)" in fetcher_src
@@ -69,8 +69,8 @@ def test_execute_query_arg_order():
     if params[:2] == ["parsed", "query"] and calls_wrong and not calls_right:
         report(
             "blocker",
-            "queryDatabase/object_catalog/fetcher.py — fetch_one/fetch_many/fetch_callers/fetch_parameters",
-            "execute_query(parsed_conn, sql) matching queryDatabase/executor.py signature",
+            "query_database/object_catalog/fetcher.py — fetch_one/fetch_many/fetch_callers/fetch_parameters",
+            "execute_query(parsed_conn, sql) matching query_database/executor.py signature",
             "All fetcher calls use execute_query(sql, self._parsed) — reversed argument order",
             "Swap to execute_query(self._parsed, sql) in all 5 call sites",
             "No — mocks patch execute_query and return fake 'data' key, masking live failure",
@@ -95,13 +95,13 @@ def test_result_sets_vs_data():
         class FakeFetcher(ObjectCatalogFetcher):
             pass
 
-        with patch("queryDatabase.object_catalog.fetcher.execute_query", return_value=fake_exec_return):
+        with patch("query_database.object_catalog.fetcher.execute_query", return_value=fake_exec_return):
             f = FakeFetcher({"server": "s", "database": "d"})
             meta = f.fetch_one("zc_bcthlv", "dbo")
             if meta is None:
                 report(
                     "blocker",
-                    "queryDatabase/object_catalog/fetcher.py:46 — fetch_one rows = res.get('data')",
+                    "query_database/object_catalog/fetcher.py:46 — fetch_one rows = res.get('data')",
                     "Parse result_sets[0] columns+rows into dict rows (like parse_object_lookup_result)",
                     "fetch_one returns None — 'data' key absent in real execute_query response",
                     "Add helper _rows_from_result(res) mapping columns to dicts from result_sets",
@@ -116,7 +116,7 @@ def test_query_timeout_not_used():
     if init_has and not uses_timeout:
         report(
             "major",
-            "queryDatabase/object_catalog/fetcher.py:18-20 — __init__ stores query_timeout",
+            "query_database/object_catalog/fetcher.py:18-20 — __init__ stores query_timeout",
             "Per-query timeout enforced (docs: 10s catalog, 30s total request)",
             "query_timeout stored on instance but never passed to execute_query or pyodbc",
             "Pass timeout to execute_query(..., timeout=self._query_timeout) and honor in executor",
@@ -156,7 +156,7 @@ def test_expand_name_matching():
     if cg and "dbo.zc_child" not in cg.get("nodes", {}) and not fetched:
         report(
             "major",
-            "queryDatabase/bridges/summary_bridge.py:271 — call.name in expand_set",
+            "query_database/bridges/summary_bridge.py:271 — call.name in expand_set",
             "expand=['zc_child'] should match call 'dbo.zc_child' (normalize bare vs schema-qualified)",
             f"fetch_many not called / child not in nodes. expand_set={{'zc_child'}}, call.name='dbo.zc_child'",
             "Normalize expand entries and call.name to comparable form (strip/add dbo. prefix)",
@@ -183,7 +183,7 @@ def test_expand_name_matching():
 
 def test_exclude_like_none_bridge():
     """Bridge passes exclude_like=None to AnalyzeOptions when caller omits param."""
-    import queryDatabase.bridges.summary_bridge as sb
+    import query_database.bridges.summary_bridge as sb
 
     src = inspect.getsource(sb.summary_object)
     if "exclude_like=exclude_like" in src:
@@ -191,7 +191,7 @@ def test_exclude_like_none_bridge():
         if opts.exclude_like is None:
             report(
                 "major",
-                "queryDatabase/bridges/summary_bridge.py:243 + sql_object_summary/options.py:33",
+                "query_database/bridges/summary_bridge.py:243 + sql_object_summary/options.py:33",
                 "When exclude_like=None from bridge, use DEFAULT_EXCLUDE_LIKE (per docs §2.2)",
                 "AnalyzeOptions(exclude_like=None) sets exclude_like to None, not default infra patterns",
                 "In bridge: exclude_patterns = exclude_like if exclude_like is not None else list(DEFAULT_EXCLUDE_LIKE); pass to AnalyzeOptions and build_call_graph",
@@ -233,7 +233,7 @@ def test_max_depth_2_no_recursion():
     if "dbo.grand" not in nodes and fetch_calls <= 1:
         report(
             "major",
-            "queryDatabase/bridges/summary_bridge.py:255-289 — call graph section",
+            "query_database/bridges/summary_bridge.py:255-289 — call graph section",
             "max_depth=2 recursively fetches and parses child/grandchild business objects",
             f"Only 1-hop fetch (fetch_many called {fetch_calls}x); grandchild dbo.grand absent from nodes",
             "Implement recursive _collect_definitions loop until max_depth or max_objects (per docs §7)",
@@ -255,7 +255,7 @@ def test_encrypted_empty_definition():
     if res.get("success") and res.get("parse_status") != "failed":
         report(
             "minor",
-            "queryDatabase/bridges/summary_bridge.py + sql_object_summary/analyze.py",
+            "query_database/bridges/summary_bridge.py + sql_object_summary/analyze.py",
             "Empty/encrypted definition (NULL→'') should surface clear warning or error (docs §6)",
             f"success=True, parse_status={res.get('parse_status')} with empty definition — silent empty summary",
             "Detect empty definition after fetch; return error encrypted_or_empty_definition or meta.warnings",
@@ -283,7 +283,7 @@ def test_called_by_format():
         # Check docs — 05_integration shows pure.called_by = list of strings
         report(
             "minor",
-            "queryDatabase/bridges/summary_bridge.py:296 — called_by assignment",
+            "query_database/bridges/summary_bridge.py:296 — called_by assignment",
             "Docs 05_integration: pure.called_by = fetcher.fetch_callers(...) → list[str]; schema shows called_by: []",
             f"called_by entries are dicts: {cb[0]}",
             "Use list[str] OR update JSON schema docs to [{name: str}] consistently",
@@ -292,7 +292,7 @@ def test_called_by_format():
     if not cg:
         report(
             "major",
-            "queryDatabase/bridges/summary_bridge.py:291-298",
+            "query_database/bridges/summary_bridge.py:291-298",
             "include_called_by=True populates call_graph.called_by",
             "call_graph is None when root has no calls_direct — called_by never attached",
             "Always create minimal CallGraph or put called_by at top level when include_called_by=True",
@@ -320,7 +320,7 @@ def test_view_no_call_graph():
     if res.get("call_graph") is not None:
         report(
             "minor",
-            "queryDatabase/bridges/summary_bridge.py:259-260",
+            "query_database/bridges/summary_bridge.py:259-260",
             "VIEW never expands call graph — call_graph omitted or null",
             f"call_graph present: {bool(res.get('call_graph'))}",
             "Ensure VIEW skips call_graph entirely (current code looks correct)",
@@ -352,7 +352,7 @@ def test_resolve_object_ref_edge_cases():
             if expected and got != expected:
                 report(
                     "minor",
-                    f"queryDatabase/bridges/summary_bridge.py:91 — resolve_object_ref('{name}')",
+                    f"query_database/bridges/summary_bridge.py:91 — resolve_object_ref('{name}')",
                     str(expected),
                     str(got),
                     "Handle bracketed names; reject/warn multi-segment names",
@@ -435,7 +435,7 @@ def test_cache_key_modes():
     if hit_snip and "keywords" not in str(_get_from_cache.__code__.co_varnames):
         report(
             "major",
-            "queryDatabase/bridges/summary_bridge.py:48 — cache key",
+            "query_database/bridges/summary_bridge.py:48 — cache key",
             "Cache key includes snippet params (keywords/zones) or snippet mode not cached",
             "Key is (server, db, object_id, modify_date, mode, max_depth) — ignores keywords/zones",
             "Extend cache key with hash(keywords, zones) for snippet mode",

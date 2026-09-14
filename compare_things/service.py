@@ -39,6 +39,7 @@ def compare_things(
     project_target: str = "",
     object: str = "",
     seed: str = "",
+    seed_mode: str = "contains",
     db_type: str = "app",
     mode: str = "summary",
     file_a: str = "",
@@ -66,6 +67,8 @@ def compare_things(
     include_text_snippets: bool = False,
     max_hunks_summary: int = 5,
     max_hunks_detail: int = 30,
+    inventory: bool = False,
+    list_identical: bool = False,
     config: Optional[Dict[str, Any]] = None,
     on_progress: Optional[Any] = None,
 ) -> Dict[str, Any]:
@@ -234,6 +237,35 @@ def compare_things(
 
     # 2. Validation for kind=folder
     if kind == "folder":
+        if inventory:
+            target_folder = folder_a or folder_b
+            if not target_folder:
+                return _build_error(
+                    kind="folder",
+                    error_code="invalid_folder",
+                    error_msg="folder_a or folder_b is required when inventory=true",
+                    vi_msg="Thiếu tham số folder_a (hoặc folder_b) cho chế độ inventory.",
+                )
+            p_folder = Path(target_folder)
+            if not p_folder.exists() or not p_folder.is_dir():
+                return _build_error(
+                    kind="folder",
+                    error_code="folder_not_found",
+                    error_msg=f"folder does not exist or is not a directory: {target_folder}",
+                    vi_msg=f"Không tìm thấy thư mục: {target_folder}",
+                )
+            from .folder_compare import inventory_folder
+            return inventory_folder(
+                folder=str(p_folder.resolve()),
+                recursive=recursive,
+                include_glob=include_glob,
+                exclude_glob=exclude_glob,
+                name_compare=name_compare,
+                max_objects=max_objects or 200,
+                seed=seed or "",
+                seed_mode=seed_mode,
+            )
+
         if not folder_a:
             return _build_error(
                 kind="folder",
@@ -270,6 +302,7 @@ def compare_things(
             folder_a=str(pa.resolve()),
             folder_b=str(pb.resolve()),
             seed=seed or "",
+            seed_mode=seed_mode,
             recursive=recursive,
             compare_content=compare_content,
             hash_max_bytes=hash_max_bytes,
@@ -290,6 +323,7 @@ def compare_things(
             include_text_snippets=include_text_snippets,
             max_hunks_summary=max_hunks_summary,
             max_hunks_detail=max_hunks_detail,
+            list_identical=list_identical,
             on_progress=on_progress,
         )
 

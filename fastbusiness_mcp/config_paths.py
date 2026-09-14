@@ -77,15 +77,15 @@ def resolve_config_path_local(filename: str = "config_path.yaml") -> Path | None
         p = Path(env_path)
         return p if p.is_file() else None
 
-    direct = Path(filename)
-    if direct.is_file():
-        return direct
-
     cfg_file = resolve_config_path("config.yaml")
     if cfg_file is not None:
         candidate = cfg_file.parent / filename
         if candidate.is_file():
             return candidate
+
+    direct = Path(filename)
+    if direct.is_file():
+        return direct
 
     exe_dir = get_exe_dir()
     bundle_dir = get_bundle_dir()

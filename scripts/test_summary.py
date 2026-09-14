@@ -34,7 +34,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-from queryDatabase.bridges.summary_bridge import summary_object
+from query_database.bridges.summary_bridge import summary_object
 
 
 def main() -> None:

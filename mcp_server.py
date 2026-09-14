@@ -1,5 +1,12 @@
+"""FboFBOGraph dev MCP server — graph navigation tools (search_nodes, get_related_nodes,
+query_node_details, query_radar, read_local_file).
+
+Server packaged/distributed là `python -m fastbusiness_mcp.server` (fastbusiness_mcp/mcp_app.py).
+File này chỉ dùng cho dev khi cần các graph tool riêng; tool trùng lặp (query_radar,
+read_local_file) delegate về implementation chung trong xml_fbograph.mcp_tools.
+"""
+
 import sys
-import os
 import json
 import threading
 from pathlib import Path
@@ -12,6 +19,8 @@ except ImportError:
     except ImportError:
         print("Lỗi: Chưa cài đặt thư viện 'mcp'. Vui lòng chạy lệnh: pip install mcp")
         sys.exit(1)
+
+from mcp.types import ToolAnnotations
 
 mcp = FastMCP("FboFBOGraph")
 
@@ -66,7 +75,7 @@ def get_kuzu_store(reference_file: str):
         
     return _kuzu_stores[db_key]
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def query_radar(reference_file: str, cypher_query: str = "", mode: str = "query") -> str:
     """
     Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
@@ -110,7 +119,7 @@ def query_radar(reference_file: str, cypher_query: str = "", mode: str = "query"
 
     return mcp_query_radar(cypher_query, reference_file, mode)
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def search_nodes(query: str, reference_file: str, match_type: str = "all", folder_filter: str = None, limit: int = 20) -> str:
     """
     Tìm kiếm thông minh các Node, các định nghĩa field hoặc các khối code SQL/JS chứa từ khóa trong dự án.
@@ -131,7 +140,7 @@ def search_nodes(query: str, reference_file: str, match_type: str = "all", folde
     except Exception as e:
         return f"Lỗi search_nodes: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_related_nodes(target: str, reference_file: str, mode: str = "navigate", include_shared: bool = False) -> str:
     """
     Truy vấn các file/node liên quan đến file target.
@@ -153,7 +162,7 @@ def get_related_nodes(target: str, reference_file: str, mode: str = "navigate", 
     except Exception as e:
         return f"Lỗi get_related_nodes: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def query_node_details(target: str, reference_file: str, view: str = "context") -> str:
     """
     Truy vấn chi tiết thông tin cấu trúc bên trong của một file/controller.
@@ -178,7 +187,7 @@ def query_node_details(target: str, reference_file: str, view: str = "context") 
     except Exception as e:
         return f"Lỗi query_node_details: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def read_local_file(file_path: str, reference_file: str, opt: int = 1) -> str:
     """
     Đọc trực tiếp nội dung XML file vật lý từ ổ cứng để đảm bảo dữ liệu mới nhất (Kính lúp tool).
@@ -187,41 +196,8 @@ def read_local_file(file_path: str, reference_file: str, opt: int = 1) -> str:
     file_path: Có thể là đường dẫn tương đối (ví dụ: 'Dir/CPTran.xml') hoặc tuyệt đối.
     opt: 1 (mặc định) trả về nội dung XML nguyên thủy. 2 trả về flat text đã expand entity.
     """
-    try:
-        helper = ProjectPathHelper(reference_file)
-        project_root = helper.get_project_root()
-        
-        # Phân tích đường dẫn
-        p = Path(file_path)
-        if not p.is_absolute():
-            # Thử với controllers_path trước, sau đó project_root
-            controllers_root = helper.get_controllers_path()
-            p1 = controllers_root / file_path
-            if p1.exists():
-                p = p1
-            else:
-                p = project_root / file_path
-                
-        p = p.resolve()
-        
-        # Bảo mật: Không cho phép đọc file nằm ngoài thư mục dự án
-        if not str(p).lower().startswith(str(project_root.resolve()).lower()):
-            return f"Lỗi: Đường dẫn nằm ngoài thư mục dự án: {file_path}"
-            
-        if not p.exists():
-            return f"Lỗi: File không tồn tại: {file_path}"
-            
-        # Sử dụng module parser chuẩn để decode windows-1258 chính xác tiếng Việt
-        from xml_fbograph.parsers.xml_parser import read_file_content
-        from find_entity_by_xml.facade import flat_xml
-        if opt == 2:
-            content = flat_xml(str(p))
-            if not content:
-                content = read_file_content(p)
-        else:
-            content = read_file_content(p)
-        return content
-    except Exception as e:
-        return f"Lỗi đọc file: {str(e)}"
+    from xml_fbograph.mcp_tools import mcp_read_local_file
+
+    return mcp_read_local_file(file_path, reference_file, read_option=opt)
 if __name__ == "__main__":
     mcp.run()

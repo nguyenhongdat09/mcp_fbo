@@ -7,9 +7,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
 
-from queryDatabase.bridges.summary_bridge import summary_object
-from queryDatabase.object_catalog.models import DbObjectMeta, ParameterMeta
-from queryDatabase.service import query_database
+from query_database.bridges.summary_bridge import summary_object
+from query_database.object_catalog.models import DbObjectMeta, ParameterMeta
+from query_database.service import query_database
 from tests.sql_object_summary.test_analyze_proc import FIXTURE_INTEREST_PROC, FIXTURE_PIVOT_PROC
 
 
@@ -278,10 +278,10 @@ def test_f8_query_database_regression():
             "messages": [],
         }
 
-    with patch("queryDatabase.service.get_connection_config", return_value=mock_conn), \
-         patch("queryDatabase.connection.get_connection_config", return_value=mock_conn), \
-         patch("queryDatabase.bridges.summary_bridge.get_connection_config", return_value=mock_conn), \
-         patch("queryDatabase.service.execute_query", side_effect=fake_execute):
+    with patch("query_database.service.get_connection_config", return_value=mock_conn), \
+         patch("query_database.connection.get_connection_config", return_value=mock_conn), \
+         patch("query_database.bridges.summary_bridge.get_connection_config", return_value=mock_conn), \
+         patch("query_database.service.execute_query", side_effect=fake_execute):
 
         # Type 1: inline SQL
         res1 = query_database(file_path="mock.xml", query="SELECT 1", query_type=1)
@@ -304,7 +304,7 @@ def test_f8_query_database_regression():
                 ],
             }
 
-        with patch("queryDatabase.service.execute_query", side_effect=fake_table_execute):
+        with patch("query_database.service.execute_query", side_effect=fake_table_execute):
             res0_table = query_database(file_path="mock.xml", query="dmkh", query_type=0)
             assert res0_table["success"] is True
             assert res0_table["resolved_as"] == "table_schema"

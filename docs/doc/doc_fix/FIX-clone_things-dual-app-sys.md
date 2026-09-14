@@ -30,7 +30,7 @@ User giả thuyết đúng một phần: `clone_things` trước đây **chỉ**
 Reuse connection giống `query_database`:
 
 - [`find_connect_by_path/web_config_loader.py`](../../../find_connect_by_path/web_config_loader.py) — derive app/sys từ `sysDatabaseName` / `appConnectionString` / `sysConnectionString`
-- [`queryDatabase/connection.py`](../../../queryDatabase/connection.py) — `get_connection_config(file_path, db_type)`
+- [`query_database/connection.py`](../../../query_database/connection.py) — `get_connection_config(file_path, db_type)`
 
 ---
 

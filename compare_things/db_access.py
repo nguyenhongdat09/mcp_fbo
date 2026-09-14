@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 import clone_things.db_ops as c_db
-from queryDatabase.bridges.summary_bridge import summary_object
-from queryDatabase.executor import execute_query
+from query_database.bridges.summary_bridge import summary_object
+from query_database.executor import execute_query
 
 
 def resolve_project_dbs(

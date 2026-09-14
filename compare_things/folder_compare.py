@@ -6,6 +6,7 @@ import datetime
 import fnmatch
 import hashlib
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -38,6 +39,7 @@ def _scan_folder(
     exclude_globs: List[str],
     case_insensitive: bool,
     seed_keywords: Optional[List[str]] = None,
+    seed_mode: str = "contains",
 ) -> Tuple[Dict[str, Dict[str, Any]], List[str], int]:
     """
     Scan folder and collect map of norm_rel_path -> file_info.
@@ -76,7 +78,26 @@ def _scan_folder(
 
             if seed_keywords:
                 rel_lower = rel_p.lower()
-                if not any(kw in rel_lower for kw in seed_keywords):
+                fname_lower = fname.lower()
+                stem_lower = Path(fname).stem.lower()
+                mode_norm = (seed_mode or "contains").strip().lower()
+
+                matched = False
+                for kw in seed_keywords:
+                    if mode_norm == "prefix":
+                        if stem_lower.startswith(kw) or fname_lower.startswith(kw):
+                            matched = True
+                            break
+                    elif mode_norm == "token":
+                        pattern = r"(^|[^a-zA-Z0-9])" + re.escape(kw) + r"([^a-zA-Z0-9]|$)"
+                        if re.search(pattern, stem_lower) or re.search(pattern, fname_lower):
+                            matched = True
+                            break
+                    else:  # contains
+                        if kw in rel_lower:
+                            matched = True
+                            break
+                if not matched:
                     continue
 
             norm_key = rel_p.lower() if case_insensitive else rel_p
@@ -97,6 +118,78 @@ def _scan_folder(
     return files_map, errors, skipped_f_count
 
 
+def inventory_folder(
+    folder: str,
+    recursive: bool = True,
+    include_glob: str = "*",
+    exclude_glob: str = "",
+    name_compare: str = "case_insensitive",
+    max_objects: int = 200,
+    seed: str = "",
+    seed_mode: str = "contains",
+) -> Dict[str, Any]:
+    """
+    List files in a single folder (inventory mode, no comparison).
+    """
+    seed_keywords = [k.strip().lower() for k in re.split(r"[,;\s]+", seed) if k.strip()] if seed else None
+    case_insensitive = name_compare.lower() == "case_insensitive"
+    inc_globs = [g.strip() for g in include_glob.split(",") if g.strip()] or ["*"]
+    exc_globs = [g.strip() for g in exclude_glob.split(",") if g.strip()]
+    if not any(g.lower() == "*.f" for g in exc_globs):
+        exc_globs.append("*.f")
+
+    files_map, errs, skipped_f_count = _scan_folder(
+        folder,
+        recursive=recursive,
+        include_globs=inc_globs,
+        exclude_globs=exc_globs,
+        case_insensitive=case_insensitive,
+        seed_keywords=seed_keywords,
+        seed_mode=seed_mode,
+    )
+
+    sorted_keys = sorted(files_map.keys())
+    total_files = len(sorted_keys)
+    limit = max_objects if (max_objects is not None and max_objects > 0) else 200
+    truncated = total_files > limit
+
+    files_list = []
+    for k in sorted_keys[:limit]:
+        info = files_map[k]
+        files_list.append({
+            "relative": info["relative_path"],
+            "size": info["size"],
+            "modified": info["modified"],
+            "is_dir": False,
+        })
+
+    warnings = list(errs)
+    if skipped_f_count > 0:
+        warnings.append(f"skipped_{skipped_f_count}_f_files")
+
+    if seed_keywords and (seed_mode or "").strip().lower() == "token":
+        for kw in seed_keywords:
+            if len(kw) < 4:
+                warnings.append(
+                    f"seed_token_short: seed '{kw}' có độ dài ngắn ({len(kw)} ký tự). "
+                    "Nếu muốn tìm file theo tiền tố tên, hãy dùng seed_mode='prefix' hoặc cung cấp seed dài hơn."
+                )
+
+    return {
+        "success": True,
+        "kind": "folder",
+        "mode": "inventory",
+        "folder": str(folder).replace("\\", "/"),
+        "files": files_list,
+        "summary": {
+            "file_count": total_files,
+            "dir_count": 0,
+            "truncated": truncated,
+        },
+        "warnings": warnings,
+    }
+
+
 def compare_folders(
     folder_a: str,
     folder_b: str,
@@ -110,6 +203,7 @@ def compare_folders(
     max_objects: int = 200,
     mode: str = "summary",
     seed: str = "",
+    seed_mode: str = "contains",
     detail: bool = False,
     detail_status: str = "",
     include_compared: Optional[bool] = None,
@@ -121,6 +215,7 @@ def compare_folders(
     include_text_snippets: bool = False,
     max_hunks_summary: int = 5,
     max_hunks_detail: int = 30,
+    list_identical: bool = False,
     on_progress: Optional[Any] = None,
 ) -> Dict[str, Any]:
 
@@ -133,7 +228,6 @@ def compare_folders(
     if on_progress:
         on_progress(0, 100, "Đang quét danh mục file thư mục A và B...")
 
-    import re
     seed_keywords = [k.strip().lower() for k in re.split(r"[,;\s]+", seed) if k.strip()] if seed else None
 
     case_insensitive = name_compare.lower() == "case_insensitive"
@@ -142,8 +236,8 @@ def compare_folders(
     if not any(g.lower() == "*.f" for g in exc_globs):
         exc_globs.append("*.f")
 
-    files_a, errs_a, skipped_f_a = _scan_folder(folder_a, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords)
-    files_b, errs_b, skipped_f_b = _scan_folder(folder_b, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords)
+    files_a, errs_a, skipped_f_a = _scan_folder(folder_a, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords, seed_mode=seed_mode)
+    files_b, errs_b, skipped_f_b = _scan_folder(folder_b, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords, seed_mode=seed_mode)
     skipped_f_total = skipped_f_a + skipped_f_b
 
     if on_progress:
@@ -161,6 +255,7 @@ def compare_folders(
     missing_on_a_names: List[str] = [files_b[k]["relative_path"] for k in missing_keys_a]
 
     identical_count = 0
+    identical_names: List[str] = []
     different_meta_names: List[str] = []
     different_content_names: List[str] = []
 
@@ -361,6 +456,28 @@ def compare_folders(
             })
         else:
             identical_count += 1
+            if list_identical:
+                identical_names.append(rel_name)
+                if detail:
+                    compared_items.append({
+                        "relative_path": rel_name,
+                        "status": "identical",
+                        "a": {
+                            "size": fa["size"],
+                            "created": fa["created"],
+                            "modified": fa["modified"],
+                            "sha256": sha256_a,
+                            "is_binary": is_bin_a,
+                        },
+                        "b": {
+                            "size": fb["size"],
+                            "created": fb["created"],
+                            "modified": fb["modified"],
+                            "sha256": sha256_b,
+                            "is_binary": is_bin_b,
+                        },
+                        "next_actions": ["noop"],
+                    })
 
     # Decouple summary names from max_objects (summary names list must remain full)
     summary_limit = 5000
@@ -429,6 +546,32 @@ def compare_folders(
     msg_parts.append(f"giống metadata: {identical_count} (ẩn).")
     message = " ".join(msg_parts)
 
+    summary_dict: Dict[str, Any] = {
+        "files_a": len(files_a),
+        "files_b": len(files_b),
+        "missing_on_b": s_missing_b,
+        "missing_on_a": s_missing_a,
+        "identical_meta_count": identical_count,
+        "omitted_identical_count": 0 if list_identical else identical_count,
+        "different_meta": s_diff_meta,
+        "different_content": s_diff_content,
+        "skipped_f_count": skipped_f_total,
+        "errors": s_errors,
+        "truncated": truncated,
+        "truncated_compared": truncated_compared,
+        "truncated_summary_names": truncated_summary_names,
+    }
+    if seed_keywords and (seed_mode or "").strip().lower() == "token":
+        for kw in seed_keywords:
+            if len(kw) < 4:
+                all_errors.append(
+                    f"seed_token_short: seed '{kw}' có độ dài ngắn ({len(kw)} ký tự). "
+                    "Nếu muốn tìm file theo tiền tố tên, hãy dùng seed_mode='prefix' hoặc cung cấp seed dài hơn."
+                )
+
+    if list_identical:
+        summary_dict["identical"] = identical_names[:summary_limit] if len(identical_names) > summary_limit else identical_names
+
     return {
         "success": True,
         "kind": "folder",
@@ -439,21 +582,7 @@ def compare_folders(
         "mode": mode,
         "seed": seed,
         "detail": detail,
-        "summary": {
-            "files_a": len(files_a),
-            "files_b": len(files_b),
-            "missing_on_b": s_missing_b,
-            "missing_on_a": s_missing_a,
-            "identical_meta_count": identical_count,
-            "omitted_identical_count": identical_count,
-            "different_meta": s_diff_meta,
-            "different_content": s_diff_content,
-            "skipped_f_count": skipped_f_total,
-            "errors": s_errors,
-            "truncated": truncated,
-            "truncated_compared": truncated_compared,
-            "truncated_summary_names": truncated_summary_names,
-        },
+        "summary": summary_dict,
         "compared": final_compared,
         "message": message,
         "next_actions": top_actions,

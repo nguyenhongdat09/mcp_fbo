@@ -11,13 +11,14 @@ from pydantic import Field
 from mcp.server import MCPServer
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
 from .utils.logger import setup_logger
 from .agent_messages import QUERY_RADAR_ERROR_MSG
 from .tool_errors import format_execution_error, format_validation_error_message
 
-from queryDatabase import query_database
-from queryDatabase.formatter import format_query_result
+from query_database import query_database
+from query_database.formatter import format_query_result
 from find_entity_by_xml import get_xml_entities
 from find_entity_by_xml.formatter import format_entity_result
 
@@ -34,6 +35,8 @@ from clone_things.formatter import format_clone_result
 
 from compare_things import compare_things
 from compare_things.formatter import format_compare_result
+
+from search_files import search_files
 
 logger = setup_logger(__name__)
 
@@ -99,7 +102,10 @@ def set_config(cfg: dict) -> None:
 # ============================================================================
 # TOOL 1: query_database
 # ============================================================================
-@server.tool(name="query_database")
+@server.tool(
+    name="query_database",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 def query_database_tool(
     file_path: Annotated[
         str,
@@ -261,7 +267,10 @@ db_type: app (mặc định) hoặc sys."""
 # ============================================================================
 # TOOL 2: get_xml_entities
 # ============================================================================
-@server.tool(name="get_xml_entities")
+@server.tool(
+    name="get_xml_entities",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 def get_xml_entities_tool(
     file_path: Annotated[
         str,
@@ -333,7 +342,10 @@ def _format_query_radar_result(res: str) -> str:
     return res
 
 
-@server.tool(name="query_radar")
+@server.tool(
+    name="query_radar",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 async def query_radar_tool(
     reference_file: Annotated[
         str,
@@ -409,7 +421,10 @@ mode:
 # ============================================================================
 # TOOL 4: read_local_file
 # ============================================================================
-@server.tool(name="read_local_file")
+@server.tool(
+    name="read_local_file",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 def read_local_file_tool(
     file_path: Annotated[
         str,
@@ -417,8 +432,11 @@ def read_local_file_tool(
     ],
     reference_file: Annotated[
         str,
-        Field(description="BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu."),
-    ],
+        Field(
+            default="",
+            description="Đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve project root.\nBẮT BUỘC nếu file_path là đường dẫn tương đối (relative).\nTÙY CHỌN (có thể để trống) nếu file_path đã là đường dẫn tuyệt đối (absolute).",
+        ),
+    ] = "",
     read_option: Annotated[
         Literal[1, 2, 3],
         Field(
@@ -449,7 +467,10 @@ CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢ
 # ============================================================================
 # TOOL 5: search_qlyc
 # ============================================================================
-@server.tool(name="search_qlyc")
+@server.tool(
+    name="search_qlyc",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 def search_qlyc_tool(
     query: Annotated[
         str,
@@ -590,6 +611,48 @@ def clone_things_tool(
             description="Chỉ dùng khi type=3: false=không ghi đè file đã có trên target (mặc định); true=cho phép ghi đè sau khi user xác nhận.",
         ),
     ] = False,
+    confirm_overwrite: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi type=3: chốt chặn an toàn soft-gate. True=cho phép thực hiện ghi đè file đã có sau khi user đã đồng ý. Mặc định False.",
+        ),
+    ] = False,
+    expand_dirs: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi type=3: True=nếu object trỏ tới thư mục, tự động mở rộng quét các file con đệ quy (loại trừ *.f). Mặc định False.",
+        ),
+    ] = False,
+    max_files: Annotated[
+        int,
+        Field(
+            default=100,
+            description="Chỉ dùng khi type=3: Giới hạn số file tối đa expand/copy (mặc định 100) để chống nuốt token và chặn copy nhầm.",
+        ),
+    ] = 100,
+    copy_filter: Annotated[
+        str,
+        Field(
+            default="",
+            description="Chỉ dùng khi type=3: Bộ lọc khi copy: 'missing' (chỉ copy file thiếu trên target, mặc định khi overwrite=false), 'different' (chỉ copy file khác nội dung), 'all' (copy cả thiếu và có sẵn).",
+        ),
+    ] = "",
+    list_presets: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi type=3: True=liệt kê danh sách presets có sẵn (mail, ajax...). Mặc định False.",
+        ),
+    ] = False,
+    planned_sample_size: Annotated[
+        int,
+        Field(
+            default=10,
+            description="Chỉ dùng khi type=3: Số phần tử planned[] tối đa hiển thị mẫu khi vượt quá max_files (truncated=True). Mặc định 10.",
+        ),
+    ] = 10,
 ) -> str:
     """
     BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa hoặc copy file:
@@ -604,10 +667,12 @@ def clone_things_tool(
        - object có thể là tên SQL, danh sách tên SQL, hoặc đường dẫn file .xml controller (hỗ trợ mode_get để lọc proc/table/view/func và mode_recursion=1 để đệ quy dependency).
        - project_target được phép để trống. Không deploy lên database.
     3) type=3 (copy file giữa 2 dự án):
-       - Copy file bất kỳ (relative path, list, glob, preset 'mail') từ project_source sang project_target.
+       - Copy file bất kỳ (relative path, list, glob, preset 'mail', 'ajax') từ project_source sang project_target.
        - execute=False (mặc định): dry-run, không ghi đĩa.
        - execute=True: chỉ copy file chưa có trên target (overwrite=False mặc định).
-       - File đã có: không đè, trả về exists_on_target và user_prompt để hỏi user; chỉ overwrite=True khi user xác nhận.
+       - confirm_overwrite=True: cần thiết kèm overwrite=True để ghi đè file có sẵn.
+       - expand_dirs=True: mở rộng thư mục quét file con.
+       - list_presets=True: xem các presets đăng ký.
     """
     try:
         cfg = get_config()
@@ -622,6 +687,12 @@ def clone_things_tool(
             mode_read=mode_read,
             execute=execute,
             overwrite=overwrite,
+            confirm_overwrite=confirm_overwrite,
+            expand_dirs=expand_dirs,
+            max_files=max_files,
+            copy_filter=copy_filter,
+            list_presets=list_presets,
+            planned_sample_size=planned_sample_size,
             config=cfg,
         )
         return format_clone_result(result)
@@ -633,7 +704,10 @@ def clone_things_tool(
 # ============================================================================
 # TOOL 6: compare_things
 # ============================================================================
-@server.tool(name="compare_things")
+@server.tool(
+    name="compare_things",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
 async def compare_things_tool(
     kind: Annotated[
         str,
@@ -669,6 +743,13 @@ async def compare_things_tool(
             description="Từ khóa tìm kiếm candidate: 'sql' (tìm proc/func/view); 'xml' (quét tìm file XML dưới Controllers/ khi chưa biết path cụ thể); 'folder' (lọc file theo tên/relative path chứa từ khóa, kết hợp include_glob).",
         ),
     ] = "",
+    seed_mode: Annotated[
+        str,
+        Field(
+            default="contains",
+            description="Chỉ dùng với kind='folder' (+ inventory): cách khớp seed — 'contains' (mặc định, chuỗi con), 'prefix' (tiền tố basename/stem), 'token' (ranh giới từ). Seed token < 4 ký tự sẽ có warning seed_token_short.",
+        ),
+    ] = "contains",
     db_type: Annotated[
         str,
         Field(
@@ -858,6 +939,20 @@ async def compare_things_tool(
             description="Số lượng hunk tối đa trả về trong mode='hunks' hoặc 'body' (mặc định 30)",
         ),
     ] = 30,
+    inventory: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi kind='folder': True=liệt kê file trong 1 thư mục (chỉ cần folder_a, không so sánh 2 bên, không omit tên file trùng). Mặc định False.",
+        ),
+    ] = False,
+    list_identical: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Chỉ dùng khi kind='folder': True=liệt kê danh sách tên file trùng nhau trong summary.identical thay vì giấu trong omitted_identical_count. Mặc định False.",
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> str:
     """
@@ -903,6 +998,7 @@ async def compare_things_tool(
             project_target=project_target,
             object=object,
             seed=seed,
+            seed_mode=seed_mode,
             db_type=db_type,
             mode=mode,
             file_a=file_a,
@@ -930,6 +1026,8 @@ async def compare_things_tool(
             include_text_snippets=include_text_snippets,
             max_hunks_summary=max_hunks_summary,
             max_hunks_detail=max_hunks_detail,
+            inventory=inventory,
+            list_identical=list_identical,
             config=cfg,
             on_progress=on_progress,
         )
@@ -939,6 +1037,102 @@ async def compare_things_tool(
     except Exception as e:
         logger.error(f"compare_things execution error: {e}")
         return format_execution_error("compare_things", e)
+
+
+# ============================================================================
+# TOOL 7: search_files
+# ============================================================================
+@server.tool(
+    name="search_files",
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
+async def search_files_tool(
+    root: Annotated[
+        str,
+        Field(description="Đường dẫn tuyệt đối thư mục hoặc project root cần tìm kiếm (hỗ trợ local hoặc UNC)"),
+    ],
+    pattern: Annotated[
+        str,
+        Field(description="Từ khóa hoặc biểu thức chính quy (regex) cần tìm kiếm"),
+    ],
+    regex: Annotated[
+        bool,
+        Field(default=False, description="True=tìm theo regex; False=tìm literal text chính xác. Mặc định False."),
+    ] = False,
+    include_glob: Annotated[
+        str,
+        Field(
+            default="*.{xml,aspx,js,html,config,ent,txt,sql}",
+            description="Mẫu glob file cần quét (phân tách bởi dấu phẩy, hỗ trợ cú pháp mở rộng {...}).",
+        ),
+    ] = "*.{xml,aspx,js,html,config,ent,txt,sql}",
+    exclude_glob: Annotated[
+        str,
+        Field(
+            default="**/*.f,**/*.dll,**/*.pdb,**/bin/**",
+            description="Mẫu glob file cần loại trừ (tự động loại trừ *.f mã hóa và file nhị phân).",
+        ),
+    ] = "**/*.f,**/*.dll,**/*.pdb,**/bin/**",
+    recursive: Annotated[
+        bool,
+        Field(default=True, description="Quét đệ quy các thư mục con (mặc định True)"),
+    ] = True,
+    case_sensitive: Annotated[
+        bool,
+        Field(default=False, description="Phân biệt hoa thường (mặc định False)"),
+    ] = False,
+    max_files: Annotated[
+        int,
+        Field(default=50, description="Số lượng file tối đa quét qua (mặc định 50)"),
+    ] = 50,
+    max_matches_per_file: Annotated[
+        int,
+        Field(default=5, description="Số lượng dòng khớp tối đa trên mỗi file (mặc định 5)"),
+    ] = 5,
+    max_total_matches: Annotated[
+        int,
+        Field(default=100, description="Tổng số dòng khớp tối đa trả về toàn bộ (mặc định 100)"),
+    ] = 100,
+    context_lines: Annotated[
+        int,
+        Field(default=0, description="Số dòng ngữ cảnh quanh dòng khớp (0=chỉ trả về dòng khớp, mặc định 0)"),
+    ] = 0,
+    prefer_name_match: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Ưu tiên quét các file có tên/path khớp pattern và các thư mục trọng yếu (Filter, Grid, Dir, ClientScript, Main, Templates) trước. Mặc định True.",
+        ),
+    ] = True,
+) -> str:
+    """
+    MCP Tool search_files: Tìm kiếm nội dung văn bản (grep) an toàn trong các thư mục dự án trên ổ đĩa local hoặc mạng UNC.
+    - CẤM đọc file *.f mã hóa của FastBusiness; tự động bỏ qua file nhị phân.
+    - Hỗ trợ giải mã UTF-8 và Windows-1258 (CP1258).
+    - Có chốt chặn số file và số kết quả để tránh làm tràn bộ nhớ/context.
+    - Lưu ý DX: Root rộng dễ truncated — ưu tiên Filter/, ClientScript/, hoặc glob tên controller; tool đã ưu tiên filename match.
+    """
+    try:
+        result = await asyncio.to_thread(
+            search_files,
+            root=root,
+            pattern=pattern,
+            regex=regex,
+            include_glob=include_glob,
+            exclude_glob=exclude_glob,
+            recursive=recursive,
+            case_sensitive=case_sensitive,
+            max_files=max_files,
+            max_matches_per_file=max_matches_per_file,
+            max_total_matches=max_total_matches,
+            context_lines=context_lines,
+            prefer_name_match=prefer_name_match,
+        )
+        import json
+        return json.dumps(result, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"search_files execution error: {e}")
+        return format_execution_error("search_files", e)
 
 
 
