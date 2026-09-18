@@ -41,3 +41,8 @@ clone_things:
 
   # true = tự động deploy (EXECUTE DDL/definition) lên DB target; false = chỉ ghi file .sql
   execute_clone: false
+
+# Response oversize guard (spill ra file local khi vượt ngưỡng token client)
+response_guard:
+  max_chars: 60000   # response tool > ngưỡng này → spill ra logs/overflow-*.json
+

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from query_database.connection import get_connection_config
-from query_database.executor import execute_query
+from query_database.executor import execute_query, split_go_batches
 from query_database.service import query_database
 from query_database.bridges.summary_bridge import summary_object
 
@@ -224,6 +223,28 @@ def fetch_object_script(
             return svc.wrap_check_exists(raw_ddl, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
         return raw_ddl
 
+    # Trigger (TR) — OBJECT_DEFINITION trực tiếp; summary_object không hỗ trợ TR.
+    if obj_type.upper() == "TR" or "TRIGGER" in type_desc.upper():
+        conn_res = svc.get_connection_config(file_path, db_type)
+        parsed = conn_res.get("parsed") if conn_res.get("success") else None
+        if not parsed:
+            return ""
+        safe_name = str(clean_name).replace("'", "''")
+        safe_schema = str(schema or "dbo").replace("'", "''")
+        sql = (
+            "SELECT OBJECT_DEFINITION(OBJECT_ID("
+            f"QUOTENAME(N'{safe_schema}') + N'.' + QUOTENAME(N'{safe_name}'))"
+            ")"
+        )
+        res = svc.execute_query(parsed, sql, max_rows=5)
+        rows = res.get("result_sets", [{}])[0].get("rows", [])
+        raw_def = str(rows[0][0]) if rows and rows[0] and rows[0][0] else ""
+        if not raw_def:
+            return ""
+        if wrap_exists:
+            return svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+        return raw_def
+
     # Routine (Proc, Func, View)
     summary_res = svc.summary_object(
         file_path=file_path,
@@ -286,13 +307,15 @@ def extract_object_dependencies(
 
 
 def deploy_script_to_target(parsed_target_conn: dict[str, Any], script: str) -> tuple[bool, str | None]:
-    """Deploy script batches to target database using execute_query."""
+    """Deploy script batches to target database — dùng chung execute_sql_batches (split GO)."""
     import clone_things.service as svc
-    batches = [b.strip() for b in re.split(r"^\s*GO\s*$", script, flags=re.IGNORECASE | re.MULTILINE) if b.strip()]
-    if not batches:
+    if not split_go_batches(script):
         return True, None
-    for batch in batches:
-        res = svc.execute_query(parsed_target_conn, batch)
-        if not res.get("success"):
-            return False, res.get("error", "Unknown deployment error")
+    res = svc.execute_sql_batches(parsed_target_conn, script)
+    if not res.get("success"):
+        err = res.get("error", "Unknown deployment error")
+        idx = res.get("failed_batch_index")
+        if idx:
+            err = f"batch {idx}/{res.get('batch_count', '?')}: {err}"
+        return False, err
     return True, None

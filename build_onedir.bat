@@ -42,6 +42,9 @@ if exist config_path.yaml (
 )
 copy /Y rebuild_all.bat dist\fastbusiness_mcp\rebuild_all.bat >nul
 
+REM key.json khong duoc ship kem build — xoa neu con sot (exe se tu tao lai khi user chay)
+if exist dist\fastbusiness_mcp\key.json del /f /q dist\fastbusiness_mcp\key.json
+
 echo.
 echo [OK] Build successful: dist\fastbusiness_mcp\fastbusiness_mcp.exe
 echo.

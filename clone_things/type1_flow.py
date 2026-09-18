@@ -12,6 +12,9 @@ from .file_manager import (
     append_script_block,
     ensure_use_db_sections,
     object_already_in_sql_file,
+    create_sql_temp_file,
+    sanitize_filename_base,
+    _get_default_scripts_folder,
 )
 from .helpers import (
     normalize_object_name,
@@ -335,6 +338,7 @@ def execute_type1_flow(
         ) or s_type.upper() in ("P", "FN", "IF", "TF")
         is_view = "VIEW" in type_desc_upper or s_type.upper() == "V"
         is_proc_func_view = is_proc_or_func or is_view
+        is_trigger = "TRIGGER" in type_desc_upper or s_type.upper() == "TR"
 
         if parsed_mode_read == 1:
             is_enc = False
@@ -408,6 +412,9 @@ def execute_type1_flow(
                     f"table_kept_create: {full_item_name} (type=1 không đổi ALTER TABLE toàn khối)"
                 )
                 script_style = "create"
+            elif is_trigger:
+                out_script = script
+                script_style = "create"
             elif is_proc_func_view:
                 out_script = transform_create_to_alter(script)
                 script_style = "alter"
@@ -420,7 +427,18 @@ def execute_type1_flow(
 
             max_full_chars = int(clone_cfg.get("mode_read_full_max_chars", 0))
             is_truncated = False
+            definition_path = None
             if max_full_chars > 0 and len(out_script) > max_full_chars:
+                # Spill full definition ra file .sql — agent đọc đủ, không mất dữ liệu.
+                try:
+                    spill_path = create_sql_temp_file(
+                        f"{sanitize_filename_base(full_item_name)}_full",
+                        str(_get_default_scripts_folder()),
+                    )
+                    Path(spill_path).write_text(out_script, encoding="utf-8")
+                    definition_path = spill_path
+                except Exception as e:
+                    logger.warning("Failed to spill definition for %s: %s", full_item_name, e)
                 out_script = out_script[:max_full_chars]
                 is_truncated = True
                 warnings.append(f"definition_truncated: {full_item_name} exceeded {max_full_chars} chars")
@@ -435,6 +453,8 @@ def execute_type1_flow(
             }
             if is_truncated:
                 analyzed_item["definition_truncated"] = True
+            if definition_path:
+                analyzed_item["definition_path"] = definition_path
 
             parent_info = parent_map.get(visited_key)
             if parent_info:
@@ -489,6 +509,9 @@ def execute_type1_flow(
                 warnings.append(
                     f"table_kept_create: {full_item_name} (type=1 không đổi ALTER TABLE toàn khối)"
                 )
+                script_style = "create"
+            elif is_trigger:
+                out_script = script
                 script_style = "create"
             elif is_proc_func_view:
                 out_script = transform_create_to_alter(script)

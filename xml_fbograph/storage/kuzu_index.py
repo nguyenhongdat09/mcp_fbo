@@ -274,6 +274,35 @@ def _get_kuzu_query_timeout_ms() -> int:
 
     return max(0, val_sec * 1000)
 
+def _get_kuzu_compact_max_bytes() -> int:
+    """Nguong kich thuoc file kuzu (bytes) de tu compact — doc env hoac config.yaml (compact_max_mb)."""
+    val_mb = 512
+    env_val = os.environ.get("FBOGRAPH_KUZU_COMPACT_MAX_MB", "").strip()
+    if env_val.isdigit():
+        val_mb = int(env_val)
+    else:
+        try:
+            import yaml
+            from xml_fbograph.utils.path_helper import _find_config_file
+            config_file = _find_config_file()
+            if config_file:
+                with open(config_file, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                fbograph_cfg = cfg.get("fbograph", {})
+                if "compact_max_mb" in fbograph_cfg:
+                    val_mb = int(fbograph_cfg["compact_max_mb"])
+        except Exception:
+            pass
+    return max(64, val_mb) * 1024**2
+
+def kuzu_db_needs_compact(db_path: Path) -> bool:
+    """True neu file kuzu vuot nguong compact. Kuzu khong reclaim pages sau
+    DELETE/DROP nen file chi tang — cach duy nhat thu nho la build file moi."""
+    try:
+        return Path(db_path).stat().st_size > _get_kuzu_compact_max_bytes()
+    except Exception:
+        return False
+
 def _create_kuzu_database(db_path: str, read_only: bool = False) -> kuzu.Database:
     """Helper tạo Kuzu Database với dung lượng VirtualAlloc an toàn."""
     import inspect
@@ -376,10 +405,11 @@ class KuzuIndexStore:
             self.db = _db_instances[db_path_key]["db"]
             self.conn = _db_instances[db_path_key]["conn"]
 
-    def _init_schema(self) -> None:
+    def _init_schema(self, conn=None) -> None:
+        c = conn if conn is not None else self.conn
         # Create XmlFile node table if not exists
         try:
-            self.conn.execute("""
+            c.execute("""
                 CREATE NODE TABLE XmlFile (
                     node_id STRING,
                     file_path STRING,
@@ -421,7 +451,7 @@ class KuzuIndexStore:
 
         # Create Rel relationship table if not exists
         try:
-            self.conn.execute("""
+            c.execute("""
                 CREATE REL TABLE Rel (
                     FROM XmlFile TO XmlFile,
                     edge_type STRING,
@@ -431,7 +461,9 @@ class KuzuIndexStore:
         except Exception:
             pass  # Already exists
 
-        self._migrate_schema()
+        # DB moi da co du cot tu CREATE — chi can migrate khi dung DB cu
+        if conn is None:
+            self._migrate_schema()
 
     def _get_table_columns(self, table_name: str) -> dict:
         """Tra ve {column_name: type} tu CALL table_info."""
@@ -480,17 +512,6 @@ class KuzuIndexStore:
                 except Exception as e2:
                     print(f"[FBOGraph] Warning: failed to add column {col_name}: {e2} (first: {e})")
 
-    def _clear_tables(self) -> None:
-        try:
-            self.conn.execute("DROP TABLE Rel")
-        except Exception:
-            pass
-        try:
-            self.conn.execute("DROP TABLE XmlFile")
-        except Exception:
-            pass
-        self._init_schema()
-
     def _format_kuzu_list(self, lst: List[str]) -> str:
         if not lst:
             return "[]"
@@ -515,15 +536,58 @@ class KuzuIndexStore:
             return ""
         return str(getattr(edge_type, "value", edge_type))
 
+    def _load_csvs_into_new_db(self, new_db_path: Path, nodes_csv_path: Path, edges_csv_path: Path) -> None:
+        """Tao DB Kuzu moi tinh tai new_db_path va COPY 2 CSV vao. Nen nem loi ra ngoai."""
+        for p in (new_db_path, Path(str(new_db_path) + ".wal"), Path(str(new_db_path) + ".shadow")):
+            safe_delete(p)
+        db = _create_kuzu_database(str(new_db_path), read_only=False)
+        conn = kuzu.Connection(db)
+        try:
+            self._init_schema(conn)
+            nodes_csv_str = str(nodes_csv_path).replace('\\', '/')
+            conn.execute(f"COPY XmlFile FROM '{nodes_csv_str}' (header=false, parallel=false, delim=',')")
+            if edges_csv_path.stat().st_size > 0:
+                edges_csv_str = str(edges_csv_path).replace('\\', '/')
+                conn.execute(f"COPY Rel FROM '{edges_csv_str}' (header=false, parallel=false, delim=',')")
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            try:
+                db.close()
+            except Exception:
+                pass
+            # Sidecar cua file moi sau khi close/checkpoint la stale — bo di
+            safe_delete(Path(str(new_db_path) + ".wal"))
+            safe_delete(Path(str(new_db_path) + ".shadow"))
+
+    def _swap_in_new_db(self, new_db_path: Path) -> bool:
+        """Dong connection cu roi thay file kuzu bang file moi (os.replace atomic).
+        Fail -> giu nguyen DB cu, tra False."""
+        close_cached_database(self.db_path)
+        # Sidecar cua generation cu da checkpoint luc close — xoa de tranh Kuzu
+        # replay wal cu len file moi
+        safe_delete(Path(str(self.db_path) + ".wal"))
+        safe_delete(Path(str(self.db_path) + ".shadow"))
+        for attempt in range(5):
+            try:
+                os.replace(new_db_path, self.db_path)
+                return True
+            except OSError as e:
+                print(f"[FBOGraph] Swap kuzu attempt {attempt + 1}/5 failed: {e}")
+                time.sleep(0.5)
+        safe_delete(new_db_path)
+        return False
+
     def sync_graph(self, graph: XmlGraph) -> None:
         """
         Bulk load nodes and edges using Kuzu COPY FROM with intermediate CSVs.
+        Build vao file kuzu.new roi swap — Kuzu khong reclaim pages sau
+        DROP/DELETE nen ghi de len file cu chi lam file phinh to.
         """
         t0 = time.time()
-        
-        # Clear existing data by recreating tables
-        self._clear_tables()
-        
+
         # Create temp directory for CSVs
         temp_dir = self.db_path.parent / "temp_csv"
         temp_dir.mkdir(parents=True, exist_ok=True)
@@ -635,22 +699,24 @@ class KuzuIndexStore:
                     self._sanitize_string(meta_json)
                 ])
 
-        # COPY FROM into Kuzu
+        # COPY FROM vao file DB moi (kuzu.new) — khong cham file cu cho toi khi
+        # build xong, nen neu loi thi DB cu van con nguyen
+        new_db_path = self.db_path.parent / "kuzu.new"
         try:
-            # We must escape backslashes in Windows paths if any remain, but Kuzu handles forward slashes fine
-            nodes_csv_str = str(nodes_csv_path).replace('\\', '/')
-            self.conn.execute(f"COPY XmlFile FROM '{nodes_csv_str}' (header=false, parallel=false, delim=',')")
-            
-            if edges_csv_path.stat().st_size > 0:
-                edges_csv_str = str(edges_csv_path).replace('\\', '/')
-                self.conn.execute(f"COPY Rel FROM '{edges_csv_str}' (header=false, parallel=false, delim=',')")
+            self._load_csvs_into_new_db(new_db_path, nodes_csv_path, edges_csv_path)
         finally:
             # Clean up CSV files
             try:
                 shutil.rmtree(temp_dir)
             except Exception:
                 pass
-                
+
+        # Swap file moi vao vi tri chinh thuc roi rebind connection
+        swapped = self._swap_in_new_db(new_db_path)
+        self._bind_live_connection(force_reopen=True)
+        if not swapped:
+            print("[FBOGraph] Warning: khong swap duoc file kuzu moi (dang bi lock?), giu DB cu.")
+
         elapsed = time.time() - t0
         print(f"[FBOGraph] Synced {len(graph.nodes)} nodes, {len(graph.edges)} edges to Kuzu ({elapsed:.1f}s)")
 

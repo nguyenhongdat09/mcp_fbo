@@ -205,7 +205,17 @@ def test_query_database_type0_table_schema():
         assert "CREATE TABLE [dbo].[dmkh]" in formatted
 
 
-def test_mcp_query_database_tool_integration():
+def test_mcp_query_database_tool_integration(tmp_path):
+    from xml_fbograph.utils.any_path import reset_sticky_context
+
+    reset_sticky_context()
+    proj = tmp_path / "PROJ"
+    ctrl = proj / "App_Data" / "Controllers" / "Filter"
+    ctrl.mkdir(parents=True)
+    xml = ctrl / "test.xml"
+    xml.write_text("<filter/>", encoding="utf-8")
+    (proj / "Web.config").write_text("<configuration/>", encoding="utf-8")
+
     with patch("fastbusiness_mcp.mcp_app.query_database") as mock_qd:
         mock_qd.return_value = {
             "success": True,
@@ -219,10 +229,11 @@ def test_mcp_query_database_tool_integration():
 
         # Test direct query_database_tool call with query_type=0
         out1 = query_database_tool(
-            file_path="E:\\FBO\\Filter\\test.xml",
+            file_path=str(xml),
             query="zc_bcthlv",
             query_type=0,
             mode="summary",
         )
         assert "[OK] summary_object" in out1
         assert "dbo.zc_bcthlv" in out1
+    reset_sticky_context()

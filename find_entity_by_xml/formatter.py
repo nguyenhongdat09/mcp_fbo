@@ -12,6 +12,8 @@ def format_entity_result(result: dict[str, Any]) -> str:
             lines.append(f"File: {result['file_path']}")
         if result.get("mode"):
             lines.append(f"Mode: {', '.join(result['mode'])}")
+        for w in result.get("warnings") or []:
+            lines.append(f"[WARNING] {w}")
         return "\n".join(lines)
 
     modes = result.get("mode") or ["content"]
@@ -20,6 +22,10 @@ def format_entity_result(result: dict[str, Any]) -> str:
         f"File: {result.get('file_path', '')}",
         f"Mode: {', '.join(modes)}",
     ]
+    if "project_root" in result:
+        lines.append(f"Project root: {result.get('project_root') or 'null'}")
+    if result.get("resolved_via"):
+        lines.append(f"Resolved via: {result['resolved_via']}")
     if result.get("entity_count") is not None:
         lines.append(f"Entities in DTD: {result['entity_count']}")
     if result.get("reloaded") is not None:
@@ -31,6 +37,14 @@ def format_entity_result(result: dict[str, Any]) -> str:
         lines.append("")
         for name in names:
             lines.append(f"  - {name}")
+
+    if "checking" in modes and result.get("checking") is not None:
+        import json
+        lines.append("")
+        lines.append("Checking — entity errors:")
+        lines.append("```json")
+        lines.append(json.dumps(result["checking"], indent=2, ensure_ascii=False))
+        lines.append("```")
 
     if "list" in modes:
         entities_out = result.get("entities") or []
@@ -90,5 +104,8 @@ def format_entity_result(result: dict[str, Any]) -> str:
                 if item.get("hint"):
                     lines.append(item["hint"])
             lines.append("")
+
+    for w in result.get("warnings") or []:
+        lines.append(f"[WARNING] {w}")
 
     return "\n".join(lines).rstrip()

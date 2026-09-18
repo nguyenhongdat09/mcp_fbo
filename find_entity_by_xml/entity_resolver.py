@@ -59,21 +59,12 @@ def read_file_content(file_path: str | Path) -> str | None:
     except Exception:
         return None
 
-    content = ""
-    if raw_bytes.startswith(b"\xff\xfe") or raw_bytes.startswith(b"\xfe\xff"):
-        content = raw_bytes.decode("utf-16", errors="ignore")
-    elif raw_bytes.startswith(b"\xef\xbb\xbf"):
-        content = raw_bytes.decode("utf-8-sig", errors="ignore")
+    if not raw_bytes:
+        content = ""
     else:
-        try:
-            content = raw_bytes.decode("utf-8")
-            if "\x00" in content:
-                content = raw_bytes.decode("utf-16", errors="ignore")
-        except UnicodeDecodeError:
-            try:
-                content = raw_bytes.decode("utf-16", errors="ignore")
-            except Exception:
-                content = raw_bytes.decode("utf-8", errors="ignore")
+        from fastbusiness_mcp.utils.file_utils import decode_bytes
+
+        content, _enc = decode_bytes(raw_bytes)
 
     _file_content_cache[norm] = {"content": content, "mtime": mtime}
     if len(_file_content_cache) > MAX_FILE_CACHE_SIZE:

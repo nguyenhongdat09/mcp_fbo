@@ -24,26 +24,45 @@ def wrap_check_exists(
     t_desc = (type_desc or "").upper()
     o_type = (obj_type or "").upper()
 
-    # 1. USER_TABLE: IF NOT EXISTS (...) BEGIN ... END
+    # 1. USER_TABLE: IF NOT EXISTS (...) BEGIN <table/index DDL> END
+    #    CREATE TRIGGER phải là statement đầu batch → tách theo GO TRƯỚC khi wrap,
+    #    trigger segments emit sau END dưới dạng IF OBJECT_ID IS NULL EXEC(N'...').
     if o_type == "U" or t_desc == "USER_TABLE" or "TABLE" in t_desc:
-        inner = clean_script
-        # If already has IF NOT EXISTS wrapper, extract inner DDL
-        if re.search(r"IF\s+NOT\s+EXISTS", inner, re.IGNORECASE):
-            begin_match = re.search(r"\bBEGIN\b", inner, re.IGNORECASE)
-            end_match = list(re.finditer(r"\bEND\b", inner, re.IGNORECASE))
-            if begin_match and end_match:
-                inner = inner[begin_match.end():end_match[-1].start()].strip()
+        segments = [
+            s.strip()
+            for s in re.split(
+                r"^\s*GO\s*(?:;)?\s*$", clean_script, flags=re.MULTILINE | re.IGNORECASE
+            )
+            if s.strip()
+        ]
+        table_segs: list[str] = []
+        trigger_segs: list[str] = []
+        for seg in segments:
+            if re.search(r"\bCREATE\s+(?:OR\s+ALTER\s+)?TRIGGER\b", seg, re.IGNORECASE):
+                trigger_segs.append(seg)
+            else:
+                table_segs.append(seg)
 
-        # Strip all GO statements: GO is a batch separator and CANNOT be inside BEGIN ... END
-        clean_ddl = re.sub(r"^\s*GO\s*(?:;)?\s*$", "", inner, flags=re.MULTILINE | re.IGNORECASE).strip()
+        first = table_segs[0] if table_segs else ""
+        # If already has IF NOT EXISTS wrapper, extract inner DDL
+        if re.search(r"IF\s+NOT\s+EXISTS", first, re.IGNORECASE):
+            begin_match = re.search(r"\bBEGIN\b", first, re.IGNORECASE)
+            end_match = list(re.finditer(r"\bEND\b", first, re.IGNORECASE))
+            if begin_match and end_match:
+                first = first[begin_match.end():end_match[-1].start()].strip()
+
+        clean_ddl = "\n\n".join([first] + table_segs[1:]).strip()
         clean_ddl = re.sub(r"\n{3,}", "\n\n", clean_ddl)
 
-        return (
+        wrapped = (
             f"IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE object_id = OBJECT_ID(N'{full_name}') AND type = N'U')\n"
             f"BEGIN\n"
             f"{clean_ddl}\n"
             f"END"
         )
+        for seg in trigger_segs:
+            wrapped += "\nGO\n" + _wrap_trigger_ddl(seg, schema_clean)
+        return wrapped
 
     # 2. STORED PROCEDURE
     if o_type == "P" or "PROCEDURE" in t_desc:
@@ -81,7 +100,47 @@ def wrap_check_exists(
             f"{inner}"
         )
 
+    # 5. TRIGGER: DROP + GO + CREATE TRIGGER (trigger là statement đầu batch)
+    if o_type == "TR" or "TRIGGER" in t_desc:
+        inner = clean_script
+        inner = re.sub(r"IF\s+OBJECT_ID\([^)]+\)\s+IS\s+NOT\s+NULL\s+DROP\s+TRIGGER\s+[^;\n]+(?:;)?(?:\s*GO)?", "", inner, flags=re.DOTALL | re.IGNORECASE).strip()
+        inner = re.sub(r"^\s*GO\s*(?:;)?\s*$", "", inner, flags=re.MULTILINE | re.IGNORECASE).strip()
+        return (
+            f"IF OBJECT_ID(N'{full_name}', N'TR') IS NOT NULL\n"
+            f"    DROP TRIGGER {full_name}\n"
+            f"GO\n"
+            f"{inner}"
+        )
+
     return clean_script
+
+
+def _wrap_trigger_ddl(trigger_sql: str, schema: str = "dbo") -> str:
+    """Wrap 1 đoạn CREATE TRIGGER thành batch an toàn.
+
+    CREATE TRIGGER bắt buộc là statement đầu batch → emit
+    ``IF OBJECT_ID(...) IS NULL EXEC(N'<ddl>')`` (EXEC là statement đầu,
+    body trigger nằm trong dynamic SQL nên hợp lệ). Không bắt được tên
+    trigger → trả raw (vẫn là batch riêng sau GO).
+    """
+    if re.match(r"^\s*IF\s+OBJECT_ID\b", trigger_sql, re.IGNORECASE):
+        return trigger_sql  # đã wrap (idempotent khi wrap_check_exists chạy 2 lần)
+    m = re.search(
+        r"\bCREATE\s+(?:OR\s+ALTER\s+)?TRIGGER\s+"
+        r"(?:(?:\[(?P<qs>[^\]]+)\]|(?P<s>[\w$]+))\s*\.\s*)?"
+        r"(?:\[(?P<qn>[^\]]+)\]|(?P<n>[\w$]+))",
+        trigger_sql,
+        re.IGNORECASE,
+    )
+    if not m:
+        return trigger_sql
+    trg_name = m.group("qn") or m.group("n") or ""
+    trg_schema = m.group("qs") or m.group("s") or schema or "dbo"
+    esc = trigger_sql.replace("'", "''")
+    return (
+        f"IF OBJECT_ID(N'[{trg_schema}].[{trg_name}]', N'TR') IS NULL\n"
+        f"EXEC(N'{esc}')"
+    )
 
 
 def transform_create_to_alter(script: str) -> str:

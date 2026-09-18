@@ -10,13 +10,14 @@
 
 | Param | Type | Required | Default | Mô tả |
 |-------|------|----------|---------|--------|
-| `type` | `int` | không | `0` | `0` = SQL clone giữa 2 project; `1` = paste-for-edit. Khác → `unsupported_type` |
-| `object` | `str` | **có** | — | **type=0:** tên SQL hoặc path `.xml` seed. **type=1:** tên SQL / list **hoặc** path `.xml` seed (lọc bằng `mode_get`) |
+| `type` | `int` | không | `0` | `0` = SQL clone giữa 2 project; `1` = paste-for-edit; `3` = copy file/folder (hỗ trợ đổi tên `SRC->DST`, `suite:Old->New`, `rl()`, `rlx()`). Khác → `unsupported_type` |
+| `object` | `str` | **có** | — | **type=0:** tên SQL hoặc path `.xml` seed. **type=1:** tên SQL / list **hoặc** path `.xml` seed. **type=3:** path file/folder/glob/suite hoặc cú pháp đổi tên `SRC->DST` |
 | `project_source` | `str` | **có** | — | Absolute path project nguồn (root hoặc file trong project) |
-| `project_target` | `str` | type=0: **có**; type=1: không | `""` | Absolute path project đích. **type=1: được rỗng** |
-| `path_to_pasted` | `str` | không | `""` | Absolute path file `.sql` để append. Rỗng → tạo sql temp theo config |
+| `project_target` | `str` | type=0: **có**; type=1/3: không | `""` | Absolute path project đích. **type=1 và type=3 được rỗng** (type=3 rỗng = cùng project nguồn) |
+| `path_to_pasted` | `str` | không | `""` | Absolute path file `.sql` để append (type 0/1). Rỗng → tạo sql temp theo config |
 | `mode_get` | `str` | không | `"proc"` | **Chỉ type=1.** Lọc kind khi seed XML: `proc`/`func`/`table`/`view`/`full` hoặc list `proc,func`. type=0 bỏ qua. Xem [11](./11_type1_paste_for_edit.md) |
 | `mode_recursion` | `str` | không | `"0"` | **Chỉ type=1.** `"0"` = không deps; `"1"` = đệ quy deps như type=0. type=0 bỏ qua |
+| `confirm_overwrite`| `bool`| không | `false` | **Chỉ type=3.** `true` = cho phép ghi đè file đích đã tồn tại |
 
 ### 2.1. Tham số nội bộ / optional mở rộng v1 (khuyến nghị có sẵn, default an toàn)
 
@@ -55,6 +56,19 @@ object.strip()
 ```
 
 Chi tiết `mode_get` / `mode_recursion`: [11_type1_paste_for_edit.md](./11_type1_paste_for_edit.md).
+
+### type=3
+
+Copy file / folder giữa 2 project hoặc trong cùng 1 project (`project_target` rỗng / giống `project_source`):
+- **Cú pháp giữ nguyên tên:** `path/to/file.xml`, `path/to/dir/`, `glob:Config/*.ent`, `suite:OldVoucher`
+- **Cú pháp đổi tên `SRC->DST`:**
+  - `Dir/MRTran.xml->Dir/DDVTran.xml` (đổi tên chỉ định)
+  - `Dir/MRTran.xml->Backup/` (chuyển thư mục giữ nguyên tên)
+  - `Dir/MRTran.xml->rl(s,2,DDV)` (pattern thay thế đầu/cuối: `rl(s|e, N, VALUE)` giữ extension)
+  - `Dir/MRTran.xml->rl(MR,DDV)` (pattern thay chuỗi: `rl(FROM, TO)` giữ extension)
+  - `Dir/MRTran.xml->rlx(MR,DDV)` (pattern thay thế trên cả basename + extension)
+  - `suite:MRTran->DDVTran` hoặc `suite:MRTran->rlx(MRTran,DDVTran)` (đổi tên bộ suite)
+- **Same-source guard:** Nếu file nguồn và file đích cùng là một file vật lý (`src_file.resolve() == tgt_file.resolve()`), MCP trả status `same_source_target`, đưa vào `skipped_same_source[]` và không ghi đè lên chính nó.
 
 ## 4. Validation (fail-fast)
 

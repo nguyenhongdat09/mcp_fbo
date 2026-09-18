@@ -23,6 +23,8 @@ a = Analysis(
         'fastbusiness_mcp', 'fastbusiness_mcp.server', 'fastbusiness_mcp.mcp_app',
         'fastbusiness_mcp.stdio_safe', 'fastbusiness_mcp.tool_errors',
         'fastbusiness_mcp.utils.logger',
+        'fastbusiness_mcp.utils.call_log',
+        'fastbusiness_mcp.utils.response_guard',
         'fastbusiness_mcp.config_paths',
         'find_connect_by_path',
         'find_connect_by_path.service',

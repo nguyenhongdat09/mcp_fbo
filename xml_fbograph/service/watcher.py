@@ -45,6 +45,37 @@ def invalidate_project_cache(graph_dir: Path):
     except Exception as e:
         print(f"[FBOGraph Watcher] Warning: failed to invalidate cache: {e}")
 
+_compact_cooldown_until = {}  # graph_dir_key -> ts; tranh rebuild lap khi data that su lon
+
+def maybe_compact_kuzu_db(graph_dir: Path, controllers_root: Path) -> bool:
+    """Neu file kuzu vuot nguong -> build_and_save_graph (sync_graph gio ghi file
+    moi nen file se thu nho ve dung kich thuoc data). Kuzu khong reclaim pages
+    sau DELETE/DROP nen day la cach duy nhat de giam dung luong."""
+    from xml_fbograph.storage.kuzu_index import kuzu_db_needs_compact
+    db_path = graph_dir / "kuzu"
+    if not kuzu_db_needs_compact(db_path):
+        return False
+    key = str(graph_dir.resolve())
+    now = time.time()
+    if now < _compact_cooldown_until.get(key, 0):
+        return False
+    try:
+        size_mb = db_path.stat().st_size / (1024 * 1024)
+    except Exception:
+        size_mb = -1
+    print(f"[FBOGraph Watcher] Kuzu DB {size_mb:.0f}MB vuot nguong compact -> rebuild file moi.")
+    try:
+        invalidate_project_cache(graph_dir)
+        build_and_save_graph(controllers_root, graph_dir)
+        # Neu sau rebuild van vuot nguong -> data that su lon, chi thu lai sau 24h
+        still_big = kuzu_db_needs_compact(db_path)
+        _compact_cooldown_until[key] = now + (86400 if still_big else 3600)
+        return True
+    except Exception as e:
+        print(f"[FBOGraph Watcher] Compact Kuzu failed: {e}")
+        _compact_cooldown_until[key] = now + 3600
+        return False
+
 def run_incremental_write(file_path: Path, action: str, controllers_root: Path, graph_dir: Path, on_node_updated=None):
     """
     Thực hiện ghi thay đổi vào Kuzu DB an toàn với retry logic và proactively clear cache.
@@ -71,6 +102,7 @@ def run_incremental_write(file_path: Path, action: str, controllers_root: Path, 
                     print(f"[FBOGraph Watcher] Da xoa node '{rel_path}' khoi Kuzu.")
                 # After write, invalidate again so next query gets fresh data
                 invalidate_project_cache(graph_dir)
+                maybe_compact_kuzu_db(graph_dir, controllers_root)
                 return rel_path
             else:
                 node = incremental_update_file(file_path, controllers_root, db_path)
@@ -80,6 +112,7 @@ def run_incremental_write(file_path: Path, action: str, controllers_root: Path, 
                         on_node_updated(node)
                 # After write, invalidate again
                 invalidate_project_cache(graph_dir)
+                maybe_compact_kuzu_db(graph_dir, controllers_root)
                 return node
                 
         except Exception as e:

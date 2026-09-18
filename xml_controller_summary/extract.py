@@ -60,6 +60,7 @@ class SqlChunk:
     content: str
     lang: Literal["sql", "js"] = "sql"
     has_ifdef: bool = False
+    raw: str = ""
 
 
 @dataclass
@@ -69,6 +70,7 @@ class RawField:
     items_attrs: dict[str, str] = field(default_factory=dict)
     client_script: str = ""
     line: int = 0
+    raw: str = ""
 
 
 @dataclass
@@ -216,6 +218,7 @@ def extract_controller_blocks(flat_text: str) -> ExtractedBlocks:
                         content=cleaned_sql,
                         lang="sql",
                         has_ifdef=ifdef,
+                        raw=m.group(0),
                     )
                 )
         else:
@@ -229,6 +232,7 @@ def extract_controller_blocks(flat_text: str) -> ExtractedBlocks:
                     content=cleaned_sql,
                     lang="sql",
                     has_ifdef=ifdef,
+                    raw=m.group(0),
                 )
             )
 
@@ -248,6 +252,7 @@ def extract_controller_blocks(flat_text: str) -> ExtractedBlocks:
                 content=cleaned_sql,
                 lang="sql",
                 has_ifdef=ifdef,
+                raw=m.group(0),
             )
         )
 
@@ -265,6 +270,7 @@ def extract_controller_blocks(flat_text: str) -> ExtractedBlocks:
                 content=cleaned_sql,
                 lang="sql",
                 has_ifdef=ifdef,
+                raw=m.group(0),
             )
         )
 
@@ -293,6 +299,7 @@ def extract_controller_blocks(flat_text: str) -> ExtractedBlocks:
                 items_attrs=items_attrs,
                 client_script=client_script,
                 line=get_line(m.start()),
+                raw=m.group(0),
             )
         )
 

@@ -80,6 +80,80 @@ def compare_things(
     - kind='xml': Tiện ích so sánh controller XML relative dưới Controllers/ (không dùng cho .ent/.txt).
     - kind='sql', kind='table': So sánh procedure/function/view hoặc schema bảng giữa 2 database.
     """
+    params = dict(locals())  # capture đúng signature — locals() sau này sẽ dính biến cục bộ
+
+    # Sticky context visibility — nuôi context theo project/file đang thao tác
+    # (bên B/target feed sau nên thắng) + echo project_root vào response.
+    from xml_fbograph.utils.any_path import project_switch_message, resolve_any_path
+
+    ctx_paths = {
+        "file": (file_a, file_b),
+        "folder": (folder_a, folder_b),
+    }.get(kind.strip().lower() if kind else "", (project_source, project_target))
+    ctx_root: Optional[str] = None
+    ctx_switched_from: Optional[str] = None
+    for _ctx_path in ctx_paths:
+        if not _ctx_path or not str(_ctx_path).strip():
+            continue
+        _ctx_res = resolve_any_path(str(_ctx_path))
+        if _ctx_res.ok and _ctx_res.project_root:
+            if _ctx_res.switched_from and ctx_switched_from is None:
+                ctx_switched_from = _ctx_res.switched_from
+            ctx_root = _ctx_res.project_root
+    _ctx_warn = project_switch_message(ctx_switched_from, ctx_root)
+
+    result = _compare_things_impl(**params)
+    if isinstance(result, dict):
+        result.setdefault("project_root", ctx_root)
+        if ctx_root:
+            result.setdefault("resolved_via", "absolute")
+        if _ctx_warn:
+            warns = result.setdefault("warnings", [])
+            if isinstance(warns, list):
+                warns.append(_ctx_warn)
+    return result
+
+
+def _compare_things_impl(
+    kind: str,
+    project_source: str = "",
+    project_target: str = "",
+    object: str = "",
+    seed: str = "",
+    seed_mode: str = "contains",
+    db_type: str = "app",
+    mode: str = "summary",
+    file_a: str = "",
+    file_b: str = "",
+    folder_a: str = "",
+    folder_b: str = "",
+    detail: bool = False,
+    detail_status: str = "",
+    include_compared: Optional[bool] = None,
+    ignore_line_endings: bool = True,
+    ignore_whitespace: bool = False,
+    max_diff_lines: int = 200,
+    max_objects: Optional[int] = None,
+    recursive: bool = True,
+    compare_content: bool = False,
+    hash_max_bytes: int = 1048576,
+    include_glob: str = "*",
+    exclude_glob: str = "",
+    name_compare: str = "case_insensitive",
+    meta_tolerance_seconds: int = 0,
+    context_lines: int = 3,
+    schema: str = "dbo",
+    xml_view: str = "original",
+    include_unified_diff: bool = False,
+    include_text_snippets: bool = False,
+    max_hunks_summary: int = 5,
+    max_hunks_detail: int = 30,
+    inventory: bool = False,
+    list_identical: bool = False,
+    config: Optional[Dict[str, Any]] = None,
+    on_progress: Optional[Any] = None,
+) -> Dict[str, Any]:
+
     kind = (kind or "").strip().lower()
     if kind not in VALID_KINDS:
         return _build_error(

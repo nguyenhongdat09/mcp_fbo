@@ -19,10 +19,10 @@ from .helpers import (
     is_system_noise_name,
     normalize_fbo_db_table,
     is_excluded,
+    parse_object_list,
 )
 
 logger = logging.getLogger("clone_things.type0")
-
 
 def execute_type0_flow(
     object: str,
@@ -195,10 +195,14 @@ def execute_type0_flow(
                 "warnings": warnings,
             }
     else:
-        queue.append(clean_object_input)
+        # object="A,B;C\nD" → split như type=1 (dedupe + normalize schema)
+        queue.extend(parse_object_list(clean_object_input, schema))
+        if not queue:
+            queue.append(clean_object_input)
 
     # Track direct seeds so they are not filtered by exclude patterns
     seed_objects = set(queue)
+    parsed_objects = list(queue)
 
     # Prepare excludes: chỉ loại trừ routine hệ thống của SQL Server (sp_, xp_, sys., sp_executesql).
     exclude_patterns = list(DEFAULT_EXTRA_EXCLUDES)
@@ -372,6 +376,7 @@ def execute_type0_flow(
         "type": 0,
         "object": object,
         "mode_seed": mode_seed,
+        "parsed_objects": parsed_objects,
         "project_source": str(Path(project_source).resolve()),
         "project_target": str(Path(project_target).resolve()),
         "path_to_pasted": output_file,

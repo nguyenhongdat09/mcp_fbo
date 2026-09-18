@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from .connection import get_connection_config
-from .executor import DEFAULT_MAX_ROWS, execute_query
+from .executor import (
+    DEFAULT_MAX_ROWS,
+    check_sql_batches,
+    execute_query,
+    execute_sql_batches,
+)
 from .query_resolver import (
     is_user_table,
     normalize_query_type,
@@ -12,6 +17,9 @@ from .query_resolver import (
     resolve_query,
 )
 from .bridges.summary_bridge import resolve_object_ref
+
+_SEARCH_OBJECT_TYPES = {"P", "FN", "IF", "TF", "V", "TR"}
+_SEARCH_DEFAULT_TYPES = "P,FN,IF,TF,V,TR"
 
 
 def query_database(
@@ -33,6 +41,12 @@ def query_database(
     max_full_chars: int = 50000,
     use_cache: bool = True,
     fetcher_override: object = None,
+    object_name: str = "",
+    references: str = "",
+    object_types: str = _SEARCH_DEFAULT_TYPES,
+    include_snippet: bool = True,
+    max_results: int = 50,
+    max_lines_per_object: int = 10,
     **extra_kwargs: object,
 ) -> dict:
     """
@@ -40,10 +54,11 @@ def query_database(
 
     Args:
         file_path: Path file trong project FBO (XML, SQL, ...)
-        query: Tên object (type=0), câu SQL inline (type=1), hoặc path file .sql (type=2)
+        query: Tên object (type=0), câu SQL inline (type=1), hoặc path file .sql (type=2/3)
         db_type: app hoặc sys (default: app)
         max_rows: Giới hạn số dòng trả về (default: 20000)
-        query_type: 0=object, 1=SQL inline (default), 2=đọc file .sql
+        query_type: 0=object, 1=SQL inline (default), 2=đọc file .sql,
+            3=check file .sql qua SET PARSEONLY (chỉ parse, không execute)
         mode: summary | snippet | full (khi query_type=0 với proc/view/func)
         schema: Schema mặc định (default: dbo)
         max_depth: Độ sâu call graph (default: 1)
@@ -60,6 +75,23 @@ def query_database(
     """
     if not file_path or not str(file_path).strip():
         return {"success": False, "error": "file_path is required"}
+
+    if (mode or "").strip().lower() == "search":
+        conn_result = get_connection_config(file_path, db_type)
+        if not conn_result.get("success"):
+            return conn_result
+        return _search_objects(
+            file_path=file_path,
+            conn_result=conn_result,
+            db_type=db_type,
+            object_name=object_name,
+            references=references,
+            object_types=object_types,
+            include_snippet=include_snippet,
+            max_results=max_results,
+            max_lines_per_object=max_lines_per_object,
+        )
+
     if not query or not str(query).strip():
         return {"success": False, "error": "query is required"}
 
@@ -105,10 +137,17 @@ def query_database(
         return {"success": False, "error": str(exc), "file_path": file_path}
 
     extra: dict = {}
-    if qt == 2:
+    if qt in (2, 3):
         extra["sql_file_path"] = str(query).strip()
 
-    query_result = execute_query(parsed, sql, max_rows=max_rows)
+    # type=3: check parse-only per batch (SET PARSEONLY) — KHÔNG execute
+    # type=2 (file .sql) có thể chứa nhiều batch GO — split + exec tuần tự
+    if qt == 3:
+        query_result = check_sql_batches(parsed, sql)
+    elif qt == 2:
+        query_result = execute_sql_batches(parsed, sql, max_rows=max_rows)
+    else:
+        query_result = execute_query(parsed, sql, max_rows=max_rows)
     return _attach_metadata(
         query_result,
         file_path=file_path,
@@ -241,6 +280,140 @@ def _query_object(
         summary_result["object_type"] = obj_type
     summary_result["object_type_desc"] = type_desc
     return summary_result
+
+
+def _search_objects(
+    *,
+    file_path: str,
+    conn_result: dict,
+    db_type: str,
+    object_name: str = "",
+    references: str = "",
+    object_types: str = _SEARCH_DEFAULT_TYPES,
+    include_snippet: bool = True,
+    max_results: int = 50,
+    max_lines_per_object: int = 10,
+) -> dict:
+    """mode='search': tìm DB object theo tên (LIKE) hoặc theo nội dung definition.
+
+    ``references`` là chuỗi literal cần có trong sys.sql_modules.definition —
+    luôn parameterized (LIKE '%'+?+'%'), không nối chuỗi vào SQL.
+    """
+    object_name = (object_name or "").strip()
+    references = references or ""
+    if not object_name and not references:
+        return {
+            "success": False,
+            "error_code": "search_criteria_required",
+            "error": "Cần ít nhất 1 trong object_name / references",
+            "mode": "search",
+            "file_path": file_path,
+        }
+
+    types = [t.strip().upper() for t in (object_types or "").split(",") if t.strip()]
+    dropped = [t for t in types if t not in _SEARCH_OBJECT_TYPES]
+    types = [t for t in types if t in _SEARCH_OBJECT_TYPES]
+    if not types:
+        types = sorted(_SEARCH_OBJECT_TYPES)
+    type_list = ", ".join(f"'{t}'" for t in types)  # whitelist enum — an toàn
+
+    sql = (
+        "SELECT o.object_id, o.name, s.name AS schema_name, o.type, o.type_desc, "
+        "o.create_date, o.modify_date, "
+        "CASE WHEN m.object_id IS NULL THEN 0 ELSE 1 END AS has_definition "
+        "FROM sys.objects o "
+        "JOIN sys.schemas s ON s.schema_id = o.schema_id "
+        "LEFT JOIN sys.sql_modules m ON m.object_id = o.object_id "
+        "WHERE o.is_ms_shipped = 0 "
+        f"AND o.type IN ({type_list}) "
+        "AND (? = N'' OR o.name LIKE ?) "
+        "AND (? = N'' OR m.definition LIKE N'%' + ? + N'%') "
+        "ORDER BY o.modify_date DESC"
+    )
+    max_results = max(1, int(max_results or 50))
+    params = (object_name, object_name, references, references)
+    res = execute_query(parsed=conn_result["parsed"], query=sql,
+                        max_rows=max_results + 1, params=params)
+    if not res.get("success"):
+        res["mode"] = "search"
+        res["file_path"] = file_path
+        return res
+
+    rows = (res.get("result_sets") or [{}])[0].get("rows", [])
+    truncated = len(rows) > max_results
+    rows = rows[:max_results]
+
+    objects: list[dict] = []
+    obj_ids: list[int] = []
+    for row in rows:
+        obj = {
+            "object_id": row[0],
+            "name": row[1],
+            "schema": row[2],
+            "type": row[3],
+            "type_desc": row[4],
+            "create_date": row[5],
+            "modify_date": row[6],
+            "has_definition": row[7],
+            "matched_lines": [],
+        }
+        objects.append(obj)
+        if obj["has_definition"]:
+            obj_ids.append(obj["object_id"])
+
+    if include_snippet and references and obj_ids:
+        placeholders = ", ".join("?" for _ in obj_ids)
+        def_sql = (
+            "SELECT m.object_id, m.definition FROM sys.sql_modules m "
+            f"WHERE m.object_id IN ({placeholders})"
+        )
+        def_res = execute_query(parsed=conn_result["parsed"], query=def_sql,
+                                max_rows=len(obj_ids), params=tuple(obj_ids))
+        if def_res.get("success"):
+            defs = {
+                r[0]: (r[1] or "")
+                for r in (def_res.get("result_sets") or [{}])[0].get("rows", [])
+            }
+            cap = max(1, int(max_lines_per_object or 10))
+            ref_low = references.lower()
+            by_id = {o["object_id"]: o for o in objects}
+            for oid, definition in defs.items():
+                obj = by_id.get(oid)
+                if obj is None:
+                    continue
+                for ln, line in enumerate(definition.split("\n"), 1):
+                    if ref_low in line.lower():
+                        obj["matched_lines"].append(
+                            {"line": ln, "text": line.strip()[:300]}
+                        )
+                        if len(obj["matched_lines"]) >= cap:
+                            break
+
+    result = {
+        "success": True,
+        "mode": "search",
+        "criteria": {
+            "object_name": object_name,
+            "references": references,
+            "object_types": ",".join(types),
+        },
+        "objects": objects,
+        "object_count": len(objects),
+        "truncated": truncated,
+    }
+    if dropped:
+        result["warnings"] = [
+            f"object_types bỏ qua giá trị ngoài whitelist {_SEARCH_OBJECT_TYPES}: {dropped}"
+        ]
+    return _attach_metadata(
+        result,
+        file_path=file_path,
+        conn_result=conn_result,
+        db_type=db_type,
+        query_type=0,
+        query_label="object_search",
+        original_query=object_name or references,
+    )
 
 
 def _attach_metadata(

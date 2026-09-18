@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 import yaml
 from pydantic import Field
@@ -25,6 +26,11 @@ from find_entity_by_xml.formatter import format_entity_result
 from xml_fbograph.mcp_tools import (
     mcp_query_radar,
     mcp_read_local_file,
+)
+from xml_fbograph.utils.any_path import (
+    known_projects,
+    project_switch_message,
+    resolve_any_path,
 )
 
 from search_qlyc import search_qlyc
@@ -109,19 +115,20 @@ def set_config(cfg: dict) -> None:
 def query_database_tool(
     file_path: Annotated[
         str,
-        Field(description="Path file trong project FBO (XML/SQL) để resolve connection"),
+        Field(description="Path BẤT KỲ trong project FBO để resolve connection qua Web.config — abs file/dir (local/UNC) hoặc relative ('Grid/SOTran.xml', 'Web.config', project root). Relative tự resolve qua sticky project context sau call abs đầu tiên."),
     ],
     query: Annotated[
         str,
         Field(
-            description="Tên object (type=0: bảng hoặc proc/view/function), SQL inline (type=1), hoặc path .sql (type=2)"
+            default="",
+            description="Tên object (type=0: bảng hoặc proc/view/function), SQL inline (type=1), hoặc path .sql (type=2/3). Không bắt buộc khi mode='search' (dùng object_name/references).",
         ),
-    ],
+    ] = "",
     query_type: Annotated[
         int,
         Field(
             default=1,
-            description="0=object (tự nhận bảng/proc/view/function), 1=SQL inline (default), 2=file .sql",
+            description="0=object (tự nhận bảng/proc/view/function), 1=SQL inline (default), 2=file .sql, 3=check file .sql qua SET PARSEONLY (parse-only, không execute — dùng trước khi deploy script; báo mọi lỗi syntax kèm dòng file gốc)",
         ),
     ] = 1,
     db_type: Annotated[
@@ -133,12 +140,54 @@ def query_database_tool(
         Field(default=20000, description="Giới hạn số dòng trả về (default: 20000)"),
     ] = 20000,
     mode: Annotated[
-        Literal["summary", "snippet", "full"],
+        Literal["summary", "snippet", "full", "search"],
         Field(
             default="summary",
-            description="Chế độ phân tích khi query_type=0 với proc/view/function: 'summary'=JSON tóm tắt (params, tables, calls, signals); 'snippet'=trích xuất code theo keywords/zones; 'full'=trả full source code.",
+            description="Chế độ phân tích khi query_type=0 với proc/view/function: 'summary'=JSON tóm tắt (params, tables, calls, signals); 'snippet'=trích xuất code theo keywords/zones; 'full'=trả full source code. 'search'=tìm DB object theo object_name (LIKE) hoặc references (literal trong definition — 'proc nào dùng bảng/field X'), bỏ qua query/query_type.",
         ),
     ] = "summary",
+    object_name: Annotated[
+        str,
+        Field(
+            default="",
+            description="mode='search': LIKE pattern trên tên object (vd 'zc_Create%', '%SttRec%').",
+        ),
+    ] = "",
+    references: Annotated[
+        str,
+        Field(
+            default="",
+            description="mode='search': chuỗi literal cần có trong definition của object (vd 'fsdSttRecRef', 'so_hc'). Parameterized, an toàn với %/' /--.",
+        ),
+    ] = "",
+    object_types: Annotated[
+        str,
+        Field(
+            default="P,FN,IF,TF,V,TR",
+            description="mode='search': lọc loại object, CSV whitelist P,FN,IF,TF,V,TR (mặc định tất cả).",
+        ),
+    ] = "P,FN,IF,TF,V,TR",
+    include_snippet: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="mode='search': trả matched_lines[] = các dòng definition chứa references (mặc định True).",
+        ),
+    ] = True,
+    max_results: Annotated[
+        int,
+        Field(
+            default=50,
+            description="mode='search': giới hạn số object trả về (mặc định 50, quá giới hạn → truncated=true).",
+        ),
+    ] = 50,
+    max_lines_per_object: Annotated[
+        int,
+        Field(
+            default=10,
+            description="mode='search': cap số matched_lines mỗi object (mặc định 10).",
+        ),
+    ] = 10,
     schema: Annotated[
         str,
         Field(
@@ -236,11 +285,38 @@ query_type:
     + mode='full': trả full source code.
 - 1: SQL ngắn inline (mặc định)
 - 2: path file .sql — dùng cho script dài (tiết kiệm token)
+- 3: path file .sql — check syntax qua SET PARSEONLY (chỉ parse, KHÔNG execute — chạy trước khi deploy script; báo MỌI lỗi kèm line_start = dòng file gốc). Lưu ý: parse-only không check tên bảng/cột tồn tại.
+
+mode='search': tìm DB object (proc/view/func/trigger) theo tên hoặc theo nội dung — trả lời "object nào đang dùng bảng/field X" mà không cần tự viết query sys.sql_modules. Cần ít nhất object_name hoặc references; kết quả gồm objects[] (name/schema/type/modify_date/has_definition) + matched_lines[] (dòng chứa references). Xem tiếp object nào → dùng mode summary/snippet/full với query_type=0.
 
 db_type: app (mặc định) hoặc sys."""
     try:
+        resolved_path = resolve_any_path(file_path)
+        if not resolved_path.ok:
+            err = dict(resolved_path.error or {"success": False})
+            err.setdefault("project_root", resolved_path.project_root)
+            err.setdefault("resolved_via", resolved_path.resolved_via)
+            return json.dumps(err, indent=2, ensure_ascii=False)
+        if not resolved_path.project_root:
+            return json.dumps(
+                {
+                    "success": False,
+                    "error_code": "no_project_root",
+                    "input": file_path,
+                    "resolved_path": resolved_path.abs_path,
+                    "project_root": None,
+                    "resolved_via": resolved_path.resolved_via,
+                    "message": (
+                        "Path tồn tại nhưng không xác định được project root FBO "
+                        "(không có App_Data/Web.config ở ancestors)."
+                    ),
+                    "known_projects": known_projects(),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
         result = query_database(
-            file_path=file_path,
+            file_path=resolved_path.abs_path,
             query=query,
             db_type=db_type,
             max_rows=max_rows,
@@ -257,7 +333,24 @@ db_type: app (mặc định) hoặc sys."""
             max_snippet_lines=max_snippet_lines,
             max_full_chars=max_full_chars,
             use_cache=use_cache,
+            object_name=object_name,
+            references=references,
+            object_types=object_types,
+            include_snippet=include_snippet,
+            max_results=max_results,
+            max_lines_per_object=max_lines_per_object,
         )
+        # Sticky context visibility — echo project/via + cảnh báo khi context trôi
+        if isinstance(result, dict):
+            result.setdefault("project_root", resolved_path.project_root)
+            result["resolved_via"] = resolved_path.resolved_via
+            _warn = project_switch_message(
+                resolved_path.switched_from, resolved_path.project_root
+            )
+            if _warn:
+                _w = result.setdefault("warnings", [])
+                if isinstance(_w, list):
+                    _w.append(_warn)
         return format_query_result(result)
     except Exception as e:
         logger.error(f"query_database execution error: {e}")
@@ -281,15 +374,20 @@ def get_xml_entities_tool(
         Field(default=None, description="Danh sách tên entity (vd: XMLWhenVoucherInit, ListField) - Không bắt buộc khi mode='list'"),
     ] = None,
     mode: Annotated[
-        Literal["content", "path", "list"],
-        Field(default="content", description="content (nội dung), path (vị trí), hoặc list (liệt kê)"),
+        Literal["content", "path", "list", "checking"],
+        Field(default="content", description="content (nội dung), path (vị trí), list (liệt kê), hoặc checking (check entity)"),
     ] = "content",
+    source_roots: Annotated[
+        list[str] | None,
+        Field(default=None, description="Danh sách project root NGUỒN (abs path, UNC ok) — chỉ dùng với mode='checking': file/entity thiếu ở đây nhưng có sẵn ở source. Optional."),
+    ] = None,
 ) -> str:
     """Đọc XML entity từ file_path. 
 mode: 
 - content: lấy nội dung entity (cần truyền entities)
 - path: vị trí khai báo file:line (cần truyền entities)
 - list: liệt kê toàn bộ ENTITY trong DOCTYPE (dùng khi chưa biết tên entity, không cần truyền entities). Mặc định mode=list chỉ trả về các entity loại 'general' được khai báo trực tiếp trong file.
+- checking: kiểm tra entity — &name; dùng mà chưa khai báo + SYSTEM entity trỏ file thiếu (kèm gợi ý source nếu truyền source_roots).
 
 CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị."""
     try:
@@ -299,6 +397,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
             mode=mode,
             force_reload=False,
             list_all=False,
+            source_roots=source_roots,
         )
         return format_entity_result(result)
     except Exception as e:
@@ -428,37 +527,103 @@ mode:
 def read_local_file_tool(
     file_path: Annotated[
         str,
-        Field(description="Relative path (e.g., 'Dir/CPTran.xml') or absolute path"),
+        Field(description="Path BẤT KỲ — relative ('Dir/CPTran.xml', 'ClientScript/jAjax.js') hoặc absolute (local/UNC). MCP tự resolve qua project đang làm (sticky context) — không cần khai báo project sau call abs đầu tiên."),
     ],
     reference_file: Annotated[
         str,
         Field(
             default="",
-            description="Đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve project root.\nBẮT BUỘC nếu file_path là đường dẫn tương đối (relative).\nTÙY CHỌN (có thể để trống) nếu file_path đã là đường dẫn tuyệt đối (absolute).",
+            description="Đường dẫn ABSOLUTE tới 1 file trong project FBO — CHỈ là optional override khi làm nhiều project xen kẽ hoặc call đầu tiên chưa có path abs nào. Relative path tự resolve qua sticky context.",
         ),
     ] = "",
     read_option: Annotated[
-        Literal[1, 2, 3],
+        Literal[1, 2, 3, 4],
         Field(
             default=3,
             description=(
                 "3: summary_xml (MẶC ĐỊNH / ƯU TIÊN GỌI ĐẦU TIÊN) — Trả về JSON tóm tắt cấu trúc cực gọn (hàm JS, bảng/views/procs SQL, kiểu field, lookup, onchange) giúp nắm bắt cấu trúc với chi phí token tối thiểu. CHỈ áp dụng cho file .xml trực thuộc thư mục Dir, Grid, Filter (vd Dir/a.xml); tự động chuyển về option 1 (raw) nếu không phải .xml trong Dir/Grid/Filter (vd .sql, .js, Report, Templates, Dir/A/a.xml,...). "
                 "2: flat — Đọc toàn bộ XML sau khi resolve entities/includes (CHỈ DÙNG khi cần xem chi tiết từng dòng code để sửa file). "
-                "1: raw — Đọc nội dung file gốc chưa resolve."
+                "1: raw — Đọc nội dung file gốc chưa resolve. "
+                "4: suggest_edit — READ-ONLY gợi ý str_replace: locate vùng bằng symbol/block/start_line+end_line/old_string, trả old_string exact + physical_file (kể cả trong entity .ent) + diff_preview + post_edit_check. Dùng edits[] cho batch nhiều edit 1 file."
             ),
         ),
     ] = 3,
+    start_line: Annotated[
+        int,
+        Field(default=0, description="Snippet mode: dòng bắt đầu (1-based) trên nội dung RAW. Khi truyền bất kỳ param snippet nào (start_line/end_line/symbol/block) tool trả JSON snippet thay vì dump."),
+    ] = 0,
+    end_line: Annotated[
+        int,
+        Field(default=0, description="Snippet mode: dòng kết thúc (inclusive); 0 = tới cuối file."),
+    ] = 0,
+    symbol: Annotated[
+        str,
+        Field(default="", description="Snippet mode: tên function JS cần trích (vd 'open$CreateVoucher'). Controller XML → trích trên flat view kèm origin=file|entity. Ưu tiên hơn start_line/end_line."),
+    ] = "",
+    block: Annotated[
+        str,
+        Field(default="", description="Snippet mode: selector khối SQL/XML trên controller — 'action:<id>' (vd action:GetCreatedVoucher), 'command:<event>' (vd command:Showing), 'field:<name>', 'query:<n>'."),
+    ] = "",
+    context_lines: Annotated[
+        int,
+        Field(default=0, description="Snippet mode: số dòng pad trước/sau vùng match (mặc định 0)."),
+    ] = 0,
+    line_numbers: Annotated[
+        bool,
+        Field(default=True, description="Snippet mode: prefix 'NNN|' cho từ dòng trong text (mặc định True)."),
+    ] = True,
+    old_string: Annotated[
+        str,
+        Field(default="", description="read_option=4: cách locate thứ 4 — truyền thẳng anchor text, server kiểm tra tồn tại/unique (kể cả trong entity .ent)."),
+    ] = "",
+    new_string: Annotated[
+        str,
+        Field(default="", description="read_option=4: code thay thế agent định ghi. Rỗng → chỉ trả location + old_string (không diff/validate)."),
+    ] = "",
+    edits: Annotated[
+        Optional[List[Dict[str, Any]]],
+        Field(default=None, description="read_option=4 batch: list edit [{'old_string|symbol|block|start_line+end_line', 'new_string'}] — apply tuần tự trên buffer in-memory (edit sau được khớp text do edit trước tạo), trả 1 diff tổng + 1 post_edit_check. Không truyền cùng selector top-level."),
+    ] = None,
+    max_expand: Annotated[
+        int,
+        Field(default=10, description="read_option=4: số dòng context tối đa tự mở rộng để old_string unique (mặc định 10)."),
+    ] = 10,
+    max_line_chars: Annotated[
+        int,
+        Field(default=2000, description="Snippet mode: dòng dài hơn giới hạn này (file minified) → trả cửa sổ ±500 ký tự quanh match kèm line_truncated (mặc định 2000)."),
+    ] = 2000,
 ) -> str:
     """Đọc trực tiếp nội dung file controller FBO từ ổ cứng (đảm bảo dữ liệu mới nhất, không bị cache).
 
 QUY TRÌNH AGENT (TIẾT KIỆM TOKEN):
 1) BƯỚC 1 (MẶC ĐỊNH): Dùng read_option=3 (summary_xml) cho các file .xml trong Dir, Grid, Filter để nắm bản đồ controller (danh sách hàm JS, bảng/view SQL, fields lookup/onchange) với chi phí token cực thấp. Lưu ý: nếu file không phải .xml trực thuộc Dir, Grid, Filter (vd .sql, .js, Report, Templates, Dir/A/a.xml), tool sẽ tự động fallback sang read_option=1 (raw).
-2) BƯỚC 2: CHỈ gọi read_option=2 (flat) khi bạn ĐÃ XÁC ĐỊNH ĐƯỢC hàm/khối lệnh cần sửa và cần xem code chi tiết để viết code thay thế.
-3) BƯỚC 3: get_xml_entities chỉ khi cần tra cứu vị trí file DTD/Entity chưa flat.
+2) BƯỚC 2: Khi ĐÃ BIẾT hàm/khối cần sửa → dùng SNIPPET thay vì dump full: symbol='<tên hàm JS>' hoặc block='action:<id>'/'command:<event>'/'field:<name>' (trích trên flat view, kèm origin + warning nếu code nằm trong entity/include — số dòng flat KHÔNG dùng để str_replace file raw) hoặc start_line/end_line (cắt trên raw). symbol cũng hoạt động trên file thường (.js/.aspx/.html/.cshtml — generic JS extractor, view=raw). CHỈ gọi read_option=2 (flat full) khi snippet không đủ.
+3) BƯỚC 3: get_xml_entities chỉ khi cần tra cứu vị trí file DTD/Entity chưa flat (vd origin=entity ở bước 2).
+4) BƯỚC 4 (SỬA FILE): read_option=4 (suggest_edit) — truyền selector (symbol/block/start_line+end_line/old_string) + new_string → nhận old_string EXACT + physical_file + diff_preview + post_edit_check rồi tự StrReplace. Nhiều edit 1 file → edits[].
+5) Sau khi sửa file bằng editor (Write/StrReplace), gọi lại read_option=3 để kiểm tra js.parse_status / sql.parse_status trước khi báo user.
+
+PATH: truyền bất kỳ — abs file/dir hay relative ('Dir/SOTran.xml', 'ClientScript/jAjax.js'); MCP tự resolve qua sticky project context.
+
+MULTI-PROJECT: Làm 2 project xen kẽ → truyền abs path hoặc reference_file để pin project; sticky context theo call abs gần nhất (response luôn kèm project_root/resolved_via để kiểm tra).
 
 CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢC tự ý tạo mới hay sinh file này. Hãy thông báo ngay cho người dùng và chờ chỉ thị."""
     try:
-        return mcp_read_local_file(file_path, reference_file, read_option)
+        return mcp_read_local_file(
+            file_path,
+            reference_file,
+            read_option,
+            start_line=start_line,
+            end_line=end_line,
+            symbol=symbol,
+            block=block,
+            context_lines=context_lines,
+            line_numbers=line_numbers,
+            old_string=old_string,
+            new_string=new_string,
+            edits=edits,
+            max_expand=max_expand,
+            max_line_chars=max_line_chars,
+        )
     except Exception as e:
         logger.error(f"read_local_file execution error: {e}")
         return format_execution_error("read_local_file", e)
@@ -546,7 +711,7 @@ def clone_things_tool(
     object: Annotated[
         str,
         Field(
-            description="type=0: tên SQL hoặc đường dẫn file .xml controller để seed; type=1: tên SQL / danh sách tên SQL hoặc đường dẫn file .xml; type=3: đường dẫn relative, danh sách path, glob (*, ?), hoặc preset ('mail')"
+            description="type=0/1: tên SQL, danh sách tên SQL (phân cách ',' ';' hoặc newline — clone/paste nhiều object 1 call) hoặc đường dẫn file .xml controller để seed; type=3: đường dẫn relative, danh sách path, glob (*, ?), hoặc preset ('mail'); type=3 hỗ trợ mapping SRC->DST: DST literal = tên mới (không '/' -> cùng folder; có '/' -> relative target root; trailing '/' = folder đích); rl(s|e,N,V) / rl(FROM,TO) rename pattern trên tên không đuôi, rlx(...) trên full basename; suite:Old->New đổi tên cả bộ controller"
         ),
     ],
     project_source: Annotated[
@@ -559,7 +724,7 @@ def clone_things_tool(
         str,
         Field(
             default="",
-            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc khi type=0 hoặc type=3; type=1 được phép để trống)",
+            description="Đường dẫn tuyệt đối (absolute path) tới project đích (bắt buộc khi type=0; type=1 và type=3 được để trống = clone trong cùng project_source đi kèm -> rename)",
         ),
     ] = "",
     type: Annotated[
@@ -666,8 +831,12 @@ def clone_things_tool(
        - mode_read=3: Trả full SQL body trong JSON analyzed[].definition (tối đa 3 object, mode_recursion=0).
        - object có thể là tên SQL, danh sách tên SQL, hoặc đường dẫn file .xml controller (hỗ trợ mode_get để lọc proc/table/view/func và mode_recursion=1 để đệ quy dependency).
        - project_target được phép để trống. Không deploy lên database.
-    3) type=3 (copy file giữa 2 dự án):
+    3) type=3 (copy file giữa 2 dự án hoặc trong cùng dự án):
        - Copy file bất kỳ (relative path, list, glob, preset 'mail', 'ajax') từ project_source sang project_target.
+       - Hỗ trợ mapping SRC->DST: DST literal (không '/' = sibling cùng folder, có '/' = relative root_target, trailing '/' = folder đích).
+       - Rename pattern: rl(s|e, N, VALUE) hoặc rl(FROM, TO) trên tên không đuôi (giữ ext), rlx(...) trên full basename.
+       - suite:Old->New: clone và đổi tên cả bộ controller.
+       - project_target được để trống = clone trong cùng project_source (đi kèm -> rename).
        - execute=False (mặc định): dry-run, không ghi đĩa.
        - execute=True: chỉ copy file chưa có trên target (overwrite=False mặc định).
        - confirm_overwrite=True: cần thiết kèm overwrite=True để ghi đè file có sẵn.
@@ -1049,12 +1218,12 @@ async def compare_things_tool(
 async def search_files_tool(
     root: Annotated[
         str,
-        Field(description="Đường dẫn tuyệt đối thư mục hoặc project root cần tìm kiếm (hỗ trợ local hoặc UNC)"),
+        Field(description="Path BẤT KỲ cần tìm kiếm: abs folder, abs FILE (search đúng file đó, files_candidate=1), project root, hoặc relative ('ClientScript', 'Grid') — MCP tự resolve qua sticky project context (hỗ trợ local hoặc UNC)"),
     ],
     pattern: Annotated[
         str,
-        Field(description="Từ khóa hoặc biểu thức chính quy (regex) cần tìm kiếm"),
-    ],
+        Field(default="", description="Từ khóa hoặc biểu thức chính quy (regex) cần tìm kiếm — bắt buộc khi mode='content'; bỏ trống được khi mode='definition'/'files_only'"),
+    ] = "",
     regex: Annotated[
         bool,
         Field(default=False, description="True=tìm theo regex; False=tìm literal text chính xác. Mặc định False."),
@@ -1066,6 +1235,13 @@ async def search_files_tool(
             description="Mẫu glob file cần quét (phân tách bởi dấu phẩy, hỗ trợ cú pháp mở rộng {...}).",
         ),
     ] = "*.{xml,aspx,js,html,config,ent,txt,sql}",
+    glob: Annotated[
+        str,
+        Field(
+            default="",
+            description="Alias của include_glob (tương thích call cũ). Chỉ áp dụng khi include_glob để mặc định.",
+        ),
+    ] = "",
     exclude_glob: Annotated[
         str,
         Field(
@@ -1104,21 +1280,95 @@ async def search_files_tool(
             description="Ưu tiên quét các file có tên/path khớp pattern và các thư mục trọng yếu (Filter, Grid, Dir, ClientScript, Main, Templates) trước. Mặc định True.",
         ),
     ] = True,
+    mode: Annotated[
+        str,
+        Field(
+            default="content",
+            description="'content' (mặc định, grep như cũ) | 'definition' (tìm nơi ĐỊNH NGHĨA symbol JS — trả definitions[], definition_found, usage_hint) | 'references' (list usage file:line của symbol — usages[] + definitions[] phân loại, dùng khi rename/refactor) | 'files_only' (chỉ list candidate path, không đọc nội dung — xác định phạm vi trước khi grep).",
+        ),
+    ] = "content",
+    symbol: Annotated[
+        str,
+        Field(
+            default="",
+            description="Tên symbol khi mode='definition'/'references' (vd 'Base64', '$message', 'open$CreateVoucher'). Server tự build regex định nghĩa (function/var/window./assign/object literal) và escape ký tự đặc biệt.",
+        ),
+    ] = "",
+    include_definitions: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Chỉ dùng khi mode='references': True=trả kèm definitions[] (mặc định); False=chỉ trả usages[].",
+        ),
+    ] = True,
+    reference_file: Annotated[
+        str,
+        Field(
+            default="",
+            description="Optional override — đường dẫn ABSOLUTE tới 1 file trong project FBO khi root là relative và cần chỉ định đúng project (làm nhiều project xen kẽ). Thường bỏ trống nhờ sticky context.",
+        ),
+    ] = "",
+    time_budget_seconds: Annotated[
+        float,
+        Field(
+            default=0,
+            description="Giới hạn thời gian wall-clock cho enumeration + scan (giây). 0 = dùng config search_files.time_budget_seconds (mặc định 45). Hết budget → trả partial với timed_out=true thay vì treo tới client timeout.",
+        ),
+    ] = 0,
+    ctx: Context = None,
 ) -> str:
     """
     MCP Tool search_files: Tìm kiếm nội dung văn bản (grep) an toàn trong các thư mục dự án trên ổ đĩa local hoặc mạng UNC.
     - CẤM đọc file *.f mã hóa của FastBusiness; tự động bỏ qua file nhị phân.
     - Hỗ trợ giải mã UTF-8 và Windows-1258 (CP1258).
     - Có chốt chặn số file và số kết quả để tránh làm tràn bộ nhớ/context.
+    - root nhận path BẤT KỲ: abs folder, abs file (search đúng file đó), hoặc relative — MCP tự resolve qua sticky project context.
+    - mode='definition' + symbol: trả lời "symbol X có được định nghĩa ở đâu / có tồn tại không" (definitions[] + definition_found + usage_hint) thay vì list hàng trăm dòng usage. definition_found=false + truncated → KHÔNG kết luận chưa định nghĩa, hẹp root/include_glob.
+    - mode='files_only': list candidate path sau glob + priority sort, không mở file nào.
     - Lưu ý DX: Root rộng dễ truncated — ưu tiên Filter/, ClientScript/, hoặc glob tên controller; tool đã ưu tiên filename match.
+    - Quét UNC root rộng: tool tự dừng sau time_budget_seconds và trả kết quả partial (timed_out=true) — hẹp root/include_glob rồi gọi lại.
+    - MULTI-PROJECT: Làm 2 project xen kẽ → truyền abs path hoặc reference_file để pin project; sticky context theo call abs gần nhất (response kèm project_root/resolved_via + warnings khi context vừa đổi project).
     """
+    loop = asyncio.get_running_loop()
+
+    async def _safe_report_progress(progress: float, total: float | None = None, message: str | None = None) -> None:
+        if ctx is not None:
+            try:
+                await ctx.report_progress(progress=progress, total=total, message=message)
+            except Exception:
+                pass
+
+    def on_progress(done: int, total: int, msg: str = "") -> None:
+        if ctx is not None:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    _safe_report_progress(
+                        progress=float(done),
+                        total=float(total) if total else None,
+                        message=msg,
+                    ),
+                    loop,
+                )
+            except Exception:
+                pass
+
     try:
+        cfg = get_config()
+        budget = time_budget_seconds or float(
+            (cfg.get("search_files") or {}).get("time_budget_seconds", 45.0)
+        )
+        # 'glob' là alias: chỉ dùng khi caller không truyền include_glob tường minh
+        effective_include = include_glob
+        if glob and include_glob == "*.{xml,aspx,js,html,config,ent,txt,sql}":
+            effective_include = glob
+
+        await _safe_report_progress(progress=0.0, total=100.0, message="Bat dau search_files...")
         result = await asyncio.to_thread(
             search_files,
             root=root,
             pattern=pattern,
             regex=regex,
-            include_glob=include_glob,
+            include_glob=effective_include,
             exclude_glob=exclude_glob,
             recursive=recursive,
             case_sensitive=case_sensitive,
@@ -1127,7 +1377,14 @@ async def search_files_tool(
             max_total_matches=max_total_matches,
             context_lines=context_lines,
             prefer_name_match=prefer_name_match,
+            mode=mode,
+            symbol=symbol,
+            reference_file=reference_file,
+            include_definitions=include_definitions,
+            on_progress=on_progress,
+            time_budget_seconds=budget,
         )
+        await _safe_report_progress(progress=100.0, total=100.0, message="search_files hoan tat.")
         import json
         return json.dumps(result, ensure_ascii=False, indent=2)
     except Exception as e:
@@ -1158,3 +1415,39 @@ async def _safe_call_tool(name: str, arguments: dict, context=None):
 
 
 server.call_tool = _safe_call_tool
+
+
+# ============================================================================
+# Call logging & Response oversize guard
+# (docs/doc/gemini/GEMINI-mcp-call-logging.md & GEMINI-mcp-response-oversize-guard.md)
+# ============================================================================
+from .utils import call_log, response_guard
+
+call_log.init_call_logging()
+
+_inner_call_tool = server.call_tool  # _safe_call_tool (ToolError → tiếng Việt)
+
+
+async def _logged_call_tool(name: str, arguments: dict, context=None):
+    t0 = time.perf_counter()
+    try:
+        result = await _inner_call_tool(name, arguments, context)
+    except Exception as e:
+        call_log.log_tool_call(
+            name, arguments, (time.perf_counter() - t0) * 1000, exc=e
+        )
+        raise
+    text, is_error = call_log.extract_response_text(result)
+    cfg = get_config()
+    guard_cfg = cfg.get("response_guard") or {}
+    max_chars = guard_cfg.get("max_chars", response_guard._MAX_RESPONSE_CHARS)
+    result, guard_meta = response_guard.apply(name, result, text, max_chars=max_chars)
+    call_log.log_tool_call(
+        name, arguments, (time.perf_counter() - t0) * 1000,
+        response_text=text, is_error=is_error, extra=guard_meta,
+    )
+    return result
+
+
+server.call_tool = _logged_call_tool
+

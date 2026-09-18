@@ -156,7 +156,9 @@ def test_mcp_read_local_file_non_xml_switch_to_raw():
 
         # Call with read_option=3 on .sql file -> should auto switch to raw content
         res = mcp_read_local_file(str(sql_file), str(ref_xml), read_option=3)
-        assert res.strip() == "SELECT 1 AS TestVal;"
+        # sticky-visibility: response nay co header "Project root:/Resolved via:"
+        assert "Project root:" in res
+        assert res.strip().endswith("SELECT 1 AS TestVal;")
         assert "```json" not in res
 
 

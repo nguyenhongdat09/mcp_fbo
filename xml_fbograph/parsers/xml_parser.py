@@ -14,7 +14,9 @@ def _read_file_cached(path_str: str) -> bytes:
         return b""
 
 def read_file_content(path: Path) -> str:
-    """Đọc file xử lý mã hóa UTF-8, Windows-1258 hoặc UTF-16 (có/không BOM) một cách an sau."""
+    """Đọc file xử lý mã hóa UTF-8, Windows-1258 hoặc UTF-16/32 (có/không BOM) một cách an sau."""
+    from fastbusiness_mcp.utils.file_utils import decode_bytes, detect_bom_encoding
+
     if path.suffix.lower() == ".ent":
         raw_bytes = _read_file_cached(str(path.resolve()))
     else:
@@ -26,39 +28,23 @@ def read_file_content(path: Path) -> str:
     if not raw_bytes:
         return ""
 
-    if raw_bytes.startswith(b"\xff\xfe") or raw_bytes.startswith(b"\xfe\xff"):
-        return raw_bytes.decode("utf-16", errors="ignore")
-    if raw_bytes.startswith(b"\xef\xbb\xbf"):
-        return raw_bytes.decode("utf-8-sig", errors="ignore")
-
-    # Kiểm tra khai báo encoding trong XML header
-    match = re.search(b'encoding\\s*=\\s*["\']([^"\']+)["\']', raw_bytes[:200])
-    if match:
-        enc = match.group(1).decode("ascii", errors="ignore").lower()
-        try:
-            if enc in ("windows-1258", "win-1258", "1258"):
-                return raw_bytes.decode("windows-1258", errors="ignore")
-            elif enc in ("utf-8", "utf8"):
-                return raw_bytes.decode("utf-8", errors="ignore")
-            elif enc in ("utf-16", "utf16"):
-                return raw_bytes.decode("utf-16", errors="ignore")
-        except Exception:
-            pass
-
-    try:
-        content = raw_bytes.decode("utf-8")
-        if "\x00" in content:
-            return raw_bytes.decode("utf-16", errors="ignore")
-        return content
-    except UnicodeDecodeError:
-        try:
-            # Fallback sang windows-1258 cho các file Việt hóa cũ
-            return raw_bytes.decode("windows-1258", errors="ignore")
-        except Exception:
+    if detect_bom_encoding(raw_bytes) is None:
+        # Không BOM — kiểm tra khai báo encoding trong XML header trước
+        match = re.search(b'encoding\\s*=\\s*["\']([^"\']+)["\']', raw_bytes[:200])
+        if match:
+            enc = match.group(1).decode("ascii", errors="ignore").lower()
             try:
-                return raw_bytes.decode("utf-16", errors="ignore")
+                if enc in ("windows-1258", "win-1258", "1258"):
+                    return raw_bytes.decode("windows-1258", errors="ignore")
+                elif enc in ("utf-8", "utf8"):
+                    return raw_bytes.decode("utf-8", errors="ignore")
+                elif enc in ("utf-16", "utf16"):
+                    return raw_bytes.decode("utf-16", errors="ignore")
             except Exception:
-                return raw_bytes.decode("utf-8", errors="ignore")
+                pass
+
+    text, _enc = decode_bytes(raw_bytes)
+    return text
 
 
 def preprocess_xml(xml_text: str) -> str:

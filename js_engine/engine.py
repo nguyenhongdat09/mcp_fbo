@@ -22,8 +22,10 @@ class ParseResult:
 class JsEngine:
     """Parse JavaScript source using generated ANTLR artifacts in js_engine/generated/."""
 
-    def parse(self, source: str, entry_rule: str = "program") -> ParseResult:
-        processed = preprocess_js(source)
+    def parse(
+        self, source: str, entry_rule: str = "program", *, preprocess: bool = True
+    ) -> ParseResult:
+        processed = preprocess_js(source) if preprocess else (source or "")
         lines = processed.splitlines()
 
         if not processed.strip():
@@ -123,5 +125,7 @@ class JsEngine:
         )
 
 
-def parse(source: str, *, entry_rule: str = "program") -> ParseResult:
-    return JsEngine().parse(source, entry_rule=entry_rule)
+def parse(
+    source: str, *, entry_rule: str = "program", preprocess: bool = True
+) -> ParseResult:
+    return JsEngine().parse(source, entry_rule=entry_rule, preprocess=preprocess)

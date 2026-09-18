@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
 DEFAULT_MAX_ROWS = 20000
+
+# GO là batch separator của SSMS/sqlcmd, KHÔNG phải T-SQL — pyodbc báo
+# "Incorrect syntax near 'GO'" nếu đưa nguyên file. Chỉ split dòng đứng riêng.
+_GO_BATCH_RE = re.compile(r"^\s*GO\s*$", re.IGNORECASE | re.MULTILINE)
 ODBC_DRIVERS = (
     "ODBC Driver 18 for SQL Server",
     "ODBC Driver 17 for SQL Server",
@@ -121,8 +126,9 @@ def execute_query(
     parsed: dict[str, str],
     query: str,
     max_rows: int = DEFAULT_MAX_ROWS,
+    params: tuple | list | None = None,
 ) -> dict[str, Any]:
-    """Chạy SQL query và trả về kết quả."""
+    """Chạy SQL query và trả về kết quả. ``params`` → parameterized execute (pyodbc '?')."""
     import pyodbc
 
     if not query or not query.strip():
@@ -135,7 +141,10 @@ def execute_query(
         with pyodbc.connect(conn_str, timeout=30) as conn:
             conn.autocommit = True
             cursor = conn.cursor()
-            cursor.execute(query)
+            if params:
+                cursor.execute(query, *params)
+            else:
+                cursor.execute(query)
 
             result_sets: list[dict[str, Any]] = []
             messages: list[str] = []
@@ -218,3 +227,243 @@ def _serialize_cell(value: Any) -> Any:
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return str(value)
+
+
+def split_go_batches(script: str) -> list[str]:
+    """Tách script thành các batch T-SQL theo dòng ``GO`` đứng riêng.
+
+    Dùng chung cho ``query_database`` type=2 và ``deploy_script_to_target`` —
+    cùng 1 regex, không lệch hành vi deploy vs query.
+    """
+    return [b.strip() for b in _GO_BATCH_RE.split(script or "") if b.strip()]
+
+
+def split_go_batches_with_lines(script: str) -> list[tuple[str, int]]:
+    """Như ``split_go_batches`` nhưng trả ``(batch_text, start_line)`` —
+    ``start_line`` là dòng 1-based trong file gốc chứa ký tự đầu tiên của batch
+    (sau khi strip). Batch rỗng bị bỏ nhưng line vẫn tích lũy đúng.
+
+    Dùng ``_GO_BATCH_RE.finditer`` positions — KHÔNG sửa ``split_go_batches``
+    (execute/deploy đang dùng).
+    """
+    script = script or ""
+    bounds = [(m.start(), m.end()) for m in _GO_BATCH_RE.finditer(script)]
+
+    segments: list[tuple[int, int]] = []
+    prev_end = 0
+    for m_start, m_end in bounds:
+        segments.append((prev_end, m_start))
+        prev_end = m_end
+    segments.append((prev_end, len(script)))
+
+    out: list[tuple[str, int]] = []
+    for seg_start, seg_end in segments:
+        seg = script[seg_start:seg_end]
+        stripped = seg.strip()
+        if not stripped:
+            continue
+        leading_ws = seg[: len(seg) - len(seg.lstrip())]
+        line = 1 + script.count("\n", 0, seg_start) + leading_ws.count("\n")
+        out.append((stripped, line))
+    return out
+
+
+def check_sql_batches(
+    parsed: dict[str, str],
+    script: str,
+) -> dict[str, Any]:
+    """Check syntax toàn file qua ``SET PARSEONLY`` — KHÔNG execute.
+
+    - Mở 1 conn; trước MỖI batch: cur.execute("SET PARSEONLY ON") ở batch
+      riêng (re-issue per batch: phòng file tự chứa SET PARSEONLY OFF).
+    - cur.execute(batch) — session đang PARSEONLY → chỉ parse, không run.
+    - finally: SET PARSEONLY OFF + close conn (stateless như thiết kế cũ).
+    - Gom hết errors[] kèm line_start (giữ nguyên contract response).
+    """
+    import pyodbc
+
+    base: dict[str, Any] = {
+        "database": parsed.get("database", ""),
+        "server": parsed.get("server", ""),
+    }
+    batches = split_go_batches_with_lines(script)
+    if not batches:
+        return {
+            "success": False,
+            "error": "script không có batch nào sau khi tách GO",
+            "check_mode": "parseonly",
+            "batch_count": 0,
+            "batches_ok": 0,
+            "errors": [],
+            **base,
+        }
+
+    try:
+        conn_str = _build_connection_string(parsed)
+        conn = pyodbc.connect(conn_str, timeout=30)
+        conn.autocommit = True
+    except Exception as exc:
+        return {
+            "success": False,
+            "error": format_pyodbc_error(exc) if hasattr(exc, "args") else str(exc),
+            "check_mode": "parseonly",
+            "batch_count": len(batches),
+            "batches_ok": 0,
+            "errors": [],
+            **base,
+        }
+
+    errors: list[dict[str, Any]] = []
+    cur = None
+    try:
+        cur = conn.cursor()
+        conn_alive = True
+        for idx, (batch, line_start) in enumerate(batches):
+            if not conn_alive:
+                break
+
+            try:
+                cur.execute("SET PARSEONLY ON")
+                try:
+                    while cur.nextset():
+                        pass
+                except Exception:
+                    pass
+            except Exception as exc:
+                if idx == 0:
+                    return {
+                        "success": False,
+                        "error": f"Không bật được PARSEONLY: {format_pyodbc_error(exc)}",
+                        "check_mode": "parseonly",
+                        "batch_count": len(batches),
+                        "batches_ok": 0,
+                        "errors": [],
+                        **base,
+                    }
+                errors.append(
+                    {
+                        "batch_index": idx + 1,
+                        "line_start": line_start,
+                        "message": f"Connection lost hoặc không set được PARSEONLY: {format_pyodbc_error(exc)}",
+                        "batch_preview": batch[:200],
+                    }
+                )
+                conn_alive = False
+                break
+
+            try:
+                cur.execute(batch)
+                try:
+                    while cur.nextset():
+                        pass
+                except Exception:
+                    pass
+                collect_cursor_messages(cur)
+            except Exception as exc:
+                msg = format_pyodbc_error(exc)
+                errors.append(
+                    {
+                        "batch_index": idx + 1,
+                        "line_start": line_start,
+                        "message": msg,
+                        "batch_preview": batch[:200],
+                    }
+                )
+                if any(code in msg for code in ("08S01", "08003", "08007", "Communication link failure", "Shared Memory Provider")):
+                    conn_alive = False
+    finally:
+        if cur is not None:
+            try:
+                cur.execute("SET PARSEONLY OFF")
+            except Exception:
+                pass
+            try:
+                cur.close()
+            except Exception:
+                pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    return {
+        "success": not errors,
+        "check_mode": "parseonly",
+        "batch_count": len(batches),
+        "batches_ok": len(batches) - len(errors),
+        "errors": errors,
+        "scope_note": (
+            "PARSEONLY chỉ check syntax/structure — KHÔNG check tên bảng/cột "
+            "tồn tại (object binding bị skip). Phù hợp check script deploy "
+            "trước khi F5."
+        ),
+        **base,
+    }
+
+
+
+def execute_sql_batches(
+    parsed: dict[str, str],
+    script: str,
+    max_rows: int = DEFAULT_MAX_ROWS,
+) -> dict[str, Any]:
+    """Chạy tuần tự các batch T-SQL tách bởi ``GO`` (file .sql / script dài).
+
+    - Script không có GO → đúng 1 batch (tương đương ``execute_query``).
+    - Batch lỗi → dừng ngay, trả ``failed_batch_index`` (1-based theo file)
+      + ``failed_batch_preview`` (≤200 chars) + ``error`` gốc ODBC.
+    - Thành công → gộp ``result_sets``/``messages`` của mọi batch,
+      kèm ``batch_count`` / ``batches_ok``.
+    """
+    base: dict[str, Any] = {
+        "database": parsed.get("database", ""),
+        "server": parsed.get("server", ""),
+    }
+    batches = split_go_batches(script)
+    if not batches:
+        return {
+            "success": False,
+            "error": "script không có batch nào sau khi tách GO",
+            "batch_count": 0,
+            "batches_ok": 0,
+            **base,
+        }
+
+    result_sets: list[dict[str, Any]] = []
+    messages: list[str] = []
+    total_rows = 0
+    elapsed_ms = 0
+    truncated = False
+
+    for idx, batch in enumerate(batches):
+        res = execute_query(parsed, batch, max_rows=max_rows)
+        if not res.get("success"):
+            return {
+                "success": False,
+                "error": res.get("error", "Unknown SQL error"),
+                "failed_batch_index": idx + 1,
+                "failed_batch_preview": batch[:200],
+                "batch_count": len(batches),
+                "batches_ok": idx,
+                **base,
+            }
+        result_sets.extend(res.get("result_sets") or [])
+        for msg in res.get("messages") or []:
+            if msg not in messages:
+                messages.append(msg)
+        total_rows += int(res.get("row_count") or 0)
+        elapsed_ms += int(res.get("execution_time_ms") or 0)
+        truncated = truncated or bool(res.get("truncated"))
+
+    return {
+        "success": True,
+        "result_sets": result_sets,
+        "messages": messages,
+        "row_count": total_rows,
+        "truncated": truncated,
+        "max_rows": max_rows,
+        "execution_time_ms": elapsed_ms,
+        "batch_count": len(batches),
+        "batches_ok": len(batches),
+        **base,
+    }

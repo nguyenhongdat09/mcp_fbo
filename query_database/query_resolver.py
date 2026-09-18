@@ -42,13 +42,14 @@ def sanitize_sql_identifier(name: str) -> str:
 
 
 def normalize_query_type(query_type: int) -> int:
-    """Chuẩn hóa type: 0=object, 1=SQL inline, 2=đọc file .sql."""
+    """Chuẩn hóa type: 0=object, 1=SQL inline, 2=đọc file .sql, 3=check file .sql."""
     qt = int(query_type)
-    if qt not in (0, 1, 2):
+    if qt not in (0, 1, 2, 3):
         raise ValueError(
             f"type không hợp lệ: {query_type}. "
             "0=object (tự nhận bảng/proc/view/function), "
-            "1=SQL tự do inline, 2=đọc file .sql."
+            "1=SQL tự do inline, 2=đọc file .sql, "
+            "3=check file .sql qua SET PARSEONLY (chỉ parse, không execute)."
         )
     return qt
 
@@ -80,16 +81,10 @@ def read_sql_file(sql_file_path: str) -> tuple[str, str]:
     if size == 0:
         raise ValueError(f"File SQL rỗng: {path}")
 
+    from fastbusiness_mcp.utils.file_utils import decode_bytes
+
     raw = path.read_bytes()
-    content: str | None = None
-    for encoding in ("utf-8-sig", "utf-8", "cp1258", "cp1252"):
-        try:
-            content = raw.decode(encoding)
-            break
-        except UnicodeDecodeError:
-            continue
-    if content is None:
-        raise ValueError(f"Không đọc được encoding file SQL: {path}")
+    content, _enc = decode_bytes(raw)
 
     sql = content.strip()
     if not sql:
@@ -204,6 +199,7 @@ def resolve_query(query_type: int, query: str) -> tuple[str, str]:
     type=0: chỉ dùng cho bước lookup object (service sẽ gọi resolve_object_sql sau).
     type=1: câu SQL tự do inline.
     type=2: đọc SQL từ file .sql (query = path file).
+    type=3: check file .sql qua SET PARSEONLY (query = path file, giống type=2).
 
     Returns:
         (sql, description)
@@ -217,7 +213,10 @@ def resolve_query(query_type: int, query: str) -> tuple[str, str]:
         name = sanitize_sql_identifier(query)
         return build_object_lookup_sql(name), f"object_lookup:{name}"
 
-    if qt == 2:
-        return read_sql_file(query)
+    if qt in (2, 3):
+        sql, label = read_sql_file(query)
+        if qt == 3:
+            label = label.replace("sql_file:", "sql_check_file:", 1)
+        return sql, label
 
     return query.strip(), "free_query"

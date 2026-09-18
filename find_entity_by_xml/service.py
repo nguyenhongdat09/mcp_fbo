@@ -18,7 +18,7 @@ def set_config(config: dict | None) -> None:
 
 
 def normalize_modes(mode: str | list[str] | None) -> set[str]:
-    """Chuẩn hóa mode MCP → {'content'}, {'path'}, và/hoặc {'list'}."""
+    """Chuẩn hóa mode MCP → {'content'}, {'path'}, {'list'} và/hoặc {'checking'}."""
     if mode is None:
         return {"content"}
 
@@ -32,6 +32,8 @@ def normalize_modes(mode: str | list[str] | None) -> set[str]:
             result.add("path")
         elif value in ("list", "2", "list_all", "get_all_entity"):
             result.add("list")
+        elif value in ("checking", "3", "check"):
+            result.add("checking")
     return result or {"content"}
 
 
@@ -79,24 +81,74 @@ def get_xml_entities(
     list_all: bool = False,
     get_all_entity: bool = False,
     config: dict | None = None,
+    source_roots: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Đọc XML entity trực tiếp bằng lxml (parse DTD + external .ent).
 
     Args:
-        file_path: Đường dẫn file XML (.xml, .f, ...)
+        file_path: Đường dẫn file XML (.xml, .f, ...) — abs hoặc relative
+            (relative resolve qua sticky project context)
         entities: Danh sách tên entity (có hoặc không có &...;)
-        mode: "content" (mode 0), "path" (mode 1), "list" (mode 2)
+        mode: "content" (mode 0), "path" (mode 1), "list" (mode 2),
+            "checking" (mode 3 — check entity undeclared/SYSTEM file thiếu)
         force_reload: Bỏ cache parse trong memory và parse lại
         list_all: Tương đương mode="list"
         get_all_entity: Tương đương mode="list"
         config: Giữ để tương thích MCP (không còn dùng ReadXML.exe)
+        source_roots: Project root NGUỒN (abs path list) cho mode checking —
+            file/entity thiếu ở đây nhưng có sẵn ở source.
     """
+    # Sticky context visibility — resolve path qua resolver chung để nuôi
+    # context + echo project_root; resolve fail thì giữ nguyên path cũ.
+    from xml_fbograph.utils.any_path import project_switch_message, resolve_any_path
+
+    resolved = None
+    path_arg = str(file_path or "").strip()
+    if path_arg:
+        _r = resolve_any_path(path_arg)
+        if _r.ok:
+            resolved = _r
+            path_arg = _r.abs_path
+
+    result = _get_xml_entities_impl(
+        path_arg or file_path,
+        entities,
+        mode=mode,
+        force_reload=force_reload,
+        list_all=list_all,
+        get_all_entity=get_all_entity,
+        config=config,
+        source_roots=source_roots,
+    )
+    if resolved is not None and isinstance(result, dict):
+        result.setdefault("project_root", resolved.project_root)
+        result.setdefault("resolved_via", resolved.resolved_via)
+        warn = project_switch_message(resolved.switched_from, resolved.project_root)
+        if warn:
+            warns = result.setdefault("warnings", [])
+            if isinstance(warns, list):
+                warns.append(warn)
+    return result
+
+
+def _get_xml_entities_impl(
+    file_path: str,
+    entities: list[str] | None = None,
+    *,
+    mode: str | list[str] | None = "content",
+    force_reload: bool = False,
+    list_all: bool = False,
+    get_all_entity: bool = False,
+    config: dict | None = None,
+    source_roots: list[str] | None = None,
+) -> dict[str, Any]:
     _ = config if config is not None else _config
     modes = normalize_modes(mode)
     want_content = "content" in modes
     want_path = "path" in modes
     want_list = "list" in modes or list_all or get_all_entity
+    want_checking = "checking" in modes
 
     file_path = str(file_path or "").strip()
     if not file_path:
@@ -104,6 +156,18 @@ def get_xml_entities(
 
     xml_path = Path(file_path)
     if not xml_path.is_file():
+        if want_checking:
+            # checking tự xử lý file thiếu / .f fallback trong file_resolver
+            from check_things.service import check_entities
+
+            return {
+                "success": True,
+                "file_path": file_path,
+                "mode": sorted(modes),
+                "reloaded": force_reload,
+                "entity_count": 0,
+                "checking": check_entities([file_path], source_roots=source_roots),
+            }
         return {"success": False, "error": f"File không tồn tại: {file_path}", "file_path": file_path}
 
     if want_path and not entities and not want_list:
@@ -146,6 +210,17 @@ def get_xml_entities(
         "reloaded": force_reload,
         "entity_count": len(all_entities),
     }
+
+    if want_checking:
+        # checking: entity &name; chưa khai báo + SYSTEM entity trỏ file thiếu.
+        # Combine được với mode khác (checking+list); standalone thì return sớm.
+        from check_things.service import check_entities
+
+        base_result["checking"] = check_entities(
+            [str(xml_path)], source_roots=source_roots
+        )
+        if not (want_content or want_path or want_list):
+            return base_result
 
     if want_list:
         entity_list = []

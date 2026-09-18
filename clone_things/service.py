@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from query_database.connection import get_connection_config
-from query_database.executor import execute_query
+from query_database.executor import execute_query, execute_sql_batches
 from query_database.service import query_database
 from query_database.bridges.summary_bridge import summary_object, resolve_object_ref
 from find_entity_by_xml.bridges.summary_xml_bridge import summary_xml
@@ -92,7 +92,7 @@ def clone_things(
     Args:
         object: Tên object SQL hoặc path .xml controller (hoặc file/glob/preset cho type=3)
         project_source: Absolute path tới project FBO nguồn
-        project_target: Absolute path tới project FBO đích (bắt buộc với type=0 và type=3; bỏ qua khi type=1)
+        project_target: Absolute path tới project FBO đích (bắt buộc với type=0; type=3 được để trống khi clone trong cùng project_source; bỏ qua khi type=1)
         type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone
         path_to_pasted: File .sql để append; để trống = tự tạo temp và mở editor
         schema: Schema mặc định (default: "dbo")
@@ -295,25 +295,22 @@ def clone_things(
             err_res["not_found_both"] = []
         return err_res
 
-    if type in (0, 3):
+    if type == 0:
         if not project_target or not str(project_target).strip():
-            logger.warning("Missing project_target parameter for type=%s", type)
+            logger.warning("Missing project_target parameter for type=0")
             err_res = {
                 "success": False,
                 "spec_version": "1.0",
-                "type": type,
+                "type": 0,
                 "error_code": "invalid_project_target",
-                "message": f"project_target is required when type={type}",
+                "message": "project_target is required when type=0",
                 "path_to_pasted": None,
                 "warnings": [],
+                "cloned": [],
+                "skipped_exists": [],
+                "skipped_noise": [],
+                "not_found_both": [],
             }
-            if type == 0:
-                err_res.update({
-                    "cloned": [],
-                    "skipped_exists": [],
-                    "skipped_noise": [],
-                    "not_found_both": [],
-                })
             return err_res
 
         if not Path(project_target).is_absolute():
@@ -321,25 +318,53 @@ def clone_things(
             err_res = {
                 "success": False,
                 "spec_version": "1.0",
-                "type": type,
+                "type": 0,
                 "error_code": "invalid_project_target",
                 "message": f"project_target must be an absolute path: {project_target}",
                 "path_to_pasted": None,
                 "warnings": [],
+                "cloned": [],
+                "skipped_exists": [],
+                "skipped_noise": [],
+                "not_found_both": [],
             }
-            if type == 0:
-                err_res.update({
-                    "cloned": [],
-                    "skipped_exists": [],
-                    "skipped_noise": [],
-                    "not_found_both": [],
-                })
             return err_res
+    elif type == 3:
+        if project_target and str(project_target).strip():
+            if not Path(project_target).is_absolute():
+                logger.warning("project_target is not an absolute path: %s", project_target)
+                return {
+                    "success": False,
+                    "spec_version": "1.0",
+                    "type": 3,
+                    "error_code": "invalid_project_target",
+                    "message": f"project_target must be an absolute path: {project_target}",
+                    "path_to_pasted": None,
+                    "warnings": [],
+                }
+
+    # Sticky context visibility — nuôi context theo project đang thao tác
+    # (target thắng vì feed sau) + cảnh báo khi sticky vừa đổi project.
+    from xml_fbograph.utils.any_path import project_switch_message, resolve_any_path
+
+    ctx_root: str | None = None
+    ctx_switched_from: str | None = None
+    for _ctx_path in (project_source, project_target):
+        if not _ctx_path or not str(_ctx_path).strip():
+            continue
+        _ctx_res = resolve_any_path(str(_ctx_path))
+        if _ctx_res.ok and _ctx_res.project_root:
+            if _ctx_res.switched_from and ctx_switched_from is None:
+                ctx_switched_from = _ctx_res.switched_from
+            ctx_root = _ctx_res.project_root
+    _switch_msg = project_switch_message(ctx_switched_from, ctx_root)
+    if _switch_msg:
+        warnings.append(_switch_msg)
 
     # Dispatch based on type
     if type == 3:
         resolved_exec = execute_clone if execute_clone is not None else execute
-        return run_type3_file_clone(
+        result = run_type3_file_clone(
             object=object,
             project_source=project_source,
             project_target=project_target,
@@ -354,9 +379,8 @@ def clone_things(
             warnings=warnings,
             start_time=start_time,
         )
-
-    if type == 1:
-        return execute_type1_flow(
+    elif type == 1:
+        result = execute_type1_flow(
             object=object,
             project_source=project_source,
             project_target=project_target,
@@ -375,20 +399,26 @@ def clone_things(
             warnings=warnings,
             start_time=start_time,
         )
+    else:
+        result = execute_type0_flow(
+            object=object,
+            project_source=project_source,
+            project_target=project_target,
+            path_to_pasted=path_to_pasted,
+            schema=schema,
+            db_type=db_type,
+            max_objects=max_objects,
+            open_file=open_file,
+            open_editor_cmd=open_editor_cmd,
+            execute_clone=execute_clone_effective,
+            exclude_like=exclude_like,
+            config=config,
+            warnings=warnings,
+            start_time=start_time,
+        )
 
-    return execute_type0_flow(
-        object=object,
-        project_source=project_source,
-        project_target=project_target,
-        path_to_pasted=path_to_pasted,
-        schema=schema,
-        db_type=db_type,
-        max_objects=max_objects,
-        open_file=open_file,
-        open_editor_cmd=open_editor_cmd,
-        execute_clone=execute_clone_effective,
-        exclude_like=exclude_like,
-        config=config,
-        warnings=warnings,
-        start_time=start_time,
-    )
+    if isinstance(result, dict):
+        result.setdefault("project_root", ctx_root)
+        if ctx_root:
+            result.setdefault("resolved_via", "absolute")
+    return result
