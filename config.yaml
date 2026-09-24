@@ -36,6 +36,12 @@ clone_things:
   # Giới hạn an toàn
   max_objects: 50
 
+  # Ngưỡng ký tự mode_read=3: vượt ngưỡng → spill full body ra definition_path, agent đọc bằng read_local_file (né client-side truncation)
+  mode_read_full_max_chars: 15000
+
+  # type=2 (clone data): số dòng tối đa lấy theo WHERE — vượt → truncated
+  data_max_rows: 1000
+
   # false = chỉ ghi file, không mở UI
   open_file: true
 
@@ -45,4 +51,5 @@ clone_things:
 # Response oversize guard (spill ra file local khi vượt ngưỡng token client)
 response_guard:
   max_chars: 60000   # response tool > ngưỡng này → spill ra logs/overflow-*.json
+
 

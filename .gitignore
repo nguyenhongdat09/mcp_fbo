@@ -17,4 +17,9 @@ key.json
 pass_zip.txt
 config_path.yaml
 config_path.xml
+config_jev.yaml
 KuzuDB/
+config_jev.xml
+scratch/key_backup.json
+nul
+.playwright-mcp/

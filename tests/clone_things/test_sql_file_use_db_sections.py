@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 
 def test_tc_use_01_empty_file_ensure_and_append_app(tmp_path):
-    """TC-USE-01: File rỗng -> ensure + append app -> Đầu file USE [AppDb] + GO; block app; có USE [SysDb] phía dưới."""
+    """TC-USE-01: File rỗng -> ensure + append app -> Đầu file USE [AppDb] + GO; block app; không có USE [SysDb] thừa (lazy sys)."""
     sql_file = tmp_path / "test.sql"
     sql_file.write_text("", encoding="utf-8")
 
@@ -25,13 +25,7 @@ def test_tc_use_01_empty_file_ensure_and_append_app(tmp_path):
     assert content.startswith("USE [Newpearl_R2SP223_A]\nGO")
     assert "-- clone_things: dbo.zc_app1 | SQL_STORED_PROCEDURE | from source" in content
     assert "CREATE PROCEDURE dbo.zc_app1 AS SELECT 1" in content
-    assert "USE [Newpearl_R2SP223_S]\nGO" in content
-
-    # Check order: USE App -> app block -> USE Sys
-    idx_use_app = content.find("USE [Newpearl_R2SP223_A]")
-    idx_app_block = content.find("dbo.zc_app1")
-    idx_use_sys = content.find("USE [Newpearl_R2SP223_S]")
-    assert idx_use_app < idx_app_block < idx_use_sys
+    assert "USE [Newpearl_R2SP223_S]" not in content
 
 
 def test_tc_use_02_empty_file_append_sys(tmp_path):

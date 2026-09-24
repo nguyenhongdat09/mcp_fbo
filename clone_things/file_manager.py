@@ -458,14 +458,23 @@ def append_script_block(
     Places block in App section (before USE sys_db) or Sys section (after USE sys_db).
     Returns (line_start, line_end) of the inserted block (1-based, inclusive).
     """
-    if app_db_name or sys_db_name:
-        ensure_use_db_sections(file_path, app_db_name=app_db_name, sys_db_name=sys_db_name)
+    is_sys = (str(db).lower() == "sys")
+    effective_sys_db = sys_db_name if is_sys else ""
+    if app_db_name or effective_sys_db:
+        ensure_use_db_sections(file_path, app_db_name=app_db_name, sys_db_name=effective_sys_db)
 
     p = Path(file_path)
     content = _read_sql_file(p)
 
     # Normalize newlines: convert \r\n and \r to \n to avoid \r\r\n (double spacing on Windows)
     clean_script = script.replace("\r\n", "\n").replace("\r", "\n").strip()
+    # Strip any old clone_things marker lines baked into definition (e.g. from previous paste/F5 cycles)
+    clean_script = re.sub(
+        r"^[ \t]*--[ \t]*clone_things(?:[ \t]+type=[0-9]+)?[ \t]*:[^\n]*\n?",
+        "",
+        clean_script,
+        flags=re.IGNORECASE | re.MULTILINE,
+    ).strip()
     lines = clean_script.splitlines()
     if lines and re.match(r"^\s*GO\s*$", lines[-1], re.IGNORECASE):
         body = clean_script
@@ -474,6 +483,8 @@ def append_script_block(
 
     if header_tag in ("paste_edit", "type1", "type=1"):
         header_line = f"-- clone_things type=1: {object_name} | {object_type} | paste-for-edit | from source"
+    elif header_tag == "data_clone":
+        header_line = f"-- clone_things type=2: {object_name} | {object_type} | from source"
     elif header_tag == "clone_things":
         header_line = f"-- clone_things: {object_name} | {object_type} | from source"
     else:
@@ -488,7 +499,7 @@ def append_script_block(
     sys_match = re.search(sys_pat, content, flags=re.IGNORECASE | re.MULTILINE) if sys_pat else None
 
     clean_obj = object_name.strip()
-    old_pat = rf"^[ \t]*--[ \t]*clone_things(?:\s+type=1)?:[ \t]*{re.escape(clean_obj)}[ \t]*\|[^\n]*\n.*?(?:^[ \t]*GO[ \t]*(?:;)?(?:\r?\n|$))"
+    old_pat = rf"^[ \t]*--[ \t]*clone_things(?:\s+type=\d+)?:[ \t]*{re.escape(clean_obj)}[ \t]*\|[^\n]*\n.*?(?:^[ \t]*GO[ \t]*(?:;)?(?:\r?\n|$))"
     if re.search(old_pat, content, flags=re.DOTALL | re.MULTILINE | re.IGNORECASE):
         content = re.sub(old_pat, "", content, flags=re.DOTALL | re.MULTILINE | re.IGNORECASE)
         content = re.sub(r"\n{3,}", "\n\n", content)

@@ -78,6 +78,37 @@ def test_tc_ext_03_file_f_unsupported_extension(tmp_path: Path):
     assert res_direct["content"]["hunk_count"] == 0
 
 
+def test_tc_ext_03b_file_xsd_unsupported(tmp_path: Path):
+    """kind=file file đuôi .xsd -> unsupported_extension_xsd / không diff content."""
+    fa = tmp_path / "Rpt.xsd"
+    fb = tmp_path / "Rpt.xml"
+    fa.write_text("<xs:schema/>", encoding="utf-8")
+    fb.write_text("<controller></controller>", encoding="utf-8")
+
+    res = compare_things(kind="file", file_a=str(fa), file_b=str(fb))
+    assert res["success"] is False
+    assert res["error_code"] == "unsupported_extension_xsd"
+
+    res_direct = compare_files(file_a=str(fa), file_b=str(fb))
+    assert res_direct["error_code"] == "unsupported_extension_xsd"
+    assert res_direct["content"]["hunk_count"] == 0
+
+    # kind=xml với object .xsd
+    proj_src = tmp_path / "px_src"
+    proj_tgt = tmp_path / "px_tgt"
+    (proj_src / "App_Data" / "Controllers" / "Templates" / "Rpt").mkdir(parents=True)
+    (proj_tgt / "App_Data" / "Controllers" / "Templates" / "Rpt").mkdir(parents=True)
+    (proj_src / "App_Data" / "Controllers" / "Templates" / "Rpt" / "r.xsd").write_text("<xs:schema/>")
+    res_xml = compare_things(
+        kind="xml",
+        project_source=str(proj_src),
+        project_target=str(proj_tgt),
+        object="Templates/Rpt/r.xsd",
+    )
+    assert res_xml["success"] is False
+    assert res_xml["error_code"] == "unsupported_extension_xsd"
+
+
 def test_tc_ext_04_folder_skips_f(tmp_path: Path):
     """TC-EXT-04: kind=folder có a.f + b.txt -> a.f skipped; b.txt so bình thường."""
     dir_a = tmp_path / "dir_a"
@@ -89,6 +120,10 @@ def test_tc_ext_04_folder_skips_f(tmp_path: Path):
     (dir_a / "voucher.f").write_bytes(b"ENCRYPTED_A")
     (dir_b / "voucher.f").write_bytes(b"ENCRYPTED_B")
     (dir_a / "extra.F").write_bytes(b"ENCRYPTED_EXTRA")
+
+    # File .xsd schema — cũng bị loại khỏi so sánh
+    (dir_a / "report.xsd").write_text("<xs:schema>a</xs:schema>", encoding="utf-8")
+    (dir_b / "report.xsd").write_text("<xs:schema>b</xs:schema>", encoding="utf-8")
 
     # File .txt hợp lệ
     (dir_a / "readme.txt").write_text("same content", encoding="utf-8")
@@ -116,7 +151,13 @@ def test_tc_ext_04_folder_skips_f(tmp_path: Path):
     assert "extra.f" not in summary["missing_on_b"]
     assert "extra.F" not in summary["missing_on_b"]
 
-    # summary đếm đúng skipped_f_count
+    # File .xsd cũng không xuất hiện trong missing hay different
+    assert "report.xsd" not in summary["missing_on_a"]
+    assert "report.xsd" not in summary["missing_on_b"]
+    assert "report.xsd" not in summary["different_content"]
+    assert "report.xsd" not in summary["different_meta"]
+
+    # summary đếm đúng skipped_f_count (.f + .xsd)
     assert summary["skipped_f_count"] >= 3
 
     # File .ent và .txt được so sánh bình thường

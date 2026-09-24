@@ -62,8 +62,8 @@ def _scan_folder(
 
     for dirpath, _, filenames in walker:
         for fname in filenames:
-            # Gate .f: file mã hóa FBO luôn bị bỏ qua, không tính vào missing/different
-            if fname.lower().endswith(".f"):
+            # Gate .f/.xsd: file mã hóa FBO + file schema kiến trúc luôn bị bỏ qua, không tính vào missing/different
+            if fname.lower().endswith((".f", ".xsd")):
                 skipped_f_count += 1
                 continue
 
@@ -135,8 +135,9 @@ def inventory_folder(
     case_insensitive = name_compare.lower() == "case_insensitive"
     inc_globs = [g.strip() for g in include_glob.split(",") if g.strip()] or ["*"]
     exc_globs = [g.strip() for g in exclude_glob.split(",") if g.strip()]
-    if not any(g.lower() == "*.f" for g in exc_globs):
-        exc_globs.append("*.f")
+    for forced in ("*.f", "*.xsd"):
+        if not any(g.lower() == forced for g in exc_globs):
+            exc_globs.append(forced)
 
     files_map, errs, skipped_f_count = _scan_folder(
         folder,
@@ -165,7 +166,7 @@ def inventory_folder(
 
     warnings = list(errs)
     if skipped_f_count > 0:
-        warnings.append(f"skipped_{skipped_f_count}_f_files")
+        warnings.append(f"skipped_{skipped_f_count}_f_xsd_files")
 
     if seed_keywords and (seed_mode or "").strip().lower() == "token":
         for kw in seed_keywords:
@@ -233,8 +234,9 @@ def compare_folders(
     case_insensitive = name_compare.lower() == "case_insensitive"
     inc_globs = [g.strip() for g in include_glob.split(",") if g.strip()] or ["*"]
     exc_globs = [g.strip() for g in exclude_glob.split(",") if g.strip()]
-    if not any(g.lower() == "*.f" for g in exc_globs):
-        exc_globs.append("*.f")
+    for forced in ("*.f", "*.xsd"):
+        if not any(g.lower() == forced for g in exc_globs):
+            exc_globs.append(forced)
 
     files_a, errs_a, skipped_f_a = _scan_folder(folder_a, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords, seed_mode=seed_mode)
     files_b, errs_b, skipped_f_b = _scan_folder(folder_b, recursive, inc_globs, exc_globs, case_insensitive, seed_keywords=seed_keywords, seed_mode=seed_mode)

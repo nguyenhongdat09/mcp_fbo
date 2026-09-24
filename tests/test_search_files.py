@@ -44,6 +44,9 @@ def search_dir(tmp_path):
     ctrl.mkdir(parents=True, exist_ok=True)
     (ctrl / "Test.f").write_bytes(b"acceptSendMail inside encrypted f file")
 
+    # Denied file: .xsd schema (file kiến trúc — không đọc)
+    (ctrl / "Test.xsd").write_text("acceptSendMail inside xsd schema", encoding="utf-8")
+
     # Binary file: bin/foo.dll
     bdir = root / "bin"
     bdir.mkdir(parents=True, exist_ok=True)
@@ -71,7 +74,7 @@ def test_ac_sf_1_search_pattern_found(search_dir):
 
 
 def test_ac_sf_2_f_and_binary_not_searched(search_dir):
-    """AC-SF-2: *.f va file binary khong bi doc/khop."""
+    """AC-SF-2: *.f, *.xsd va file binary khong bi doc/khop."""
     res = search_files(
         root=str(search_dir),
         pattern="acceptSendMail",
@@ -79,6 +82,7 @@ def test_ac_sf_2_f_and_binary_not_searched(search_dir):
     assert res["success"] is True
     paths = [m["path"] for m in res["matches"]]
     assert not any(p.endswith(".f") for p in paths)
+    assert not any(p.endswith(".xsd") for p in paths)
     assert not any(p.endswith(".dll") for p in paths)
 
 
@@ -505,4 +509,77 @@ def test_ac_rx_4_literal_paren_still_works(tmp_path):
     assert res["matches"][0]["line"] == 1
     assert res.get("regex_hint") is True
     assert any("pattern_looks_like_regex" in w for w in res["warnings"])
+
+
+# ---------------------------------------------------------------------------
+# TC-B: narrow_hint on max_files truncation (GEMINI-mcp-agent-feedback-fixes.md)
+# ---------------------------------------------------------------------------
+def test_tc_b1_narrow_hint_on_max_files(tmp_path):
+    """TC-B1: Khi chạm max_files, warnings chứa narrow_hint với top dir và include_glob='*<token>*'."""
+    root = tmp_path / "b1_proj"
+    dir1 = root / "App_Data" / "Controllers"
+    dir2 = root / "Include"
+    dir1.mkdir(parents=True, exist_ok=True)
+    dir2.mkdir(parents=True, exist_ok=True)
+
+    for i in range(5):
+        (dir1 / f"DDVTran_{i}.xml").write_text(f"<voucher>data {i}</voucher>", encoding="utf-8")
+    for i in range(3):
+        (dir2 / f"inc_{i}.xml").write_text(f"<inc>data {i}</inc>", encoding="utf-8")
+
+    res = search_files(
+        root=str(root),
+        pattern="DDVTran",
+        max_files=2,
+    )
+
+    assert res["success"] is True
+    assert res["truncated"] is True
+    assert res["truncated_reason"] == "max_files"
+
+    hints = [w for w in res["warnings"] if w.startswith("narrow_hint:")]
+    assert len(hints) == 1
+    hint_str = hints[0]
+    assert "App_Data" in hint_str or "Include" in hint_str
+    assert "include_glob='*DDVTran*'" in hint_str
+
+
+def test_tc_b2_no_narrow_hint_when_not_truncated(tmp_path):
+    """TC-B2: Khi không truncated, không có warning narrow_hint."""
+    root = tmp_path / "b2_proj"
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "a.xml").write_text("<root>content</root>", encoding="utf-8")
+
+    res = search_files(
+        root=str(root),
+        pattern="content",
+        max_files=10,
+    )
+
+    assert res["success"] is True
+    assert res["truncated"] is False
+    assert not any("narrow_hint:" in w for w in res["warnings"])
+
+
+def test_tc_b3_non_identifier_no_filename_glob(tmp_path):
+    """TC-B3: pattern có khoảng trắng/ký tự đặc biệt không phải identifier → hint có top dir, không có include_glob='*token*'."""
+    root = tmp_path / "b3_proj"
+    dir1 = root / "App_Data"
+    dir1.mkdir(parents=True, exist_ok=True)
+    for i in range(5):
+        (dir1 / f"file_{i}.xml").write_text("<root>hello world</root>", encoding="utf-8")
+
+    res = search_files(
+        root=str(root),
+        pattern="hello world",
+        max_files=2,
+    )
+
+    assert res["success"] is True
+    assert res["truncated"] is True
+    hints = [w for w in res["warnings"] if w.startswith("narrow_hint:")]
+    assert len(hints) == 1
+    assert "include_glob='*" not in hints[0]
+    assert "thu thu hep root hoac include_glob" in hints[0]
+
 

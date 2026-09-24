@@ -112,13 +112,14 @@ def test_ac_mrg_1_read_option_4_full_contract(grid_project):
 
 
 def test_ac_mrg_2_tool_list_no_standalone():
-    """AC-MRG-2: tool list không còn suggest_edit riêng — chỉ 8 tool."""
+    """AC-MRG-2: tool list không còn suggest_edit riêng — đủ tool core."""
     mcp_app = pytest.importorskip("fastbusiness_mcp.mcp_app")
     tools = asyncio.run(mcp_app.server.list_tools())
     names = [t.name for t in tools]
     assert "suggest_edit" not in names
-    assert len(names) == 8
-    assert "read_local_file" in names
+    for expected in ("query_database", "read_local_file", "search_files",
+                     "clone_things", "compare_things"):
+        assert expected in names
 
 
 def test_ac_mrg_3_edge_cases_preserved(grid_project, tmp_path):

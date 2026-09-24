@@ -75,8 +75,8 @@ def compare_things(
 
     """
     Dispatcher and parameter validator for compare_things tool.
-    - kind='file': So sánh 2 file bất kỳ trên đĩa (.xml, .ent, .txt, .sql, .js, .config...) TRỪ file .f mã hóa.
-    - kind='folder': Quét và so sánh thư mục (loại trừ *.f mã hóa).
+    - kind='file': So sánh 2 file bất kỳ trên đĩa (.xml, .ent, .txt, .sql, .js, .config...) TRỪ file .f mã hóa và .xsd.
+    - kind='folder': Quét và so sánh thư mục (loại trừ *.f mã hóa và *.xsd).
     - kind='xml': Tiện ích so sánh controller XML relative dưới Controllers/ (không dùng cho .ent/.txt).
     - kind='sql', kind='table': So sánh procedure/function/view hoặc schema bảng giữa 2 database.
     """
@@ -220,6 +220,17 @@ def _compare_things_impl(
                 error_msg=f"Cannot compare .f encrypted file: {f_path}",
                 vi_msg=f"Không so sánh file đuôi .f (file mã hóa FBO): {f_path}. Tuyệt đối không chỉnh sửa hoặc giải mã file .f.",
                 next_actions=["use_source_xml_instead", "fix_paths"],
+            )
+
+        # Gate .xsd: file schema/kiến trúc — không cần đọc/so sánh
+        if file_a.strip().lower().endswith(".xsd") or file_b.strip().lower().endswith(".xsd"):
+            x_path = file_a if file_a.strip().lower().endswith(".xsd") else file_b
+            return _build_error(
+                kind="file",
+                error_code="unsupported_extension_xsd",
+                error_msg=f"Cannot compare .xsd schema file: {x_path}",
+                vi_msg=f"Không so sánh file đuôi .xsd (file schema/kiến trúc — không cần đọc): {x_path}.",
+                next_actions=["fix_paths"],
             )
 
         pa = Path(file_a)

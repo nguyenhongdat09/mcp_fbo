@@ -89,7 +89,7 @@ def scan_xml_seed_candidates(
         for root, _, files in os.walk(controllers_dir):
             for file in files:
                 f_lower = file.lower()
-                if f_lower.endswith(".f"):
+                if f_lower.endswith((".f", ".xsd")):
                     continue
                 if not f_lower.endswith(".xml"):
                     continue
@@ -291,6 +291,21 @@ def compare_xml(
                 "compared": [],
                 "message": f"Không so sánh file đuôi .f (file mã hóa FBO): {raw_rel}. Tuyệt đối không chỉnh sửa hoặc giải mã file .f.",
                 "next_actions": ["use_source_xml_instead", "fix_paths"],
+                "warnings": [],
+            }
+
+        # Gate .xsd: file schema/kiến trúc — không cần đọc/so sánh
+        if rel_norm.lower().endswith(".xsd"):
+            return {
+                "success": False,
+                "kind": "xml",
+                "xml_view": xml_view,
+                "error_code": "unsupported_extension_xsd",
+                "error": f"Cannot compare .xsd schema file: {raw_rel}",
+                "summary": None,
+                "compared": [],
+                "message": f"Không so sánh file đuôi .xsd (file schema/kiến trúc — không cần đọc): {raw_rel}.",
+                "next_actions": ["fix_paths"],
                 "warnings": [],
             }
 

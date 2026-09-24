@@ -718,6 +718,8 @@ def _suggest_edit_impl(
         return _err("path_is_dir", file=str(p), message="suggest_edit cần file, không phải folder")
     if p.suffix.lower() == ".f":
         return _err("encrypted_file", file=str(p), message="File .f mã hóa — không đọc/sửa được")
+    if p.suffix.lower() == ".xsd":
+        return _err("schema_file", file=str(p), message="File .xsd là file schema/kiến trúc — không cần đọc/sửa")
 
     project_root = Path(resolved.project_root).resolve() if resolved.project_root else None
     raw_main = _read_text(p)

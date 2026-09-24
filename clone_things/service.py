@@ -53,6 +53,7 @@ from .db_ops import (
 )
 from .type0_flow import execute_type0_flow
 from .type1_flow import execute_type1_flow
+from .type2_data_clone import execute_type2_data_clone
 from .type3_file_clone import run_type3_file_clone
 
 logger = logging.getLogger("clone_things")
@@ -81,12 +82,15 @@ def clone_things(
     copy_filter: str = "",
     list_presets: bool | str = False,
     planned_sample_size: int = 10,
+    table: str = "",
+    where: str = "",
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     BƯỚC 1 BẮT BUỘC khi cần clone object SQL (table/proc/func/view) giữa 2 dự án FBO hoặc lấy ra sửa:
     - type=0: Clone thiếu từ source sang target, target-first, đệ quy dependency.
     - type=1: Paste-for-edit trên project_source ra file .sql dạng ALTER (proc/func/view) hoặc CREATE (table).
+    - type=2: Clone DATA — DELETE FROM <table> WHERE <where> + INSERT INTO từng dòng ra file .sql.
     - type=3: Copy file bất kỳ (relative, list, glob, preset) từ project_source sang project_target.
 
     Args:
@@ -106,6 +110,8 @@ def clone_things(
         execute: Thực hiện copy file thật trong type=3 (default: False = dry-run)
         execute_clone: Alias của execute (nếu khác None thì dùng)
         overwrite: Cho phép ghi đè file đã tồn tại trên target trong type=3 (default: False)
+        table: Tên bảng cần clone data (type=2). Khi truyền table+where → chạy data clone bất kể type
+        where: Điều kiện lọc dòng cho data clone (bắt buộc khi table được truyền)
         config: Cấu hình hệ thống từ config.yaml
     """
     start_time = time.perf_counter()
@@ -140,14 +146,14 @@ def clone_things(
         )
 
     # 1. Validation
-    if type not in (0, 1, 3):
+    if type not in (0, 1, 2, 3):
         logger.warning("Unsupported type requested: %s", type)
         return {
             "success": False,
             "spec_version": "1.0",
             "type": type,
             "error_code": "unsupported_type",
-            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), and type=3 (file clone) are supported",
+            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), type=2 (data clone), and type=3 (file clone) are supported",
             "path_to_pasted": None,
             "cloned": [],
             "skipped_exists": [],
@@ -156,7 +162,35 @@ def clone_things(
             "warnings": [],
         }
 
-    if not object or not str(object).strip():
+    # Data clone mode: type=2 hoặc agent truyền table (ưu tiên hơn type/object)
+    data_mode = (type == 2) or bool(str(table or "").strip())
+    if data_mode:
+        if not str(table or "").strip():
+            logger.warning("type=2 requested without table parameter")
+            return {
+                "success": False,
+                "spec_version": "1.0",
+                "type": 2,
+                "mode": "data_clone",
+                "error_code": "missing_table",
+                "message": "table is required when type=2 (data clone)",
+                "path_to_pasted": None,
+                "warnings": warnings,
+            }
+        if not str(where or "").strip():
+            logger.warning("Data clone requested without where parameter")
+            return {
+                "success": False,
+                "spec_version": "1.0",
+                "type": 2,
+                "mode": "data_clone",
+                "error_code": "missing_where",
+                "message": "where is required for data clone (điều kiện lọc dòng, vd: ma_ct = 'DDV')",
+                "path_to_pasted": None,
+                "warnings": warnings,
+            }
+
+    if not data_mode and (not object or not str(object).strip()):
         logger.warning("Empty object parameter provided")
         err_res: dict[str, Any] = {
             "success": False,
@@ -178,7 +212,7 @@ def clone_things(
             err_res["not_found_both"] = []
         return err_res
 
-    if type == 1:
+    if type == 1 and not data_mode:
         parsed_mode_read, mode_read_err = parse_mode_read(mode_read)
         if mode_read_err:
             logger.warning("Invalid mode_read: %s", mode_read_err)
@@ -295,7 +329,7 @@ def clone_things(
             err_res["not_found_both"] = []
         return err_res
 
-    if type == 0:
+    if type == 0 and not data_mode:
         if not project_target or not str(project_target).strip():
             logger.warning("Missing project_target parameter for type=0")
             err_res = {
@@ -329,7 +363,7 @@ def clone_things(
                 "not_found_both": [],
             }
             return err_res
-    elif type == 3:
+    elif type == 3 and not data_mode:
         if project_target and str(project_target).strip():
             if not Path(project_target).is_absolute():
                 logger.warning("project_target is not an absolute path: %s", project_target)
@@ -362,7 +396,22 @@ def clone_things(
         warnings.append(_switch_msg)
 
     # Dispatch based on type
-    if type == 3:
+    if data_mode:
+        result = execute_type2_data_clone(
+            table=table,
+            where=where,
+            project_source=project_source,
+            path_to_pasted=path_to_pasted,
+            schema=schema,
+            db_type=db_type,
+            open_file=open_file,
+            open_editor_cmd=open_editor_cmd,
+            clone_cfg=clone_cfg,
+            config=config,
+            warnings=warnings,
+            start_time=start_time,
+        )
+    elif type == 3:
         resolved_exec = execute_clone if execute_clone is not None else execute
         result = run_type3_file_clone(
             object=object,

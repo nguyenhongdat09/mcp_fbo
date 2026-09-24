@@ -18,6 +18,7 @@ def sample_folder(tmp_path):
     (f_dir / "callMailXS.dll").write_bytes(b"DATA_MAIL_2")
     (f_dir / "other.dll").write_bytes(b"DATA_OTHER")
     (f_dir / "hidden.f").write_bytes(b"ENCRYPTED_F")
+    (f_dir / "schema.xsd").write_text("<xs:schema/>", encoding="utf-8")
     return f_dir
 
 
@@ -40,6 +41,8 @@ def test_ac_inv_1_inventory_one_folder(sample_folder):
     assert "other.dll" not in file_names
     # .f file must not be in files
     assert "hidden.f" not in file_names
+    # .xsd schema file must not be in files either
+    assert "schema.xsd" not in file_names
     assert res["summary"]["file_count"] == 2
     assert res["summary"]["truncated"] is False
 

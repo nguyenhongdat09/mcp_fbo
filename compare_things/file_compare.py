@@ -48,6 +48,25 @@ def compare_files(
             "warnings": [f"Skipped .f encrypted file: {f_path}"],
         }
 
+    # Gate .xsd: file schema/kiến trúc — không cần đọc/diff
+    if file_a.strip().lower().endswith(".xsd") or file_b.strip().lower().endswith(".xsd"):
+        x_path = file_a if file_a.strip().lower().endswith(".xsd") else file_b
+        empty_content = ContentDiff(lines_a=0, lines_b=0, hunk_count=0, hunks=[])
+        return {
+            "status": "skipped_unsupported_ext",
+            "error_code": "unsupported_extension_xsd",
+            "error": f"Cannot compare .xsd schema file: {x_path}",
+            "identical_content": False,
+            "identical_meta": False,
+            "only_line_ending_diff": False,
+            "file_a": {"path": file_a},
+            "file_b": {"path": file_b},
+            "meta_diff": [],
+            "content": empty_content.to_dict(is_sql=False, mode=mode),
+            "next_actions": ["fix_paths"],
+            "warnings": [f"Skipped .xsd schema file: {x_path}"],
+        }
+
     meta_a, bytes_a, text_a, warn_a = get_file_meta_and_bytes(file_a, max_file_bytes=max_file_bytes)
     meta_b, bytes_b, text_b, warn_b = get_file_meta_and_bytes(file_b, max_file_bytes=max_file_bytes)
 

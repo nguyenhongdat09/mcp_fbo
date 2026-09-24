@@ -795,6 +795,10 @@ def mcp_read_local_file(file_path: str, reference_file: str = "", read_option: i
             except ValueError:
                 return f"Loi: Duong dan nam ngoai thu muc du an: {file_path}"
 
+        # Gate .xsd: file schema/kiến trúc — không cần đọc
+        if p.suffix.lower() == ".xsd":
+            return f"Loi: File .xsd la file schema/kien truc, khong can doc: {file_path}"
+
         if symbol or block or start_line or end_line:
             snippet_out = _read_snippet(
                 p,

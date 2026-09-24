@@ -168,7 +168,7 @@ def expand_suite_prefix_files(
     - basename startswith ``GNEditCheckTable`` + ctrl_name
     - basename startswith ``Extra.`` + src_prefix
 
-    Skip ``*.f``. Trả rel path POSIX theo thứ tự scan, đã dedupe."""
+    Skip ``*.f``, ``*.xsd``. Trả rel path POSIX theo thứ tự scan, đã dedupe."""
     out: list[str] = []
     seen: set[str] = set()
     for rel_dir in SUITE_SCAN_DIRS:
@@ -183,7 +183,7 @@ def expand_suite_prefix_files(
             if not e.is_file():
                 continue
             name = e.name
-            if name.lower().endswith(".f"):
+            if name.lower().endswith((".f", ".xsd")):
                 continue
             hit = (
                 (bool(src_prefix) and name.startswith(src_prefix))
@@ -619,7 +619,7 @@ def expand_object_tokens(
                     matched_dir_files = []
                     for dirpath, _, filenames in os.walk(str(candidate_target)):
                         for fname in sorted(filenames):
-                            if fname.lower().endswith(".f"):
+                            if fname.lower().endswith((".f", ".xsd")):
                                 continue
                             f_abs = Path(dirpath) / fname
                             try:
@@ -741,7 +741,7 @@ def expand_object_tokens(
                     matched_dir_files = []
                     for dirpath, _, filenames in os.walk(str(candidate_target)):
                         for fname in sorted(filenames):
-                            if fname.lower().endswith(".f"):
+                            if fname.lower().endswith((".f", ".xsd")):
                                 continue
                             f_abs = Path(dirpath) / fname
                             try:
@@ -1009,12 +1009,14 @@ def run_type3_file_clone(
         src_file = root_src_path / src_rel
         tgt_file = root_tgt_path / dst_rel
 
-        # Check deny rule (*.f) on both src and dst
+        # Check deny rule (*.f, *.xsd) on both src and dst
         if (
-            src_rel.lower().endswith(".f")
+            src_rel.lower().endswith((".f", ".xsd"))
             or fnmatch.fnmatch(src_rel.lower(), "*.f")
-            or dst_rel.lower().endswith(".f")
+            or fnmatch.fnmatch(src_rel.lower(), "*.xsd")
+            or dst_rel.lower().endswith((".f", ".xsd"))
             or fnmatch.fnmatch(dst_rel.lower(), "*.f")
+            or fnmatch.fnmatch(dst_rel.lower(), "*.xsd")
         ):
             planned_item = {
                 "relative": src_rel,

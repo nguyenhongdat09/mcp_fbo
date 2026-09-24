@@ -9,3 +9,7 @@ fbograph:
 clone_things:
   # Absolute path; empty or omit = {MCP_BASE}/Scripts
   sql_temp_folder: ""
+
+browser_fbo:
+  # Chromium profile dir; empty or omit = %USERPROFILE%/.fbo-browser-profile
+  profile_dir: ""

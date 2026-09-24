@@ -206,7 +206,7 @@ def test_ac_trg_fetch_object_script_trigger_branch():
             "success": True,
             "result_sets": [{"columns": ["c"], "rows": [[trg_def]]}],
         }
-        out = fetch_object_script(
+        out, meta = fetch_object_script(
             file_path="E:\\FBO\\P1",
             clean_name="x_trg",
             schema="dbo",
@@ -216,6 +216,7 @@ def test_ac_trg_fetch_object_script_trigger_branch():
         )
 
     assert out == trg_def
+    assert meta.get("truncated_upstream") is False
     # QUOTENAME trong SQL → tên có $ escape đúng
     sql_arg = mq.call_args[0][1]
     assert "OBJECT_DEFINITION" in sql_arg
@@ -231,7 +232,7 @@ def test_ac_trg_fetch_object_script_encrypted_returns_empty():
             "success": True,
             "result_sets": [{"columns": ["c"], "rows": [[None]]}],
         }
-        out = fetch_object_script(
+        out, meta = fetch_object_script(
             file_path="E:\\FBO\\P1",
             clean_name="enc_trg",
             schema="dbo",
@@ -241,6 +242,7 @@ def test_ac_trg_fetch_object_script_encrypted_returns_empty():
         )
 
     assert out == ""
+    assert meta.get("truncated_upstream") is False
 
 
 def test_trigger_wrap_idempotent_table_with_trigger():

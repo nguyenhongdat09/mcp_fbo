@@ -467,3 +467,113 @@ def test_tc_t1_no_drop_procedure_in_type1(tmp_path):
         assert "DROP PROCEDURE" not in content
         assert "IF OBJECT_ID" not in content
         assert "ALTER PROCEDURE dbo.zc_PostPXNTran" in content
+
+
+# ============================================================================
+# TC-C: Marker strip and lazy USE [sys_db] (GEMINI-mcp-agent-feedback-fixes.md)
+# ============================================================================
+def test_tc_c1_strip_old_clone_things_markers(tmp_path):
+    """TC-C1: Script input chứa sẵn các dòng marker cũ (do baked vào definition) → append xong chỉ có 1 marker duy nhất."""
+    sql_file = tmp_path / "c1_test.sql"
+    sql_file.write_text("", encoding="utf-8")
+
+    baked_script = (
+        "-- clone_things type=1: dbo.zc_TestProc | PROCEDURE | paste-for-edit | from source\n"
+        "-- clone_things type=1: dbo.zc_TestProc | PROCEDURE | paste-for-edit | from source\n"
+        "ALTER PROCEDURE dbo.zc_TestProc AS\n"
+        "SELECT 1;\n"
+        "GO\n"
+    )
+
+    append_script_block(
+        str(sql_file),
+        baked_script,
+        "dbo.zc_TestProc",
+        "SQL_STORED_PROCEDURE",
+        db="app",
+        app_db_name="AppDb",
+        sys_db_name="SysDb",
+        header_tag="paste_edit",
+    )
+
+    content = sql_file.read_text(encoding="utf-8")
+    assert content.count("-- clone_things type=1: dbo.zc_TestProc") == 1
+    assert content.count("-- clone_things") == 1
+
+    # Idempotent: paste lại cùng script đã chứa marker cũ → vẫn chỉ 1 marker
+    append_script_block(
+        str(sql_file),
+        baked_script,
+        "dbo.zc_TestProc",
+        "SQL_STORED_PROCEDURE",
+        db="app",
+        app_db_name="AppDb",
+        sys_db_name="SysDb",
+        header_tag="paste_edit",
+    )
+    content2 = sql_file.read_text(encoding="utf-8")
+    assert content2.count("-- clone_things type=1: dbo.zc_TestProc") == 1
+    assert content2.count("-- clone_things") == 1
+
+
+def test_tc_c2_lazy_sys_section_paste(tmp_path):
+    """TC-C2: App-only paste không có USE [sys_db]; paste app + sys tạo USE [sys_db] đúng vị trí trước block sys."""
+    sql_file = tmp_path / "c2_test.sql"
+    sql_file.write_text("", encoding="utf-8")
+
+    # 1. Paste app object -> File sạch, không có USE [SysDb]
+    append_script_block(
+        str(sql_file),
+        "ALTER PROCEDURE dbo.zc_app1 AS SELECT 1;\nGO",
+        "dbo.zc_app1",
+        "SQL_STORED_PROCEDURE",
+        db="app",
+        app_db_name="AppDb",
+        sys_db_name="SysDb",
+        header_tag="paste_edit",
+    )
+
+    content = sql_file.read_text(encoding="utf-8")
+    assert content.startswith("USE [AppDb]\nGO")
+    assert "USE [SysDb]" not in content
+
+    # 2. Paste sys object -> xuất hiện USE [SysDb] trước block sys
+    append_script_block(
+        str(sql_file),
+        "CREATE TABLE dbo.syscheckfields(id int);\nGO",
+        "dbo.syscheckfields",
+        "USER_TABLE",
+        db="sys",
+        app_db_name="AppDb",
+        sys_db_name="SysDb",
+        header_tag="paste_edit",
+    )
+
+    content = sql_file.read_text(encoding="utf-8")
+    assert content.count("USE [AppDb]") == 1
+    assert content.count("USE [SysDb]") == 1
+    idx_app = content.find("USE [AppDb]")
+    idx_p1 = content.find("dbo.zc_app1")
+    idx_sys = content.find("USE [SysDb]")
+    idx_s1 = content.find("dbo.syscheckfields")
+    assert idx_app < idx_p1 < idx_sys < idx_s1
+
+    # 3. Paste thêm 1 app object vào file đã có section sys -> app object chèn trước USE [SysDb]
+    append_script_block(
+        str(sql_file),
+        "ALTER PROCEDURE dbo.zc_app2 AS SELECT 2;\nGO",
+        "dbo.zc_app2",
+        "SQL_STORED_PROCEDURE",
+        db="app",
+        app_db_name="AppDb",
+        sys_db_name="SysDb",
+        header_tag="paste_edit",
+    )
+
+    content = sql_file.read_text(encoding="utf-8")
+    assert content.count("USE [SysDb]") == 1
+    idx_p2 = content.find("dbo.zc_app2")
+    idx_sys = content.find("USE [SysDb]")
+    idx_s1 = content.find("dbo.syscheckfields")
+    assert idx_p2 < idx_sys < idx_s1
+

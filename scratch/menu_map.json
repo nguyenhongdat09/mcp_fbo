@@ -1,0 +1,937 @@
+[
+ {
+  "text": "Tổng quan",
+  "url": "dashboard.aspx?id=01.08.01",
+  "id": ""
+ },
+ {
+  "text": "Thông tin chung...",
+  "url": "post.aspx?id=01.09.01",
+  "id": ""
+ },
+ {
+  "text": "Lịch làm việc",
+  "url": "events.aspx?id=01.09.05",
+  "id": ""
+ },
+ {
+  "text": "Chọn ngày làm việc",
+  "url": "smngaylv.aspx?id=01.10.01",
+  "id": ""
+ },
+ {
+  "text": "Tỷ giá quy đổi ngoại tệ",
+  "url": "smtgnt.aspx?id=01.10.02",
+  "id": ""
+ },
+ {
+  "text": "Khai báo các màn hình nhập chứng từ",
+  "url": "smct.aspx?id=01.70.62",
+  "id": ""
+ },
+ {
+  "text": "Khai báo sử dụng quyển chứng từ",
+  "url": "smctnk.aspx?id=01.70.63",
+  "id": ""
+ },
+ {
+  "text": "Khai báo mẫu quyển chứng từ",
+  "url": "smnkt.aspx?id=01.70.64",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật lại số chứng từ...",
+  "url": "dlsct.aspx?id=01.70.66",
+  "id": ""
+ },
+ {
+  "text": "Xóa nhiều chứng từ...",
+  "url": "xdlct.aspx?id=01.70.67",
+  "id": ""
+ },
+ {
+  "text": "Khai báo các tham số tùy chọn",
+  "url": "smoptions.aspx?id=01.70.69",
+  "id": ""
+ },
+ {
+  "text": "Khai báo ngày bắt đầu của năm tài chính",
+  "url": "smnamdn.aspx?id=01.75.01",
+  "id": ""
+ },
+ {
+  "text": "Khai báo ngày bắt đầu nhập liệu",
+  "url": "smnamnl.aspx?id=01.75.02",
+  "id": ""
+ },
+ {
+  "text": "Phiếu kế toán tổng hợp",
+  "url": "glctpk1.aspx?id=03.10.01",
+  "id": ""
+ },
+ {
+  "text": "Chuyển các giao dịch vào sổ cái",
+  "url": "glpost.aspx?id=03.10.02",
+  "id": ""
+ },
+ {
+  "text": "Bút toán hủy",
+  "url": "glctpkh.aspx?id=03.10.53",
+  "id": ""
+ },
+ {
+  "text": "In phiếu kế toán tổng hợp",
+  "url": "rpt_glctpk1.aspx?id=03.20.05",
+  "id": ""
+ },
+ {
+  "text": "Danh mục tài khoản",
+  "url": "gltk.aspx?id=03.38.90",
+  "id": ""
+ },
+ {
+  "text": "Giấy báo có",
+  "url": "cactbc1.aspx?id=06.10.01",
+  "id": ""
+ },
+ {
+  "text": "Giấy báo nợ",
+  "url": "cactbn1.aspx?id=06.10.02",
+  "id": ""
+ },
+ {
+  "text": "Phiếu thu tiền mặt",
+  "url": "cactpt1.aspx?id=06.10.03",
+  "id": ""
+ },
+ {
+  "text": "Phiếu chi tiền mặt",
+  "url": "cactpc1.aspx?id=06.10.04",
+  "id": ""
+ },
+ {
+  "text": "Tạo phiếu thu từ hóa đơn",
+  "url": "glpttd.aspx?id=06.25.01",
+  "id": ""
+ },
+ {
+  "text": "Tạo phiếu chi từ hóa đơn",
+  "url": "glpctd.aspx?id=06.25.02",
+  "id": ""
+ },
+ {
+  "text": "Bảng cân đối phát sinh theo ngày của một tài khoản",
+  "url": "rpt_glcd3.aspx?id=06.40.22",
+  "id": ""
+ },
+ {
+  "text": "Báo cáo số dư tại quỹ và ngân hàng",
+  "url": "rpt_glsd2.aspx?id=06.50.02",
+  "id": ""
+ },
+ {
+  "text": "Danh mục khế ước",
+  "url": "coku.aspx?id=06.70.82",
+  "id": ""
+ },
+ {
+  "text": "Danh mục tài khoản ngân hàng",
+  "url": "catknh.aspx?id=06.70.83",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn bán hàng",
+  "url": "socthda.aspx?id=07.10.06",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn dịch vụ",
+  "url": "arcthd1.aspx?id=07.10.08",
+  "id": ""
+ },
+ {
+  "text": "Chứng từ phải thu khác, chứng từ bù trừ công nợ",
+  "url": "arcthd9.aspx?id=07.10.12",
+  "id": ""
+ },
+ {
+  "text": "Bút toán điều chỉnh giảm công nợ",
+  "url": "cactpt2.aspx?id=07.10.14",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn điều chỉnh giá hàng bán",
+  "url": "arcthd4.aspx?id=07.10.19",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn điều chỉnh giá dịch vụ",
+  "url": "arcthd6.aspx?id=07.10.20",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn giảm giá hàng hóa - dịch vụ",
+  "url": "arcthd2.aspx?id=07.10.21",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập hàng bán trả lại",
+  "url": "socthdf.aspx?id=07.10.23",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn dịch vụ trả lại",
+  "url": "arcthd3.aspx?id=07.10.24",
+  "id": ""
+ },
+ {
+  "text": "Phân bổ thu tiền hàng cho các hóa đơn",
+  "url": "cactpt0.aspx?id=07.10.29",
+  "id": ""
+ },
+ {
+  "text": "Danh mục khách hàng",
+  "url": "arkh.aspx?id=07.70.10",
+  "id": ""
+ },
+ {
+  "text": "Điều chỉnh số dư công nợ đầu kỳ",
+  "url": "ardcsd0.aspx?id=07.80.30",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn mua hàng trong nước",
+  "url": "poctpna.aspx?id=09.30.01",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn mua hàng nhập khẩu",
+  "url": "poctpnb.aspx?id=09.30.02",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn mua hàng dịch vụ",
+  "url": "apctpn1.aspx?id=09.30.03",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn nhập mua - xuất thẳng",
+  "url": "poctpng.aspx?id=09.30.04",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập chi phí mua hàng",
+  "url": "poctpnc.aspx?id=09.30.05",
+  "id": ""
+ },
+ {
+  "text": "Phiếu thanh toán tạm ứng",
+  "url": "apctpn2.aspx?id=09.30.07",
+  "id": ""
+ },
+ {
+  "text": "Chứng từ phải trả khác, chứng từ bù trừ công nợ",
+  "url": "apctpn9.aspx?id=09.30.08",
+  "id": ""
+ },
+ {
+  "text": "Bút toán điều chỉnh giảm công nợ",
+  "url": "cactpc2.aspx?id=09.30.09",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập điều chỉnh giá hàng mua",
+  "url": "poctpne.aspx?id=09.30.11",
+  "id": ""
+ },
+ {
+  "text": "Phiếu xuất trả lại nhà cung cấp",
+  "url": "poctpxc.aspx?id=09.30.14",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn dịch vụ trả lại nhà cung cấp",
+  "url": "poctpxd.aspx?id=09.30.15",
+  "id": ""
+ },
+ {
+  "text": "Phân bổ tiền hàng trả cho các hóa đơn",
+  "url": "cactpc0.aspx?id=09.30.17",
+  "id": ""
+ },
+ {
+  "text": "Danh mục nhà cung cấp",
+  "url": "arkh.aspx?id=09.55.01",
+  "id": ""
+ },
+ {
+  "text": "Điều chỉnh số dư công nợ đầu kỳ",
+  "url": "ardcsd0.aspx?id=09.57.01",
+  "id": ""
+ },
+ {
+  "text": "Kết chuyển số dư hợp đồng sang năm sau",
+  "url": "arsdkc.aspx?id=09.57.02",
+  "id": ""
+ },
+ {
+  "text": "Giấy báo giá",
+  "url": "soctsq1.aspx?id=11.10.01",
+  "id": ""
+ },
+ {
+  "text": "Duyệt giấy báo giá",
+  "url": "soctsq1duyet.aspx?id=11.10.02",
+  "id": ""
+ },
+ {
+  "text": "Đơn hàng bán",
+  "url": "soctdxa.aspx?id=11.10.03",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn bán hàng",
+  "url": "socthda.aspx?id=11.11.06",
+  "id": ""
+ },
+ {
+  "text": "Hóa đơn dịch vụ",
+  "url": "arcthd1.aspx?id=11.11.07",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật giá bán",
+  "url": "sogia2.aspx?id=11.20.05",
+  "id": ""
+ },
+ {
+  "text": "Hợp đồng dịch vụ (C)",
+  "url": "zchddv.aspx?id=11.20.06",
+  "id": ""
+ },
+ {
+  "text": "Duyệt hợp đồng dịch vụ (C)",
+  "url": "zcdhddv.aspx?id=11.20.07",
+  "id": ""
+ },
+ {
+  "text": "BANQUET EVENT ORDER  (C)",
+  "url": "zcbeo.aspx?id=11.20.09",
+  "id": ""
+ },
+ {
+  "text": "Duyệt BANQUET EVENT ORDER (C)",
+  "url": "zcdbeo.aspx?id=11.20.10",
+  "id": ""
+ },
+ {
+  "text": "Phụ lục hợp đồng (C)",
+  "url": "zcplhd.aspx?id=11.20.11",
+  "id": ""
+ },
+ {
+  "text": "Duyệt phụ lục hợp đồng (C)",
+  "url": "zcdplhd.aspx?id=11.20.12",
+  "id": ""
+ },
+ {
+  "text": "Danh mục khách hàng",
+  "url": "arkh.aspx?id=11.70.10",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật khách hàng tham quan (C)",
+  "url": "zccnkhtq.aspx?id=11.70.15",
+  "id": ""
+ },
+ {
+  "text": "Đóng giấy báo giá",
+  "url": "soctsq1dong.aspx?id=11.80.49",
+  "id": ""
+ },
+ {
+  "text": "Đóng đơn hàng",
+  "url": "soclose.aspx?id=11.80.50",
+  "id": ""
+ },
+ {
+  "text": "Quy trình bán hàng",
+  "url": "sales.aspx?id=11.80.52",
+  "id": ""
+ },
+ {
+  "text": "Đồ thị phân tích bán hàng",
+  "url": "saleschart.aspx?id=11.80.99",
+  "id": ""
+ },
+ {
+  "text": "Lịch tiệc",
+  "url": "PartySchedule.aspx?id=11.80.9",
+  "id": ""
+ },
+ {
+  "text": "Phân quyền nhả sảnh Tentative (C)",
+  "url": "zcdmqnhasanh.aspx?id=11.80.9",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhu cầu vật tư",
+  "url": "poctpr1.aspx?id=13.05.01",
+  "id": ""
+ },
+ {
+  "text": "Duyệt phiếu nhu cầu",
+  "url": "poduyet0.aspx?id=13.05.03",
+  "id": ""
+ },
+ {
+  "text": "Chọn nhà cung cấp",
+  "url": "poduyet2.aspx?id=13.15.01",
+  "id": ""
+ },
+ {
+  "text": "Đơn hàng mua trong nước",
+  "url": "bipoctpo1.aspx?id=13.25.03",
+  "id": ""
+ },
+ {
+  "text": "Đơn hàng nhập khẩu",
+  "url": "bipoctpo2.aspx?id=13.25.06",
+  "id": ""
+ },
+ {
+  "text": "Duyệt đơn hàng",
+  "url": "poduyet3.aspx?id=13.25.09",
+  "id": ""
+ },
+ {
+  "text": "Chi tiết kế hoạch nhận hàng",
+  "url": "birpt_pokhgh.aspx?id=13.25.12",
+  "id": ""
+ },
+ {
+  "text": "Báo cáo cảnh báo thời hạn nhận hàng",
+  "url": "birpt_pocbthgh.aspx?id=13.25.13",
+  "id": ""
+ },
+ {
+  "text": "Tờ khai hải quan",
+  "url": "poctpd3.aspx?id=13.25.18",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập mua hàng",
+  "url": "poctpd1.aspx?id=13.25.21",
+  "id": ""
+ },
+ {
+  "text": "Phiếu xuất trả lại nhà cung cấp",
+  "url": "poctpxc.aspx?id=13.25.24",
+  "id": ""
+ },
+ {
+  "text": "Danh mục nhà cung cấp",
+  "url": "arkh.aspx?id=13.65.03",
+  "id": ""
+ },
+ {
+  "text": "Đóng đơn hàng",
+  "url": "poduyet4.aspx?id=13.80.01",
+  "id": ""
+ },
+ {
+  "text": "Đóng phiếu nhu cầu",
+  "url": "poduyet1.aspx?id=13.80.03",
+  "id": ""
+ },
+ {
+  "text": "Quy trình mua hàng",
+  "url": "advancedpurchasing.aspx?id=13.80.09",
+  "id": ""
+ },
+ {
+  "text": "Đồ thị phân tích mua hàng",
+  "url": "purchasingchart.aspx?id=13.90.90",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập kho",
+  "url": "inctpnd.aspx?id=15.01.01",
+  "id": ""
+ },
+ {
+  "text": "Phiếu xuất kho",
+  "url": "inctpxa.aspx?id=15.01.08",
+  "id": ""
+ },
+ {
+  "text": "Phiếu xuất điều chuyển",
+  "url": "inctpxb.aspx?id=15.01.09",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập điều chuyển",
+  "url": "inctpnf.aspx?id=15.01.10",
+  "id": ""
+ },
+ {
+  "text": "Tra cứu tồn kho vật tư",
+  "url": "insd.aspx?id=15.10.52",
+  "id": ""
+ },
+ {
+  "text": "Tính lại tồn kho tức thời",
+  "url": "insd13.aspx?id=15.10.54",
+  "id": ""
+ },
+ {
+  "text": "Phân tích số liệu tồn kho",
+  "url": "QueryInventoryInformation.aspx?id=15.40.95",
+  "id": ""
+ },
+ {
+  "text": "Danh mục hàng hóa, vật tư (C)",
+  "url": "invt.aspx?id=15.70.06",
+  "id": ""
+ },
+ {
+  "text": "Dự báo bán hàng",
+  "url": "mdbbh.aspx?id=15.80.01",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật đơn hàng dự kiến",
+  "url": "mdmdu.aspx?id=15.80.02",
+  "id": ""
+ },
+ {
+  "text": "Khả năng đáp ứng đơn hàng",
+  "url": "mpsatpinquiry.aspx?id=15.80.03",
+  "id": ""
+ },
+ {
+  "text": "Chính sách đặt hàng theo kho",
+  "url": "mdmvtkho.aspx?id=15.87.03",
+  "id": ""
+ },
+ {
+  "text": "Hệ số dự báo",
+  "url": "mcthsdb.aspx?id=15.87.04",
+  "id": ""
+ },
+ {
+  "text": "Danh mục kỳ hoạch định",
+  "url": "mdmky.aspx?id=15.87.08",
+  "id": ""
+ },
+ {
+  "text": "Chi tiết danh mục kỳ hoạch định",
+  "url": "mctdmky.aspx?id=15.87.09",
+  "id": ""
+ },
+ {
+  "text": "Danh mục ngày nghỉ",
+  "url": "mrplichnghi.aspx?id=15.87.10",
+  "id": ""
+ },
+ {
+  "text": "Danh mục phiên bản",
+  "url": "mdmphienban.aspx?id=15.87.13",
+  "id": ""
+ },
+ {
+  "text": "Quy trình lập kế hoạch sản xuất",
+  "url": "mpsflowchart.aspx?id=15.87.17",
+  "id": ""
+ },
+ {
+  "text": "Quy trình hoạch định nhu cầu vật tư",
+  "url": "mrpflowchart.aspx?id=15.87.18",
+  "id": ""
+ },
+ {
+  "text": "Quy trình hoạch định công suất",
+  "url": "crpflowchart.aspx?id=15.87.19",
+  "id": ""
+ },
+ {
+  "text": "Yêu cầu sản xuất",
+  "url": "sfctsf2.aspx?id=15.90.01",
+  "id": ""
+ },
+ {
+  "text": "Duyệt yêu cầu sản xuất",
+  "url": "sfdycsx.aspx?id=15.90.02",
+  "id": ""
+ },
+ {
+  "text": "Giao dịch phân xưởng",
+  "url": "sfgdpx.aspx?id=15.92.01",
+  "id": ""
+ },
+ {
+  "text": "Giao dịch máy",
+  "url": "sfgdmay.aspx?id=15.92.02",
+  "id": ""
+ },
+ {
+  "text": "Điều chuyển công đoạn",
+  "url": "sfdccd.aspx?id=15.92.03",
+  "id": ""
+ },
+ {
+  "text": "Phiếu duyệt chất lượng",
+  "url": "sfpdcl.aspx?id=15.92.04",
+  "id": ""
+ },
+ {
+  "text": "Phiếu nhập xuất phân xưởng",
+  "url": "sfctsf7.aspx?id=15.92.05",
+  "id": ""
+ },
+ {
+  "text": "Phiếu điều chỉnh phân xưởng",
+  "url": "sfctsf8.aspx?id=15.92.06",
+  "id": ""
+ },
+ {
+  "text": "Khai báo quy trình sản xuất",
+  "url": "crcnlt.aspx?id=15.92.08",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật tồn kho phân xưởng đầu kỳ",
+  "url": "sfpx0.aspx?id=15.95.01",
+  "id": ""
+ },
+ {
+  "text": "Chuyển tồn kho phân xưởng sang năm sau",
+  "url": "sfpxkc.aspx?id=15.95.02",
+  "id": ""
+ },
+ {
+  "text": "Quy trình quản lý phân xưởng",
+  "url": "shopfloor.aspx?id=15.95.04",
+  "id": ""
+ },
+ {
+  "text": "Định mức nguyên vật liệu",
+  "url": "coctdm1.aspx?id=16.30.01",
+  "id": ""
+ },
+ {
+  "text": "Lệnh sản xuất",
+  "url": "coctsx1.aspx?id=16.30.02",
+  "id": ""
+ },
+ {
+  "text": "Danh mục yếu tố",
+  "url": "coyt.aspx?id=16.30.05",
+  "id": ""
+ },
+ {
+  "text": "Danh mục loại yếu tố",
+  "url": "coloaiyt.aspx?id=16.30.10",
+  "id": ""
+ },
+ {
+  "text": "Danh mục nhóm yếu tố",
+  "url": "conhyt.aspx?id=16.30.15",
+  "id": ""
+ },
+ {
+  "text": "Danh mục công đoạn",
+  "url": "cobp.aspx?id=16.30.20",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật giá cho phiếu nhập thành phẩm",
+  "url": "cogia.aspx?id=16.72.02",
+  "id": ""
+ },
+ {
+  "text": "Bút toán phân bổ chi phí sản xuất chung",
+  "url": "co2gl.aspx?id=16.72.03",
+  "id": ""
+ },
+ {
+  "text": "In định mức nguyên vật liệu",
+  "url": "rpt_coctdm1.aspx?id=16.75.01",
+  "id": ""
+ },
+ {
+  "text": "Khai báo hệ số phân bổ",
+  "url": "cocthspb.aspx?id=16.90.94",
+  "id": ""
+ },
+ {
+  "text": "Khai báo vật tư thay thế",
+  "url": "covt2.aspx?id=16.90.95",
+  "id": ""
+ },
+ {
+  "text": "Khai báo đối tượng nhận phân bổ chi phí",
+  "url": "cocdsp.aspx?id=16.90.96",
+  "id": ""
+ },
+ {
+  "text": "Bảng chiết tính giá thành",
+  "url": "cobct.aspx?id=16.90.98",
+  "id": ""
+ },
+ {
+  "text": "Khai báo bảng chiết tính giá thành",
+  "url": "rpcobct.aspx?id=16.90.99",
+  "id": ""
+ },
+ {
+  "text": "Danh mục công trình, vụ việc",
+  "url": "covv.aspx?id=17.10.01",
+  "id": ""
+ },
+ {
+  "text": "Bảng kê chứng từ theo công trình, vụ việc",
+  "url": "rpt_covvbk2.aspx?id=17.10.50",
+  "id": ""
+ },
+ {
+  "text": "Bảng cân đối phát sinh của các công trình, vụ việc",
+  "url": "rpt_covvcd1.aspx?id=17.10.51",
+  "id": ""
+ },
+ {
+  "text": "Bảng cân đối phát sinh của các công trình, vụ việc lên cho nhiều tài khoản",
+  "url": "rpt_covvcd1ntk.aspx?id=17.10.52",
+  "id": ""
+ },
+ {
+  "text": "Sổ chi tiết công trình, vụ việc",
+  "url": "rpt_coso1.aspx?id=17.10.59",
+  "id": ""
+ },
+ {
+  "text": "Báo cáo số dư công trình, vụ việc",
+  "url": "rpt_cosd1.aspx?id=17.10.60",
+  "id": ""
+ },
+ {
+  "text": "Tổng hợp chi phí sản xuất theo công trình, vụ việc",
+  "url": "rpt_covvth3.aspx?id=17.10.61",
+  "id": ""
+ },
+ {
+  "text": "Báo cáo KQ SXKD theo công trình, vụ việc",
+  "url": "rpt_covvct1.aspx?id=17.10.62",
+  "id": ""
+ },
+ {
+  "text": "Vào số dư đầu kỳ các công trình, vụ việc",
+  "url": "covvsd0.aspx?id=17.70.64",
+  "id": ""
+ },
+ {
+  "text": "Vào lũy kế theo chỉ tiêu của các công trình, vụ việc",
+  "url": "covvlkct.aspx?id=17.70.65",
+  "id": ""
+ },
+ {
+  "text": "Vào số phát sinh lũy kế đầu kỳ của các công trình, vụ việc",
+  "url": "colkvv.aspx?id=17.70.66",
+  "id": ""
+ },
+ {
+  "text": "Tính số phát sinh lũy kế các công trình, vụ việc",
+  "url": "colkkc.aspx?id=17.70.68",
+  "id": ""
+ },
+ {
+  "text": "Tính số phát sinh lũy kế các chỉ tiêu",
+  "url": "dtlkctkc.aspx?id=17.70.69",
+  "id": ""
+ },
+ {
+  "text": "Kết chuyển số dư của các công trình, vụ việc sang năm sau",
+  "url": "cosdkc.aspx?id=17.70.70",
+  "id": ""
+ },
+ {
+  "text": "Tài sản cố định (C)",
+  "url": "factts1.aspx?id=18.70.01",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật sản lượng thực hiện của TSCĐ",
+  "url": "faqty.aspx?id=18.70.26",
+  "id": ""
+ },
+ {
+  "text": "Điều chỉnh giá trị TSCĐ",
+  "url": "fatgng.aspx?id=18.70.30",
+  "id": ""
+ },
+ {
+  "text": "Điều chuyển bộ phận sử dụng TSCĐ",
+  "url": "fadcbp.aspx?id=18.70.31",
+  "id": ""
+ },
+ {
+  "text": "Tính khấu hao tài sản cố định",
+  "url": "fatinhkh.aspx?id=18.70.32",
+  "id": ""
+ },
+ {
+  "text": "Điều chỉnh khấu hao tháng",
+  "url": "fasuakh.aspx?id=18.70.35",
+  "id": ""
+ },
+ {
+  "text": "Xóa khấu hao tài sản cố định",
+  "url": "faxoakh.aspx?id=18.70.36",
+  "id": ""
+ },
+ {
+  "text": "Bút toán phân bổ khấu hao TSCĐ",
+  "url": "fabtpb.aspx?id=18.70.38",
+  "id": ""
+ },
+ {
+  "text": "Khai báo giảm TSCĐ",
+  "url": "fagiamts.aspx?id=18.70.93",
+  "id": ""
+ },
+ {
+  "text": "Khai báo tạm dừng khấu hao TSCĐ",
+  "url": "fatdkh.aspx?id=18.70.94",
+  "id": ""
+ },
+ {
+  "text": "Khai báo thôi khấu hao TSCĐ",
+  "url": "fathoikh.aspx?id=18.70.95",
+  "id": ""
+ },
+ {
+  "text": "Khai báo hệ số phân bổ khấu hao TSCĐ",
+  "url": "fahspb.aspx?id=18.70.96",
+  "id": ""
+ },
+ {
+  "text": "Hạch toán giảm TSCĐ",
+  "url": "zchtgtscd.aspx?id=18.70.97",
+  "id": ""
+ },
+ {
+  "text": "Thông tin công cụ dụng cụ (C)",
+  "url": "tsdc.aspx?id=22.05.01",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật giá trị cho CCDC tạo từ chứng từ hạch toán",
+  "url": "ts2cngt.aspx?id=22.10.18",
+  "id": ""
+ },
+ {
+  "text": "Điều chuyển bộ phận sử dụng",
+  "url": "ts2dcbp.aspx?id=22.15.01",
+  "id": ""
+ },
+ {
+  "text": "Tính chi phí phân bổ",
+  "url": "tstinhpb.aspx?id=22.15.03",
+  "id": ""
+ },
+ {
+  "text": "Điều chỉnh phân bổ tháng CCDC",
+  "url": "tsdcpb.aspx?id=22.15.05",
+  "id": ""
+ },
+ {
+  "text": "Xóa phân bổ",
+  "url": "tsxoapb.aspx?id=22.15.07",
+  "id": ""
+ },
+ {
+  "text": "Bút toán phân bổ",
+  "url": "tspb.aspx?id=22.15.09",
+  "id": ""
+ },
+ {
+  "text": "Khai báo giảm/hỏng",
+  "url": "tsgiampb.aspx?id=22.50.01",
+  "id": ""
+ },
+ {
+  "text": "Khai báo thôi phân bổ",
+  "url": "ts2thoipb.aspx?id=22.50.03",
+  "id": ""
+ },
+ {
+  "text": "Khai báo hệ số phân bổ CCDC",
+  "url": "ts2hspb.aspx?id=22.50.05",
+  "id": ""
+ },
+ {
+  "text": "Danh mục dự án, công trình, vụ việc",
+  "url": "covv.aspx?id=24.10.01",
+  "id": ""
+ },
+ {
+  "text": "Danh mục chỉ tiêu",
+  "url": "iadmct.aspx?id=24.10.05",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật dự toán theo dự án, công trình, vụ việc",
+  "url": "dtdtvv.aspx?id=24.10.30",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật kế hoạch theo chỉ tiêu",
+  "url": "dtkhct.aspx?id=24.10.35",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật số dư đầu kỳ các chỉ tiêu",
+  "url": "dtctsd0.aspx?id=24.10.40",
+  "id": ""
+ },
+ {
+  "text": "Cập nhật phát sinh lũy kế đầu kỳ các chỉ tiêu",
+  "url": "dtlkct.aspx?id=24.10.45",
+  "id": ""
+ },
+ {
+  "text": "Vào số dư đầu kỳ các dự án, công trình, vụ việc",
+  "url": "covvsd0.aspx?id=24.70.64",
+  "id": ""
+ },
+ {
+  "text": "Vào số phát sinh lũy kế đầu kỳ của các dự án, công trình, vụ việc",
+  "url": "colkvv.aspx?id=24.70.66",
+  "id": ""
+ },
+ {
+  "text": "Tính số phát sinh lũy kế các dự án, công trình, vụ việc",
+  "url": "colkkc.aspx?id=24.70.68",
+  "id": ""
+ },
+ {
+  "text": "Tính số phát sinh lũy kế các chỉ tiêu",
+  "url": "dtlkctkc.aspx?id=24.70.69",
+  "id": ""
+ },
+ {
+  "text": "Kết chuyển số dư của các dự án, công trình, vụ việc sang năm sau",
+  "url": "cosdkc.aspx?id=24.70.70",
+  "id": ""
+ },
+ {
+  "text": "Hướng dẫn sử dụng chương trình",
+  "url": "help.aspx?id=50.10.01",
+  "id": ""
+ },
+ {
+  "text": "Thông tin sản phẩm",
+  "url": "about.aspx?id=50.10.03",
+  "id": ""
+ }
+]

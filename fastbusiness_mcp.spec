@@ -1,5 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-
 a = Analysis(
     ['run_server.py'],
     pathex=['.'],
@@ -11,6 +10,8 @@ a = Analysis(
         ('query_database/queries', 'query_database/queries'),
         ('query_database/object_catalog/queries', 'query_database/object_catalog/queries'),
         ('xml_fbograph/kuzu_build.txt', 'xml_fbograph'),
+        # config_jev.xml / config_jev.yaml intentionally NOT in datas
+        # (per-machine entitlement file, xin riêng — không ship trong dist)
     ],
     hiddenimports=[
         'mcp', 'mcp.server', 'mcp.server.stdio', 'mcp.server.context',
@@ -120,6 +121,15 @@ a = Analysis(
         'search_qlyc.service',
         'search_qlyc.client',
         'search_qlyc.formatter',
+        'jev',
+        'jev.config',
+        'jev.client',
+        'jev.models',
+        'tool_help',
+        'tool_help.service',
+        'tool_help.cards',
+        'tool_help.keywords',
+        'tool_help.formatter',
         # FBOGraph + CLI rebuild Kuzu (fastbusiness_mcp.exe build ...)
         'kuzu',
         'xml_fbograph',

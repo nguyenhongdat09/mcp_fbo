@@ -44,6 +44,9 @@ from compare_things.formatter import format_compare_result
 
 from search_files import search_files
 
+from jev import load_jev_config
+from config import TOOLS_ENABLED
+
 logger = setup_logger(__name__)
 
 # Khởi tạo instance MCPServer
@@ -105,11 +108,20 @@ def set_config(cfg: dict) -> None:
     _CONFIG = cfg
 
 
+def _maybe_tool(name: str, **kwargs):
+    """server.tool nếu TOOLS_ENABLED[name]=True, ngược lại decorator rỗng
+    (tool không đăng ký -> không hiện trên IDE). Flag ở config.py root."""
+    if TOOLS_ENABLED.get(name, True):
+        return server.tool(name=name, **kwargs)
+    logger.info(f"Tool '{name}' disabled qua config.py TOOLS_ENABLED")
+    return lambda fn: fn
+
+
 # ============================================================================
 # TOOL 1: query_database
 # ============================================================================
-@server.tool(
-    name="query_database",
+@_maybe_tool(
+    "query_database",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 def query_database_tool(
@@ -360,8 +372,8 @@ db_type: app (mặc định) hoặc sys."""
 # ============================================================================
 # TOOL 2: get_xml_entities
 # ============================================================================
-@server.tool(
-    name="get_xml_entities",
+@_maybe_tool(
+    "get_xml_entities",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 def get_xml_entities_tool(
@@ -441,8 +453,8 @@ def _format_query_radar_result(res: str) -> str:
     return res
 
 
-@server.tool(
-    name="query_radar",
+@_maybe_tool(
+    "query_radar",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 async def query_radar_tool(
@@ -520,8 +532,8 @@ mode:
 # ============================================================================
 # TOOL 4: read_local_file
 # ============================================================================
-@server.tool(
-    name="read_local_file",
+@_maybe_tool(
+    "read_local_file",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 def read_local_file_tool(
@@ -632,8 +644,8 @@ CHÚ Ý QUAN TRỌNG: Nếu file cần đọc không tồn tại, KHÔNG ĐƯỢ
 # ============================================================================
 # TOOL 5: search_qlyc
 # ============================================================================
-@server.tool(
-    name="search_qlyc",
+@_maybe_tool(
+    "search_qlyc",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 def search_qlyc_tool(
@@ -706,7 +718,7 @@ Quy trình bắt buộc khi chưa thấy yêu cầu liên quan:
 # ============================================================================
 # TOOL 5: clone_things
 # ============================================================================
-@server.tool(name="clone_things")
+@_maybe_tool("clone_things")
 def clone_things_tool(
     object: Annotated[
         str,
@@ -731,7 +743,7 @@ def clone_things_tool(
         int,
         Field(
             default=0,
-            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp), 3=copy file bất kỳ từ project_source sang project_target",
+            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp), 2=clone data (DELETE FROM + INSERT INTO từng dòng của table theo where — cần table + where), 3=copy file bất kỳ từ project_source sang project_target",
         ),
     ] = 0,
     path_to_pasted: Annotated[
@@ -739,6 +751,20 @@ def clone_things_tool(
         Field(
             default="",
             description="Đường dẫn file .sql để append; để trống sẽ tự tạo file temp và mở lên editor",
+        ),
+    ] = "",
+    table: Annotated[
+        str,
+        Field(
+            default="",
+            description="type=2 (clone data): tên bảng cần lấy data, vd 'dmmagd' hoặc 'dbo.dmmagd'. Khi truyền table (kèm where) → chạy data clone bất kể type, tham số object không bắt buộc.",
+        ),
+    ] = "",
+    where: Annotated[
+        str,
+        Field(
+            default="",
+            description="type=2 (clone data): điều kiện lọc dòng, vd \"ma_ct = 'DDV'\" (không cần chữ WHERE). Bắt buộc khi truyền table — script sinh DELETE FROM <table> WHERE <where> rồi INSERT INTO từng dòng.",
         ),
     ] = "",
     mode_get: Annotated[
@@ -787,7 +813,7 @@ def clone_things_tool(
         bool,
         Field(
             default=False,
-            description="Chỉ dùng khi type=3: True=nếu object trỏ tới thư mục, tự động mở rộng quét các file con đệ quy (loại trừ *.f). Mặc định False.",
+            description="Chỉ dùng khi type=3: True=nếu object trỏ tới thư mục, tự động mở rộng quét các file con đệ quy (loại trừ *.f, *.xsd). Mặc định False.",
         ),
     ] = False,
     max_files: Annotated[
@@ -842,6 +868,12 @@ def clone_things_tool(
        - confirm_overwrite=True: cần thiết kèm overwrite=True để ghi đè file có sẵn.
        - expand_dirs=True: mở rộng thư mục quét file con.
        - list_presets=True: xem các presets đăng ký.
+    4) type=2 (clone data — kéo dòng dữ liệu ra .sql để sửa/F5):
+       - Truyền table + where (vd. table='dmmagd', where="ma_ct = 'DDV'"); object không bắt buộc.
+       - Sinh script: DELETE FROM <table> WHERE <where> + INSERT INTO <table>([cols]) VALUES(...) cho từng dòng khớp.
+       - Data lấy từ DB của project_source (tự dò app/sys); file .sql có USE đúng DB. User tự sửa giá trị rồi F5.
+       - Tự bỏ cột computed/timestamp; có identity → bọc SET IDENTITY_INSERT ON/OFF.
+       - Giới hạn dòng: clone_things.data_max_rows (mặc định 1000), vượt → truncated.
     """
     try:
         cfg = get_config()
@@ -862,6 +894,8 @@ def clone_things_tool(
             copy_filter=copy_filter,
             list_presets=list_presets,
             planned_sample_size=planned_sample_size,
+            table=table,
+            where=where,
             config=cfg,
         )
         return format_clone_result(result)
@@ -873,15 +907,15 @@ def clone_things_tool(
 # ============================================================================
 # TOOL 6: compare_things
 # ============================================================================
-@server.tool(
-    name="compare_things",
+@_maybe_tool(
+    "compare_things",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 async def compare_things_tool(
     kind: Annotated[
         str,
         Field(
-            description="Loại so sánh: 'file' (so 2 file bất kỳ trừ .f) | 'folder' (quét thư mục trừ .f) | 'xml' (tiện ích relative Controllers/ XML) | 'sql' | 'table'"
+            description="Loại so sánh: 'file' (so 2 file bất kỳ trừ .f, .xsd) | 'folder' (quét thư mục trừ .f, .xsd) | 'xml' (tiện ích relative Controllers/ XML) | 'sql' | 'table'"
         ),
     ],
     project_source: Annotated[
@@ -937,28 +971,28 @@ async def compare_things_tool(
         str,
         Field(
             default="",
-            description="Đường dẫn tuyệt đối file A trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa)",
+            description="Đường dẫn tuyệt đối file A trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa và .xsd)",
         ),
     ] = "",
     file_b: Annotated[
         str,
         Field(
             default="",
-            description="Đường dẫn tuyệt đối file B trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa)",
+            description="Đường dẫn tuyệt đối file B trên đĩa (bắt buộc khi kind='file', hỗ trợ mọi đuôi text/config .ent, .txt, .sql, .xml, .js... TRỪ .f mã hóa và .xsd)",
         ),
     ] = "",
     folder_a: Annotated[
         str,
         Field(
             default="",
-            description="Đường dẫn thư mục A trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa)",
+            description="Đường dẫn thư mục A trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa và .xsd)",
         ),
     ] = "",
     folder_b: Annotated[
         str,
         Field(
             default="",
-            description="Đường dẫn thư mục B trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa)",
+            description="Đường dẫn thư mục B trên đĩa hoặc UNC (bắt buộc khi kind='folder', quét mọi file khớp glob trừ file .f mã hóa và .xsd)",
         ),
     ] = "",
     detail: Annotated[
@@ -1125,9 +1159,9 @@ async def compare_things_tool(
     ctx: Context = None,
 ) -> str:
     """
-    MCP Tool compare_things: So sánh file bất kỳ trên đĩa (.xml, .ent, .txt, .sql, .js, .config...) trừ .f mã hóa; folder tương tự; xml = convenience controller relative; sql/table = database objects.
-    - kind='file': So sánh 2 file bất kỳ trên đĩa hoặc UNC trừ file .f mã hóa FBO. Tự động phát hiện diff_reason (bom, line_ending, whitespace, binary, text_lines).
-    - kind='folder': Quét và so sánh thư mục (loại trừ *.f mã hóa). Hỗ trợ 'seed' để lọc relative path / filename chứa từ khóa. 'detail'=False mặc định trả về summary gọn (chỉ danh sách tên file theo từng bucket missing_on_b/missing_on_a/different_content/different_meta), compared=[]. Đặt 'detail'=True để nhận compared[] chi tiết từng file kèm diff_reason. Khi byte khác nhưng normalized line bằng nhau, xếp vào different_meta với diff_reason (bom, line_ending, whitespace, encoding_or_bytes), không báo review_hunks giả.
+    MCP Tool compare_things: So sánh file bất kỳ trên đĩa (.xml, .ent, .txt, .sql, .js, .config...) trừ .f mã hóa và .xsd schema; folder tương tự; xml = convenience controller relative; sql/table = database objects.
+    - kind='file': So sánh 2 file bất kỳ trên đĩa hoặc UNC trừ file .f mã hóa FBO và .xsd. Tự động phát hiện diff_reason (bom, line_ending, whitespace, binary, text_lines).
+    - kind='folder': Quét và so sánh thư mục (loại trừ *.f mã hóa và *.xsd schema). Hỗ trợ 'seed' để lọc relative path / filename chứa từ khóa. 'detail'=False mặc định trả về summary gọn (chỉ danh sách tên file theo từng bucket missing_on_b/missing_on_a/different_content/different_meta), compared=[]. Đặt 'detail'=True để nhận compared[] chi tiết từng file kèm diff_reason. Khi byte khác nhưng normalized line bằng nhau, xếp vào different_meta với diff_reason (bom, line_ending, whitespace, encoding_or_bytes), không báo review_hunks giả.
     - kind='xml': Tiện ích so sánh controller XML relative dưới Controllers/ (không dùng cho .ent/.txt). Hỗ trợ 'seed' để tự discover relative path theo từ khóa (union hits 2 bên) khi chưa biết đường dẫn chính xác.
     - kind='sql', kind='table': So sánh procedure/function/view hoặc schema bảng giữa 2 database.
     Tư duy: Tool CHỈ BÁO ĐIỂM KHÁC BIỆT (khoảng dòng thay đổi, schema_diff, signals, metadata). CẤM preview/dump nội dung mặc định để tiết kiệm token chat.
@@ -1211,8 +1245,8 @@ async def compare_things_tool(
 # ============================================================================
 # TOOL 7: search_files
 # ============================================================================
-@server.tool(
-    name="search_files",
+@_maybe_tool(
+    "search_files",
     annotations=ToolAnnotations(readOnlyHint=True),
 )
 async def search_files_tool(
@@ -1245,10 +1279,10 @@ async def search_files_tool(
     exclude_glob: Annotated[
         str,
         Field(
-            default="**/*.f,**/*.dll,**/*.pdb,**/bin/**",
-            description="Mẫu glob file cần loại trừ (tự động loại trừ *.f mã hóa và file nhị phân).",
+            default="**/*.f,**/*.xsd,**/*.dll,**/*.pdb,**/bin/**",
+            description="Mẫu glob file cần loại trừ (tự động loại trừ *.f mã hóa, *.xsd schema và file nhị phân).",
         ),
-    ] = "**/*.f,**/*.dll,**/*.pdb,**/bin/**",
+    ] = "**/*.f,**/*.xsd,**/*.dll,**/*.pdb,**/bin/**",
     recursive: Annotated[
         bool,
         Field(default=True, description="Quét đệ quy các thư mục con (mặc định True)"),
@@ -1319,7 +1353,7 @@ async def search_files_tool(
 ) -> str:
     """
     MCP Tool search_files: Tìm kiếm nội dung văn bản (grep) an toàn trong các thư mục dự án trên ổ đĩa local hoặc mạng UNC.
-    - CẤM đọc file *.f mã hóa của FastBusiness; tự động bỏ qua file nhị phân.
+    - CẤM đọc file *.f mã hóa của FastBusiness và *.xsd (file schema/kiến trúc); tự động bỏ qua file nhị phân.
     - Hỗ trợ giải mã UTF-8 và Windows-1258 (CP1258).
     - Có chốt chặn số file và số kết quả để tránh làm tràn bộ nhớ/context.
     - root nhận path BẤT KỲ: abs folder, abs file (search đúng file đó), hoặc relative — MCP tự resolve qua sticky project context.
@@ -1391,6 +1425,43 @@ async def search_files_tool(
         logger.error(f"search_files execution error: {e}")
         return format_execution_error("search_files", e)
 
+
+# ============================================================================
+# TOOL 8: tool_help — route step -> tool/mode bằng Jev (entitlement-gated)
+# ============================================================================
+_JEV_CONFIG = load_jev_config()
+
+if _JEV_CONFIG is not None:
+    @_maybe_tool(
+        "tool_help",
+        annotations=ToolAnnotations(readOnlyHint=True),
+    )
+    def tool_help_tool(
+        steps: Annotated[
+            List[str],
+            Field(
+                description="Các bước plan agent định làm (mỗi step 1 câu: động từ hành động + đối tượng + đã biết path chưa). KHÔNG truyền raw UR — phải tự phân rã thành steps trước. VD: ['Tìm file chứa chuỗi dmku', 'Đọc summary Dir/X.xml', 'Check syntax file a.sql']."
+            ),
+        ],
+        context: Annotated[
+            Optional[Dict[str, Any]],
+            Field(
+                default=None,
+                description="Optional: {'task_requirement': '<UR nguyên văn>'} để Jev route chuẩn hơn.",
+            ),
+        ] = None,
+    ) -> str:
+        """Hỏi trước khi gọi tool thật: truyền các bước plan, nhận per-step
+        {task_type, tool, call template, required_params, pitfalls,
+        confidence, alternatives(>20%)}. task_type=no_match -> step đó
+        không có tool phù hợp, agent tự xử lý. Dùng khi chưa chắc
+        tool/mode/param — tránh gọi sai tốn token."""
+        try:
+            from tool_help import tool_help as _tool_help_service
+            return _tool_help_service(
+                *steps, context=context, jev_config=_JEV_CONFIG)
+        except Exception as e:
+            return format_execution_error("tool_help", e)
 
 
 # ============================================================================

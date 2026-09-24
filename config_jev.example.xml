@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Template entitlement Jev — copy thành config_jev.xml (hoặc
+  config_jev.yaml) cạnh config.yaml rồi điền apiKey.
+  File này KHÔNG commit key thật, KHÔNG ship trong dist.
+-->
+<jev enabled="true">
+  <apiKey>ts-xxxx</apiKey>
+  <baseUrl>https://api.typesafe.ai</baseUrl>
+  <model>jev-latest</model>
+  <timeoutSeconds>15</timeoutSeconds>
+  <confidenceAct>0.7</confidenceAct>
+  <confidenceReview>0.4</confidenceReview>
+</jev>

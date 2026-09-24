@@ -6,6 +6,7 @@ import fnmatch
 import os
 import re
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -112,12 +113,71 @@ def _definition_regexes(symbol: str) -> List[tuple[re.Pattern, str]]:
     ]
 
 
+def _format_count(n: int) -> str:
+    if n >= 1000:
+        val = n / 1000
+        return f"{val:.1f}k".replace(".0k", "k")
+    return str(n)
+
+
+def _narrow_hint(
+    candidates: List[tuple[str, str]],
+    files_scanned: int,
+    pattern_or_symbol: str = "",
+) -> str:
+    """Gợi ý thu hẹp root / include_glob khi chạm max_files."""
+    unopened = candidates[files_scanned:]
+    if not unopened:
+        return ""
+    unopened_count = len(unopened)
+    total_candidate = len(candidates)
+
+    dir_lists: List[List[str]] = []
+    for rel_path, _ in unopened:
+        rel_norm = rel_path.replace("\\", "/").strip("/")
+        dir_lists.append(rel_norm.split("/")[:-1])
+
+    # Drill xuống level con khi 1 dir chiếm >=80% — tránh hint vô dụng kiểu "App_Data 5.1k"
+    prefix: List[str] = []
+    while True:
+        dir_counts: Counter[str] = Counter()
+        for d in dir_lists:
+            if d[: len(prefix)] != prefix:
+                continue
+            dir_counts[d[len(prefix)] if len(d) > len(prefix) else "(root)"] += 1
+        top_dir, top_n = dir_counts.most_common(1)[0]
+        if top_dir != "(root)" and top_n >= unopened_count * 0.8:
+            prefix.append(top_dir)
+        else:
+            break
+
+    top_dirs = dir_counts.most_common(3)
+    top_str = ", ".join(
+        f"{'/'.join(prefix + ([d] if d != '(root)' else [])) or '(root)'} {_format_count(c)}"
+        for d, c in top_dirs
+    )
+
+    msg = (
+        f"narrow_hint: {_format_count(unopened_count)}/{_format_count(total_candidate)} "
+        f"unopened candidates (top: {top_str})"
+    )
+
+    clean_sym = str(pattern_or_symbol or "").strip()
+    is_id = bool(re.match(r"^[A-Za-z_][A-Za-z0-9_$]*$", clean_sym))
+    if is_id:
+        msg += f" — thu root hoac include_glob='*{clean_sym}*'"
+    else:
+        msg += " — thu thu hep root hoac include_glob"
+
+    return msg
+
+
 def search_files(
     root: str,
     pattern: str = "",
     regex: bool = False,
     include_glob: str = "*.{xml,aspx,js,html,config,ent,txt,sql}",
-    exclude_glob: str = "**/*.f,**/*.dll,**/*.pdb,**/bin/**",
+    exclude_glob: str = "**/*.f,**/*.xsd,**/*.dll,**/*.pdb,**/bin/**",
     recursive: bool = True,
     case_sensitive: bool = False,
     max_files: int = 50,
@@ -136,7 +196,7 @@ def search_files(
     """
     Search text in files under a directory (local or UNC).
 
-    Denies reading *.f files, skips binary files.
+    Denies reading *.f and *.xsd files, skips binary files.
     Sorts candidates with priority to avoid missing matches before hitting max_files quota.
     mode: 'content' (grep thường) | 'definition' (tìm nơi định nghĩa symbol) | 'files_only' (chỉ list candidate).
     root nhận path bất kỳ: abs dir, abs file (search đúng file đó), hoặc relative
@@ -207,9 +267,10 @@ def search_files(
 
     inc_patterns = _parse_globs(include_glob)
     exc_patterns = _parse_globs(exclude_glob)
-    # Ensure *.f is excluded
-    if not any(p.lower() == "*.f" for p in exc_patterns):
-        exc_patterns.append("*.f")
+    # Ensure *.f and *.xsd are excluded
+    for forced in ("*.f", "*.xsd"):
+        if not any(p.lower() == forced for p in exc_patterns):
+            exc_patterns.append(forced)
 
     # Prepare searcher
     regex_compiled = None
@@ -264,8 +325,8 @@ def search_files(
     enum_capped = False
     dirs_walked = 0
     if single_file is not None:
-        # root là 1 file: search đúng file đó, bỏ glob (vẫn cấm *.f)
-        if not single_file.name.lower().endswith(".f"):
+        # root là 1 file: search đúng file đó, bỏ glob (vẫn cấm *.f, *.xsd)
+        if not single_file.name.lower().endswith((".f", ".xsd")):
             candidates.append((single_file.name, str(single_file)))
     else:
         if recursive:
@@ -277,7 +338,7 @@ def search_files(
                         d for d in dirnames if d.lower() not in pruned_dir_names
                     ]
                 for fname in sorted(filenames):
-                    if fname.lower().endswith(".f"):
+                    if fname.lower().endswith((".f", ".xsd")):
                         continue
 
                     abs_file = os.path.join(dirpath, fname)
@@ -309,7 +370,7 @@ def search_files(
 
             for dirpath, _, filenames in walker:
                 for fname in sorted(filenames):
-                    if fname.lower().endswith(".f"):
+                    if fname.lower().endswith((".f", ".xsd")):
                         continue
 
                     abs_file = os.path.join(dirpath, fname)
@@ -477,6 +538,9 @@ def search_files(
                 f"Reached max_files ({files_scanned}); {not_opened} candidates not opened "
                 f"(files_candidate={files_candidate}). Narrow root/include_glob or raise max_files."
             )
+            hint = _narrow_hint(candidates, files_scanned, sym)
+            if hint:
+                warnings.append(hint)
         definition_found = bool(definitions)
         if not definition_found and truncated:
             warnings.append(
@@ -574,6 +638,9 @@ def search_files(
                 f"(files_candidate={files_candidate}). Narrow root/include_glob or raise max_files. "
                 "Không kết luận ít usage khi truncated."
             )
+            hint = _narrow_hint(candidates, files_scanned, symbol)
+            if hint:
+                warnings.append(hint)
         elif truncated and truncated_reason == "time_budget":
             warnings.append(
                 f"Dung som do time_budget_seconds={time_budget_seconds} sau {files_scanned} files. "
@@ -687,6 +754,9 @@ def search_files(
                 'No matches in scanned files; remaining candidates were not opened — '
                 'do not conclude "not found" without narrowing root/glob or increasing max_files.'
             )
+        hint = _narrow_hint(candidates, files_scanned, pattern)
+        if hint:
+            warnings.append(hint)
     elif truncated and truncated_reason == "time_budget":
         warnings.append(
             f"Dung som do time_budget_seconds={time_budget_seconds} sau {files_scanned} files. "

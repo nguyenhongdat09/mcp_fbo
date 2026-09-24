@@ -98,7 +98,7 @@ def execute_type1_flow(
     source_app_db = (source_dbs.get("app") or {}).get("database") or ""
     source_sys_db = (source_dbs.get("sys") or {}).get("database") or ""
     if parsed_mode_read == 0 and output_file:
-        ensure_use_db_sections(output_file, app_db_name=source_app_db, sys_db_name=source_sys_db)
+        ensure_use_db_sections(output_file, app_db_name=source_app_db)
 
     lookup_order: tuple[str, ...] = (
         ("sys", "app") if str(db_type).lower() == "sys" else svc.DB_LOOKUP_ORDER
@@ -390,7 +390,7 @@ def execute_type1_flow(
                 encrypt_proc.append(full_item_name)
                 continue
 
-            script = svc.fetch_object_script(
+            fetch_res = svc.fetch_object_script(
                 file_path=project_source,
                 clean_name=item_clean_name,
                 schema=item_schema,
@@ -399,6 +399,15 @@ def execute_type1_flow(
                 db_type=fetch_db,
                 wrap_exists=False,
             )
+            if isinstance(fetch_res, tuple):
+                script, fetch_meta = fetch_res
+            else:
+                script, fetch_meta = fetch_res, {}
+            truncated_upstream = bool(fetch_meta.get("truncated_upstream"))
+            if truncated_upstream:
+                warnings.append(
+                    f"definition_truncated_upstream: {full_item_name} (>{len(script)} chars, xem definition_path/mode_read=0)"
+                )
             if not script:
                 if source_conn and svc.is_object_encrypted(source_conn, item_clean_name, item_schema):
                     encrypt_proc.append(full_item_name)
@@ -428,7 +437,8 @@ def execute_type1_flow(
             max_full_chars = int(clone_cfg.get("mode_read_full_max_chars", 0))
             is_truncated = False
             definition_path = None
-            if max_full_chars > 0 and len(out_script) > max_full_chars:
+            should_spill = (max_full_chars > 0 and len(out_script) > max_full_chars) or truncated_upstream
+            if should_spill:
                 # Spill full definition ra file .sql — agent đọc đủ, không mất dữ liệu.
                 try:
                     spill_path = create_sql_temp_file(
@@ -439,9 +449,10 @@ def execute_type1_flow(
                     definition_path = spill_path
                 except Exception as e:
                     logger.warning("Failed to spill definition for %s: %s", full_item_name, e)
-                out_script = out_script[:max_full_chars]
+                if max_full_chars > 0 and len(out_script) > max_full_chars:
+                    out_script = out_script[:max_full_chars]
+                    warnings.append(f"definition_truncated: {full_item_name} exceeded {max_full_chars} chars")
                 is_truncated = True
-                warnings.append(f"definition_truncated: {full_item_name} exceeded {max_full_chars} chars")
 
             analyzed_item = {
                 "name": full_item_name,
@@ -485,7 +496,7 @@ def execute_type1_flow(
             analyzed.append(analyzed_item)
 
         else:  # parsed_mode_read == 0
-            script = svc.fetch_object_script(
+            fetch_res = svc.fetch_object_script(
                 file_path=project_source,
                 clean_name=item_clean_name,
                 schema=item_schema,
@@ -494,6 +505,15 @@ def execute_type1_flow(
                 db_type=fetch_db,
                 wrap_exists=False,
             )
+            if isinstance(fetch_res, tuple):
+                script, fetch_meta = fetch_res
+            else:
+                script, fetch_meta = fetch_res, {}
+            truncated_upstream = bool(fetch_meta.get("truncated_upstream"))
+            if truncated_upstream:
+                warnings.append(
+                    f"definition_truncated_upstream: {full_item_name} (>{len(script)} chars, xem definition_path/mode_read=0)"
+                )
             if not script:
                 is_enc = False
                 if source_conn:
@@ -601,6 +621,12 @@ def execute_type1_flow(
             f"Đã trả full body trong analyzed[].definition (mode_read=3, không ghi .sql). "
             f"Không dump lại ra chat nếu đã có trong JSON."
         )
+        has_truncated = any(a.get("definition_truncated") or a.get("definition_path") for a in analyzed)
+        if has_truncated:
+            agent_msg += (
+                " Một số definition bị giới hạn độ dài; definition đầy đủ nằm ở definition_path, "
+                "đọc tiếp bằng read_local_file; hoặc dùng mode_read=0."
+            )
         if encrypt_proc:
             agent_msg += (
                 f" Lưu ý có {len(encrypt_proc)} object mã hóa (encrypted) không thể đọc definition / không có trong file: "

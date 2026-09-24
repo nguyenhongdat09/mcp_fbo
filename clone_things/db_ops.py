@@ -199,8 +199,10 @@ def fetch_object_script(
     type_desc: str,
     db_type: str = "app",
     wrap_exists: bool = True,
-) -> str:
-    """Fetch full script for either Table DDL or Routine Definition with optional check exists wrapping."""
+) -> tuple[str, dict[str, Any]]:
+    """Fetch full script for either Table DDL or Routine Definition with optional check exists wrapping.
+    Returns (script, {"truncated_upstream": bool}).
+    """
     import clone_things.service as svc
 
     # Table DDL
@@ -213,22 +215,22 @@ def fetch_object_script(
             schema=schema,
         )
         if not res.get("success"):
-            return ""
+            return "", {"truncated_upstream": False}
         result_sets = res.get("result_sets") or []
         if not result_sets:
-            return ""
+            return "", {"truncated_upstream": False}
         rows = result_sets[0].get("rows") or []
         raw_ddl = "".join(str(r[0]) for r in rows if r and r[0])
         if wrap_exists:
-            return svc.wrap_check_exists(raw_ddl, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
-        return raw_ddl
+            raw_ddl = svc.wrap_check_exists(raw_ddl, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+        return raw_ddl, {"truncated_upstream": False}
 
     # Trigger (TR) — OBJECT_DEFINITION trực tiếp; summary_object không hỗ trợ TR.
     if obj_type.upper() == "TR" or "TRIGGER" in type_desc.upper():
         conn_res = svc.get_connection_config(file_path, db_type)
         parsed = conn_res.get("parsed") if conn_res.get("success") else None
         if not parsed:
-            return ""
+            return "", {"truncated_upstream": False}
         safe_name = str(clean_name).replace("'", "''")
         safe_schema = str(schema or "dbo").replace("'", "''")
         sql = (
@@ -240,10 +242,10 @@ def fetch_object_script(
         rows = res.get("result_sets", [{}])[0].get("rows", [])
         raw_def = str(rows[0][0]) if rows and rows[0] and rows[0][0] else ""
         if not raw_def:
-            return ""
+            return "", {"truncated_upstream": False}
         if wrap_exists:
-            return svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
-        return raw_def
+            raw_def = svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+        return raw_def, {"truncated_upstream": False}
 
     # Routine (Proc, Func, View)
     summary_res = svc.summary_object(
@@ -254,12 +256,38 @@ def fetch_object_script(
         db_type=db_type,
     )
     if summary_res.get("success"):
+        if summary_res.get("truncated"):
+            # Fallback to OBJECT_DEFINITION directly to fetch full nvarchar(max) definition
+            conn_res = svc.get_connection_config(file_path, db_type)
+            parsed = conn_res.get("parsed") if conn_res.get("success") else None
+            if parsed:
+                safe_name = str(clean_name).replace("'", "''")
+                safe_schema = str(schema or "dbo").replace("'", "''")
+                sql = (
+                    "SELECT OBJECT_DEFINITION(OBJECT_ID("
+                    f"QUOTENAME(N'{safe_schema}') + N'.' + QUOTENAME(N'{safe_name}'))"
+                    ")"
+                )
+                res = svc.execute_query(parsed, sql, max_rows=5)
+                rows = res.get("result_sets", [{}])[0].get("rows", [])
+                raw_def = str(rows[0][0]) if rows and rows[0] and rows[0][0] else ""
+                if raw_def:
+                    if wrap_exists:
+                        raw_def = svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+                    return raw_def, {"truncated_upstream": False}
+
+            # Fallback failed or empty: keep the truncated definition with flag
+            raw_def = summary_res.get("definition") or ""
+            if wrap_exists:
+                raw_def = svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+            return raw_def, {"truncated_upstream": True}
+
         raw_def = summary_res.get("definition") or ""
         if wrap_exists:
-            return svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
-        return raw_def
+            raw_def = svc.wrap_check_exists(raw_def, clean_name=clean_name, schema=schema, obj_type=obj_type, type_desc=type_desc)
+        return raw_def, {"truncated_upstream": False}
 
-    return ""
+    return "", {"truncated_upstream": False}
 
 
 def extract_object_dependencies(

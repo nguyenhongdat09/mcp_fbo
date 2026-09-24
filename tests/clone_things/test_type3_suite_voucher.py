@@ -147,6 +147,10 @@ def test_ac_suite_1_prefix_expansion_full(voucher_project):
     assert pairs["App_Data/Controllers/Templates/Rpt/MRTran.xsd"] == (
         "App_Data/Controllers/Templates/Rpt/DDVTran.xsd"
     )
+    # .xsd là file schema/kiến trúc — bị deny, không copy
+    xsd_item = next(p for p in res["planned"] if p["relative"].endswith(".xsd"))
+    assert xsd_item["status"] == "denied"
+    assert "App_Data/Controllers/Templates/Rpt/MRTran.xsd" in res["skipped_denied"]
     assert pairs["App_Data/Controllers/Include/Command/GNEditCheckTableMRTran.txt"] == (
         "App_Data/Controllers/Include/Command/GNEditCheckTableDDVTran.txt"
     )

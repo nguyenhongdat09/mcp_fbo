@@ -108,7 +108,7 @@ def execute_type0_flow(
 
     target_app_db = (target_dbs.get("app") or {}).get("database") or ""
     target_sys_db = (target_dbs.get("sys") or {}).get("database") or ""
-    ensure_use_db_sections(output_file, app_db_name=target_app_db, sys_db_name=target_sys_db)
+    ensure_use_db_sections(output_file, app_db_name=target_app_db)
 
     # 3. Seed Queue
     clean_object_input = str(object).strip()
@@ -272,7 +272,7 @@ def execute_type0_flow(
 
         # Fetch script từ đúng DB (app/sys) nơi tìm thấy trên source
         fetch_db = s_db or "app"
-        script = svc.fetch_object_script(
+        fetch_res = svc.fetch_object_script(
             file_path=project_source,
             clean_name=item_clean_name,
             schema=item_schema,
@@ -280,6 +280,15 @@ def execute_type0_flow(
             type_desc=s_desc,
             db_type=fetch_db,
         )
+        if isinstance(fetch_res, tuple):
+            script, fetch_meta = fetch_res
+        else:
+            script, fetch_meta = fetch_res, {}
+        truncated_upstream = bool(fetch_meta.get("truncated_upstream"))
+        if truncated_upstream:
+            warnings.append(
+                f"definition_truncated_upstream: {item} (>{len(script)} chars)"
+            )
         if script:
             script = svc.wrap_check_exists(
                 script=script,
