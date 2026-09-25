@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--C-->
+<!-- ============================================================================
+  AGENT GUIDE — template danh mục NHIỀU KHÓA (PK composite), có import
+  ----------------------------------------------------------------------------
+  Token {{...}} đã được clone_things type=4 fill bằng new_name.
+  Việc agent PHẢI làm:
+    1) Đổi PK placeholder thành cột khóa thật — code/order của <dir>,
+       lệnh exists-check trong Inserting/Updating PHẢI khớp bộ khóa:
+         name_date_1   -> cột khóa kiểu DateTime (vd ngay)
+         name_string_1 -> cột khóa kiểu string (vd ma_xx) + sửa lookup
+       Muốn 3+ khóa: thêm field isPrimaryKey + nối vào code/order/check.
+    2) Đổi field thường: name_decimal_1, name_string_2 (và thêm field UR).
+    3) Tạo bảng {{table}} PK (name_date_1, name_string_1) đã đổi tên +
+       status + datetime0/2 + user_id0/2.
+    4) Khớp tên cột ở master.xml / grid.xml / upload.xml / filterimport.xml.
+============================================================================ -->
+<!DOCTYPE dir [
+  <!ENTITY ScriptIrregular SYSTEM "..\Include\Javascript\Irregular.txt">
+]>
+
+<dir table="{{table}}" code="name_date_1, name_string_1" order="name_date_1, name_string_1" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="{{title_v}}" e="{{title_e}}"></title>
+  <fields>
+    <field name="name_date_1" isPrimaryKey="true" type="DateTime" dataFormatString="@datetimeFormat" align="left" allowNulls="false">
+      <header v="Ngày" e="Date"></header>
+    </field>
+
+    <field name="name_string_1" isPrimaryKey="true" allowNulls="false">
+      <header v="Mã" e="Code"></header>
+      <!-- AGENT: đổi controller="Item" + key/information theo lookup thật -->
+      <items style="AutoComplete" controller="Item" reference="name_string_1_name%l" key="status = '1'" check="1=1" information="name_string_1$dmvt.ten_vt%l"/>
+    </field>
+    <field name="name_string_1_name%l" readOnly="true" external="true" defaultValue="''">
+      <header v="" e=""></header>
+    </field>
+    <field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountInputFormat" allowNulls="false">
+      <header v="Số tiền" e="Amount"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="name_string_2">
+      <header v="Ghi chú" e="Note"></header>
+    </field>
+    <field name="status" dataFormatString="0, 1" clientDefault="1" align="right" inactivate="true" >
+      <header v="Trạng thái" e="Status"></header>
+      <footer v="1 - Còn sử dụng, 0 - Không còn sử dụng" e="1 - Active, 0 - Inactive"></footer>
+      <items style="Mask"/>
+    </field>
+  </fields>
+
+  <views>
+    <view id="Dir">
+      <item value="120, 30, 70, 100, 100, 130"/>
+      <item value="110---: [name_date_1].Label, [name_date_1]"/>
+      <item value="110100: [name_string_1].Label, [name_string_1], [name_string_1_name%l]"/>
+      <item value="110---: [name_decimal_1].Label, [name_decimal_1]"/>
+      <item value="110---: [name_string_2].Label, [name_string_2]"/>
+      <item value="11100: [status].Label, [status], [status].Description"/>
+    </view>
+  </views>
+
+  <commands>
+    <command event="Loading">
+      <text>
+        <![CDATA[
+select 'active$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+
+    <command event="Closing">
+      <text>
+        <![CDATA[
+select 'close$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+    
+    <command event="Declare">
+      <text>
+        <![CDATA[
+declare @$exists nvarchar(512), @$updateConflict nvarchar(512), @$recordHasBeenChanged nvarchar(512), @$deleteConflict nvarchar(512)
+select @$exists = case when @@language = 'v' then N'Ngày <span class="Highlight">%s1</span> và mã <span class="Highlight">%s2</span> đã có hoặc lồng nhau trong danh mục.' else N'Date <span class="Highlight">%s1</span> and code <span class="Highlight">%s2</span> is invalid or already exists.' end
+select @$deleteConflict = case when @@language = 'v' then N'Ngày <span class="Highlight">%s1</span> và mã <span class="Highlight">%s2</span> đã phát sinh, không thể xóa được.' else N'Cannot delete date <span class="Highlight">%s1</span> and code <span class="Highlight">%s2</span>. It has already been used.' end
+select @$recordHasBeenChanged = case when @@language = 'v' then N'Ngày <span class="Highlight">%s1</span> và mã <span class="Highlight">%s2</span> đã được sửa hoặc xóa bởi người sử dụng khác.' else N'Date <span class="Highlight">%s1</span> and code <span class="Highlight">%s2</span> has been modified or deleted by another user.' end
+]]>
+      </text>
+    </command>
+
+    <command event="Inserting">
+      <text>
+        <![CDATA[
+if exists(select * from @@table where (name_date_1 = @name_date_1 and name_string_1 = @name_string_1))
+  begin
+    select '' as field, replace(replace(@$exists, '%s1', ltrim(rtrim(convert(nvarchar(16), @name_date_1, 103)))), '%s2', ltrim(rtrim(@name_string_1))) as message
+    return
+  end
+select @datetime0 = getdate(), @datetime2 = getdate(), @user_id0 = @@userID, @user_id2 = @@userID
+]]>
+      </text>
+    </command>
+
+    <command event="Updating">
+      <text>
+        <![CDATA[
+if not exists(select * from @@table where name_date_1 = $name_date_1.OldValue and name_string_1 = $name_string_1.OldValue)
+  begin
+    select '' as field, replace(replace(@$recordHasBeenChanged, '%s1', ltrim(rtrim(convert(nvarchar(16), @name_date_1, 103)))), '%s2', ltrim(rtrim(@name_string_1))) as message
+    return
+  end
+  
+if (@name_date_1 <> $name_date_1.OldValue or @name_string_1 <> $name_string_1.OldValue) 
+  begin
+    if exists(select * from @@table where (not (name_date_1 = $name_date_1.OldValue and name_string_1 = $name_string_1.OldValue)) and (name_date_1 = @name_date_1 and name_string_1 = @name_string_1) )
+      begin
+        select '' as field, replace(replace(@$exists, '%s1', ltrim(rtrim(@name_date_1))), '%s2', ltrim(rtrim(@name_string_1))) as message
+        return
+      end
+  end
+]]>
+      </text>
+    </command>
+
+    <command event="Updated">
+      <text>
+        <![CDATA[
+update @@table set datetime2 = getdate(), user_id2 = @@userID where name_date_1 = @name_date_1 and name_string_1 = @name_string_1
+]]>
+      </text>
+    </command>
+
+  </commands>
+
+  <script>
+    <text>
+      <![CDATA[
+function active$Form{{controller}}(f) {
+  f.add_onResponseComplete(on$Form{{controller}}$ResponseComplete);
+}
+function close$Form{{controller}}(f) {try {f.remove_onResponseComplete(on$Form{{controller}}$ResponseComplete)} catch (ex) {}}
+function on$Form{{controller}}$ResponseComplete(sender, e) {
+  var f = e.object, context = e.type.Context, result = e.type.Result;
+  switch (context) {
+    case 'Checking':
+      break;
+    default:
+      break;
+  }
+}      
+]]>
+      &ScriptIrregular;
+    </text>
+  </script>
+  
+</dir>

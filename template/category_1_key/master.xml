@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--C-->
+<!-- ============================================================================
+  AGENT GUIDE — template danh mục 1 khóa (PK = id identity tự tăng), có import
+  ----------------------------------------------------------------------------
+  Token {{...}} đã được clone_things type=4 thay bằng tên mới (new_name):
+    {{controller}} = tên controller/file, {{table}} = tên bảng (= controller),
+    {{view}} = v{{controller}}, {{importform}} = {{controller}}ImportForm
+  Việc agent PHẢI làm sau khi clone:
+    1) Đổi các field placeholder thành cột thật theo UR:
+         name_date_1          -> cột DateTime (vd ngay_hl)
+         name_lookup_1        -> cột mã lookup (vd ma_bp) + sửa items
+                                 controller/key/information cho đúng danh mục
+         name_lookup_1_name%l -> cột tên lookup (partner readOnly external)
+         name_decimal_1/2     -> cột số Decimal
+         name_string_2        -> cột text thường
+       Thêm/xóa field tùy UR. Tên cột PHẢI khớp nhau giữa master.xml,
+       grid.xml, upload.xml, filterimport.xml và bảng SQL {{table}}.
+    2) Tạo bảng {{table}}: id decimal identity PK + cột name_* đã đổi +
+       status + datetime0/datetime2/user_id0/user_id2.
+    3) Sửa title/label/header v/e theo UR.
+============================================================================ -->
+<!DOCTYPE dir [
+  <!ENTITY ScriptIrregular SYSTEM "..\Include\Javascript\Irregular.txt">
+]>
+<dir table="{{table}}" code="id" order="id" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="{{title_v}}" e="{{title_e}}"></title>
+  <fields>
+    <field name="id" type="Decimal"  isPrimaryKey="true" hidden="true" readOnly="true">
+      <header v="ID" e="ID"></header>
+      <items style="Numeric"></items>
+    </field>
+    <field name="name_date_1" type="DateTime" dataFormatString="@datetimeFormat" align="left" allowNulls="false">
+      <header v="Ngày" e="Date"></header>
+    </field>
+    <field name="name_lookup_1" allowNulls="false">
+      <header v="Mã" e="Code"></header>
+      <!-- AGENT: đổi controller="Unit" + key/information theo danh mục lookup thật -->
+      <items style="AutoComplete" controller="Unit" reference="name_lookup_1_name%l" key="status = '1'" check="1=1" information="name_lookup_1$dmdvcs.ten_dvcs%l"/>
+    </field>
+    <field name="name_lookup_1_name%l" readOnly="true" external="true" defaultValue="''">
+      <header v="" e=""></header>
+    </field>
+    <field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountInputFormat">
+      <header v="Số tiền" e="Amount"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="name_decimal_2" type="Decimal" dataFormatString="@baseCurrencyAmountInputFormat">
+      <header v="Số tiền 2" e="Amount 2"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="name_string_2">
+      <header v="Ghi chú" e="Note"></header>
+    </field>
+    <field name="status" dataFormatString="0, 1" clientDefault="1" align="right" inactivate="true" >
+      <header v="Trạng thái" e="Status"></header>
+      <footer v="1 - Còn sử dụng, 0 - Không còn sử dụng" e="1 - Active, 0 - Inactive"></footer>
+      <items style="Mask"/>
+    </field>
+  </fields>
+  <views>
+    <view id="Dir">
+      <item value="120, 30, 70, 100, 100, 130, 0"/>
+      <item value="110---1: [name_date_1].Label, [name_date_1], [id]"/>
+      <item value="110100: [name_lookup_1].Label, [name_lookup_1], [name_lookup_1_name%l]"/>
+      <item value="110---: [name_decimal_1].Label, [name_decimal_1]"/>
+      <item value="110---: [name_decimal_2].Label, [name_decimal_2]"/>
+      <item value="110---: [name_string_2].Label, [name_string_2]"/>
+      <item value="11100: [status].Label, [status], [status].Description"/>
+    </view>
+  </views>
+  <commands>
+    <command event="Loading">
+      <text><![CDATA[
+select 'active$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Closing">
+      <text><![CDATA[
+select 'close$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Declare">
+      <text><![CDATA[
+declare @$recordHasBeenChanged nvarchar(512)
+select @$recordHasBeenChanged = case when @@language = 'v' then N'Dòng dữ liệu đã được sửa hoặc xóa bởi người sử dụng khác.' else N'The record has been modified or deleted by another user.' end
+]]>
+      </text>
+    </command>
+    <command event="Inserting">
+      <text><![CDATA[
+select @id = coalesce((select max(id) from @@table), 0) + 1, @datetime0 = getdate(), @datetime2 = getdate(), @user_id0 = @@userID, @user_id2 = @@userID
+]]>
+      </text>
+    </command>
+    <command event="Inserted">
+      <text><![CDATA[
+select '' as message, @id as id 
+return
+]]>
+      </text>
+    </command>
+    <command event="Updating">
+      <text><![CDATA[
+if not exists(select * from @@table where id = $id.OldValue)
+  begin
+    select '' as field, @$recordHasBeenChanged as message
+    return
+  end
+]]>
+      </text>
+    </command>
+    <command event="Updated">
+      <text><![CDATA[
+update @@table set datetime2 = getdate(), user_id2 = @@userID where id = @id
+]]>
+      </text>
+    </command>
+  </commands>
+  <script>
+    <text><![CDATA[
+function active$Form{{controller}}(f) {
+  f.add_onResponseComplete(on$Form{{controller}}$ResponseComplete);
+}
+function close$Form{{controller}}(f) {try {f.remove_onResponseComplete(on$Form{{controller}}$ResponseComplete)} catch (ex) {}}
+function on$Form{{controller}}$ResponseComplete(sender, e) {
+  var f = e.object, context = e.type.Context, result = e.type.Result;
+  switch (context) {
+    case 'Checking':
+      break;
+    default:
+      break;
+  }
+}
+]]>
+      &ScriptIrregular;
+    </text>
+  </script>
+</dir>

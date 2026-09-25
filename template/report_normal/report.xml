@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Report controller: khai báo FORM IN (reportFile=.rpt cho
+  PDF, templateFile=.xlsx cho Excel — file in thiết kế ngoài, không nằm
+  trong template này) + các field h_* là header text map vào file in.
+  * Đổi h_* theo cột thật của proc; thêm form nếu nhiều mẫu in.
+============================================================================ -->
+<!DOCTYPE report [
+	<!ENTITY b SYSTEM ".\Include\BaseCurrency.xml">
+	<!ENTITY f SYSTEM ".\Include\ForeignCurrency.xml">
+	<!ENTITY s SYSTEM ".\Include\Separate.xml">
+
+	<!ENTITY p "../images/pdf.gif">
+	<!ENTITY e "../images/excel.gif">
+]>
+
+<report xmlns="urn:schemas-fast-com:data-report">
+	<forms>
+		<form id="010" reportFile="{{controller}}_01" templateFile="" commandArgument="Pdf" urlImage="&p;">
+			<header v="{{title_v}}" e="{{title_e}}"></header>
+			<download>
+				<header v="{{title_v}}" e="{{title_e}}"/>
+			</download>
+		</form>
+
+		&s;
+
+		<form id="110" reportFile="" templateFile="{{controller}}_01" commandArgument="Excel" urlImage="&e;">
+			<header v="{{title_v}}" e="{{title_e}}"></header>
+			<download>
+				<header v="{{title_v}}" e="{{title_e}}"/>
+			</download>
+		</form>
+	</forms>
+
+	<fields>
+		<field name="title" type="String">
+			<header v="{{title_v_upper}}" e="{{title_e_upper}}"/>
+		</field>
+		<field name="h_tu_ngay" type="String">
+			<header v="Từ ngày" e="From Date"/>
+		</field>
+		<field name="h_den_ngay" type="String">
+			<header v="Đến ngày" e="To Date"/>
+		</field>
+		<field name="h_name_string_1" type="String">
+			<header v="Mã" e="Code"/>
+		</field>
+		<field name="h_name_string_2" type="String">
+			<header v="Tên" e="Name"/>
+		</field>
+		<field name="h_name_decimal_1" type="String">
+			<header v="Số tiền 1" e="Amount 1"/>
+		</field>
+		<field name="h_name_decimal_2" type="String">
+			<header v="Số tiền 2" e="Amount 2"/>
+		</field>
+		<field name="h_name_decimal_3" type="String">
+			<header v="Số tiền 3" e="Amount 3"/>
+		</field>
+		<field name="h_tong_cong" type="String">
+			<header v="Tổng cộng" e="Total"/>
+		</field>
+	</fields>
+</report>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Grid báo cáo XOAY (pivot).
+  * <pivot>: rowField = cột nhóm dòng (proc trả), columnField="sysColumn"
+    = cột pivot mà proc tự sinh (mỗi giá trị pivot -> 1 cột động),
+    dataFields = các cột số bị xoay. Proc {{proc}} phải trả recordset
+    dạng: rowField + sysColumn + dataFields (+ stt, systotal).
+  * indexTable/indexColumn/indexHeader/indexView = tham số pivot engine —
+    giữ mẫu "2/1/2/4", chỉnh theo số nhóm header nếu cần.
+  * View Grid chỉ liệt kê cột tĩnh — cột pivot động không liệt kê.
+============================================================================ -->
+<!DOCTYPE grid [
+	<!ENTITY Identification "{{controller}}">
+
+	<!ENTITY XMLWhenReportLoading SYSTEM "..\Include\XML\WhenReportLoading.xml">
+	<!ENTITY XMLWhenReportClosing SYSTEM "..\Include\XML\WhenReportClosing.xml">
+	<!ENTITY XMLGraphReportToolbar SYSTEM "..\Include\XML\GraphReportToolbar.xml">
+	<!ENTITY CSSGraphReport SYSTEM "..\Include\Javascript\GraphReportCss.txt">
+	<!ENTITY JavascriptGraphReportInit SYSTEM "..\Include\Javascript\GraphReportInit.txt">
+
+	<!ENTITY WhenReportRenderingLimitRight SYSTEM "..\Include\XML\WhenReportRenderingLimitRight.xml">
+	<!ENTITY SetHiddenReportFormLimitRight SYSTEM "..\Include\Javascript\SetHiddenReportFormLimitRight.txt">
+
+	<!ENTITY % Control.Filter SYSTEM "..\Include\Filter.ent">
+	%Control.Filter;
+]>
+
+<grid type="Report" valid="systotal = 1" xmlns="urn:schemas-fast-com:data-grid">
+	<title v="{{title_v}}" e="{{title_e}}"></title>
+	<subTitle v="Ngày: %d2..." e="Date: %d2..."></subTitle>
+	<pivot rowField="name_string_1" columnField="sysColumn" dataFields="name_decimal_1, name_decimal_2, name_decimal_3" indexTable="2" indexColumn="1" indexHeader="2" indexView="4"/>
+	<fields>
+		<field name="stt" type="Int16" width="30" dataFormatString="# ###" allowSorting="true" allowFilter="true">
+			<header v="Stt" e="No."></header>
+		</field>
+		<field name="name_string_1" width="100" allowSorting="true" allowFilter="true">
+			<header v="Mã" e="Code"></header>
+		</field>
+		<field name="name_string_2" width="300" allowSorting="true" allowFilter="true">
+			<header v="Tên" e="Name"></header>
+		</field>
+
+		<field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountViewFormat" width="100" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 1" e="Amount 1"></header>
+		</field>
+		<field name="name_decimal_2" type="Decimal" width="120" dataFormatString="@baseCurrencyAmountViewFormat" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 2" e="Amount 2"></header>
+		</field>
+		<field name="name_decimal_3" type="Decimal" width="100" dataFormatString="@baseCurrencyAmountViewFormat" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 3" e="Amount 3"></header>
+		</field>
+
+		<field name="systotal" width="0" hidden="true">
+			<header v="" e=""></header>
+		</field>
+	</fields>
+
+	<views>
+		<view id="Grid">
+			<field name="stt"/>
+			<field name="name_string_1"/>
+			<field name="name_string_2"/>
+
+			<field name="systotal"/>
+		</view>
+	</views>
+
+	<commands>
+		&WhenReportRenderingLimitRight;
+		&XMLWhenReportLoading;
+		&XMLWhenReportClosing;
+	</commands>
+
+	<script>
+		<text>
+			&JavascriptGraphReportInit;
+			&SetHiddenReportFormLimitRight;
+		</text>
+	</script>
+
+	&CSSGraphReport;
+	&XMLGraphReportToolbar;
+</grid>

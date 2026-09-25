@@ -1,0 +1,41 @@
+name: category_1_key_detail
+title_v: Danh mục 1 khóa (id identity) + tab chi tiết (grid con), có import
+jev_desc: "New master/category with single identity PK plus a detail tab (embedded Grid controller, ForeignKey link), optional Excel import"
+files:
+  - src: master.xml
+    dst: App_Data/Controllers/Dir/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: griddetail.xml
+    dst: App_Data/Controllers/Grid/{new}detail.xml
+  - src: filterimport.xml
+    dst: App_Data/Controllers/Filter/{new}Import.xml
+  - src: upload.xml
+    dst: App_Data/Controllers/Templates/Upload/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+  - src: table.sql
+    dst: SQL/{new}_table.sql
+tokens:
+  "{{controller}}": "{new}"
+  "{{table}}": "{new}"
+  "{{view}}": "v{new}"
+  "{{importform}}": "{new}ImportForm"
+  "{{ctrl_detail}}": "{new}detail"
+  "{{table_detail}}": "{new}ct"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Đổi name_* thành cột thật. name_string_1 = mã danh mục, đồng thời là
+     khóa nối master<->detail (ForeignKey trong Dir + code= của Grid detail).
+  2. Tạo 2 bảng: sửa SQL/{new}_table.sql (skeleton sẵn: {new} id identity
+     PK + {new}ct name_string_1 FK + line_nbr PK) rồi chạy qua
+     query_database type=2.
+  3. Field name_grid_1 trong Dir là external — không phải cột bảng.
+     Tách tab riêng: thêm categoryIndex + <categories> trong view.
+  4. ForeignKey format "String: <field_master>, <cột_detail>"; nhiều cột
+     nối thì viết cặp nối tiếp (chưa verify mẫu thật — check project).
+  5. Xóa cascade: thêm delete {new}ct trong command Deleting/Deleted của
+     master nếu UR yêu cầu.
+  6. Import chỉ nạp bảng master — chi tiết không qua upload.xml.

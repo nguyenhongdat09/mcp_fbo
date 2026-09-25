@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Filter báo cáo TẠO MẪU (user chọn mẫu báo cáo động từ
+  v20dmmaubc qua dropdown 'form').
+  * {{ma_maubc}} = mã mẫu báo cáo (ma_maubc) trong danh mục mẫu BC —
+    PHẢI sửa thành mã thật của project (vd 'V30GLTCTM'), và cả literal
+    'V30GLTCTMA ' trong câu SQL Showing bên dưới nếu form table khác.
+  * {{proc}} = proc báo cáo (default rs_{new} — đổi zc_/khác theo
+    convention; phải trùng proc agent tạo).
+  * JS init${{controller}}$Form nạp option dropdown từ _itemValue/_itemText
+    mà command Showing trả về — giữ nguyên cơ chế.
+============================================================================ -->
+<!DOCTYPE dir [
+  <!ENTITY XMLWhenFilterLoading SYSTEM "..\Include\XML\WhenFilterLoading.xml">
+  <!ENTITY XMLWhenFilterClosing SYSTEM "..\Include\XML\WhenFilterClosing.xml">
+  <!ENTITY ScriptFilterInit SYSTEM "..\Include\Javascript\FilterInit.txt">
+  <!ENTITY OutlineCss SYSTEM "..\Include\Javascript\OutlineCss.txt">
+  <!ENTITY OutlineEntry SYSTEM "..\Include\Javascript\OutlineEntry.txt">
+  <!ENTITY OnSelectionOutline SYSTEM "..\Include\Javascript\OnSelectionOutline.txt">
+  <!ENTITY JavascriptReportFilter SYSTEM "..\Include\Javascript\ReportFilter.txt">
+  <!ENTITY defaultTable "{{ma_maubc}}">
+  <!ENTITY defaultForm "{{ma_maubc}}">
+  <!ENTITY controller "{{controller}}">
+  <!ENTITY % TabHeightFomula SYSTEM "..\Include\TabHeightFomula.ent">
+  %TabHeightFomula;
+]>
+<dir id="1" type="Report" cache="true" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="Điều kiện lọc" e="Filter Condition"></title>
+  <fields>
+    <field name="tu_ngay" type="DateTime" dataFormatString="@datetimeFormat" allowNulls="false" aliasName="fromDate" defaultValue="new Date()">
+      <header v="Từ ngày" e="Date from"></header>
+      <footer v="Ngày từ/đến" e="Date from/to" />
+    </field>
+    <field name="den_ngay" type="DateTime" dataFormatString="@datetimeFormat" allowNulls="false" aliasName="toDate" defaultValue="new Date()">
+      <header v="Đến ngày" e="Date to"></header>
+    </field>
+    <field name="ma_dvcs" >
+      <header v="Đơn vị" e="Unit" ></header>
+      <items style="Lookup" controller="Unit" key="status = '1'" check="1 = 1"/>
+    </field>
+    <field name="form" allowNulls="false" >
+      <header v="Chọn báo cáo" e="Select Report"></header>
+      <items style="DropDownList">
+        <item value="">
+          <text v="" e=""/>
+        </item>
+      </items>
+      <clientScript>&OnSelectionOutline;</clientScript>
+    </field>
+    <field name="mau_bc" clientDefault="10" >
+      <header v="Mẫu báo cáo" e="Report Form"></header>
+      <items style="DropDownList">
+        <item value="10">
+          <text v="Mẫu chuẩn" e="Standard Form"/>
+        </item>
+        <item value="20">
+          <text v="Mẫu ngoại tệ" e="FC Form"/>
+        </item>
+      </items>
+      <clientScript>&OnSelectionOutline;</clientScript>
+    </field>
+  </fields>
+  <views>
+    <view id="Dir"  >
+      <item value="120, 30, 40, 30, 100, 100, 130"/>
+      <item value="11001: [tu_ngay].Label, [tu_ngay], [den_ngay]"/>
+      <item value="110000-: [ma_dvcs].Label, [ma_dvcs]"/>
+      <item value="110000-: [form].Label, [form]"/>
+      <item value="110000-: [mau_bc].Label, [mau_bc]"/>
+    </view>
+  </views>
+  <commands>
+    <command event="Initialize">
+      <text>
+        <![CDATA[
+declare @message nvarchar(4000)
+select @message = 'init$VoucherFilter$(this);'
+select @message as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Showing">
+      <text>
+        <![CDATA[
+declare @form nvarchar(4000), @name nvarchar(4000), @defaultForm varchar(33)
+select @form = '', @name = ''
+select top 1 @defaultForm = rtrim(upper(form)) from v20dmmaubc where ma_maubc = ']]>&defaultForm;<![CDATA[' and form = 'V30GLTCTMA ' and nd_yn = 1
+if @defaultForm is null select top 1 @defaultForm = rtrim(upper(form)) from v20dmmaubc where ma_maubc = ']]>&defaultForm;<![CDATA[' and form = 'V30GLTCTMA '
+
+select @form = @form + rtrim(form) + char(255), @name = @name + case when lower(@@language) = 'v' then rtrim(ten_maubc) else rtrim(ten_maubc2) end + char(255) from v20dmmaubc where ma_maubc = ']]>&defaultForm;<![CDATA[' and form = 'V30GLTCTMA '
+select @form = left(@form, len(@form) - 1), @name = left(@name, len(@name) - 1)
+select 'this._itemValue=''' + rtrim(@form) + ''';this._itemText=''' + dbo.FastBusiness$Function$EncodeScript(@name) + '''; this._defaultForm = ''' + @defaultForm + ''';init$]]>&controller;<![CDATA[$Form(this);' as message
+return
+]]>
+      </text>
+    </command>
+
+    &XMLWhenFilterLoading;
+    &XMLWhenFilterClosing;
+    <command event="Processing">
+      <text>
+        <![CDATA[
+select @tu_ngay as date_from, @den_ngay as date_to
+exec {{proc}} @tu_ngay, @den_ngay, @ma_dvcs, @form, @mau_bc, @@language, @@userID, @@admin
+]]>
+      </text>
+    </command>
+  </commands>
+  <script>
+    <text>
+      &OutlineEntry;
+      &JavascriptReportFilter;
+      &ScriptFilterInit;
+      <![CDATA[
+function active$VoucherFilter$(f) {
+  f.add_onResponseComplete(on$Filter$ResponseComplete);
+  changeLookupReadonly(f, 'ma_dvcs');
+}
+/* <flatten type="Javascript"> */
+function close$VoucherFilter$(f) {try {f.remove_onResponseComplete(on$Filter$ResponseComplete);} catch (ex) {}}
+function on$Filter$ResponseComplete(sender, e) {
+  var f = e.object, context = e.type.Context, result = e.type.Result;
+  switch (context) {
+    case 'Checking':
+      var g = f.grid, x = f.getItem('form').selectedIndex, y = f.getItem('form').options, formName = y[x].text, v = f.getItemValue('mau_bc');
+      var d1 = f.getItem('tu_ngay').value, d2 = f.getItem('den_ngay').value;
+      g._alterTitle = [null, [['%f', formName, true], ['%d1', d1, true], ['%d2', d2, true]]];
+      // AGENT: sửa _hiddenFields theo cặp cột tiền tệ thật của grid.xml
+      g._hiddenFields = [
+        {Fields: 'name_decimal_3, name_decimal_4', Value: v == '10'},
+        {Fields: 'name_decimal_1, name_decimal_2', Value: v == '20'}
+      ];
+      g._nam = (function (v) {
+        if (!v) return (new Date()).getFullYear();
+        var s = String(v);
+        if (/^\d{8}/.test(s)) return parseInt(s.substring(0, 4), 10);
+        try { if (v.getFullYear) return v.getFullYear(); } catch (ex) {}
+        return (new Date()).getFullYear();
+      })(d2);
+      break;
+    default:
+      break;
+  }
+}
+function init$]]>&controller;<![CDATA[$Form(f) {
+  var o = f.getItem('form'), value = f._itemValue.split(String.fromCharCode(255)), text = f._itemText.split(String.fromCharCode(255)), index;
+  for (var i = 0; i < value.length; i++) {
+    o.options[i] = new Option(text[i], value[i]);
+    if (!index && f._defaultForm == value[i]) index = i;
+  }
+  if (!index) index = 0;
+  o.options[index].selected = true;
+}
+]]>
+    </text>
+  </script>
+
+  &OutlineCss;
+</dir>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Report controller báo cáo tạo mẫu (in qua templateFile
+  Excel — file in ngoài, không có trong template).
+  * rowFilter="[2$sysprint = 1]": chỉ in dòng proc đánh dấu sysprint=1.
+  * h_* = header text map vào file in — đổi theo cột thật của {{proc}}.
+============================================================================ -->
+<!DOCTYPE report [
+  <!ENTITY b SYSTEM ".\Include\BaseCurrency.xml">
+  <!ENTITY f SYSTEM ".\Include\ForeignCurrency.xml">
+  <!ENTITY s SYSTEM ".\Include\Separate.xml">
+  <!ENTITY p "../images/pdf.gif">
+  <!ENTITY e "../images/excel.gif">
+]>
+<report xmlns="urn:schemas-fast-com:data-report">
+  <forms>
+    &s;
+    <form id="110" templateFile="{{controller}}_01" commandArgument="Excel" urlImage="&e;" rowFilter="[2$sysprint = 1]">
+      <header v="{{title_v}}" e="{{title_e}}"/>
+      <download>
+        <header  v="{{title_v}}" e="{{title_e}}"/>
+      </download>&b;
+    </form>
+  </forms>
+  <fields>
+    <field name="title" type="String">
+      <header v="{{title_v_upper}}" e="{{title_e_upper}}"/>
+    </field>
+    <field name="h_name_string_1" type= "String">
+      <header v="Chỉ tiêu" e="Item" />
+    </field>
+    <field name="h_name_decimal_1" type= "String">
+      <header v="Số tiền 1" e="Amount 1" />
+    </field>
+    <field name="h_name_decimal_2" type= "String">
+      <header v="Số tiền 2" e="Amount 2" />
+    </field>
+    <field name="h_name_decimal_3" type= "String">
+      <header v="Số tiền 1 nt" e="Amount 1 FC" />
+    </field>
+    <field name="h_name_decimal_4" type= "String">
+      <header v="Số tiền 2 nt" e="Amount 2 FC" />
+    </field>
+    <field name="h_tu_ngay" type="String" >
+      <header v="Từ ngày" e="From Date" />
+    </field>
+    <field name="h_den_ngay" type="String" >
+      <header v="Đến ngày" e="To Date" />
+    </field>
+    <field name="h_tu_ky" type="String" >
+      <header v="Từ kỳ" e="From Period" />
+    </field>
+    <field name="h_den_ky" type="String" >
+      <header v="Đến kỳ" e="To Period" />
+    </field>
+    <field name="h_nam" type="String" >
+      <header v="Năm" e="Year" />
+    </field>
+  </fields>
+</report>

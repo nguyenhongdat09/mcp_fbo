@@ -1,0 +1,28 @@
+name: report_normal
+title_v: Báo cáo thường (Filter + Grid + Report, không pivot/dropdown mẫu)
+jev_desc: "Standard listing/detail report - Filter + Grid + Report controller, no pivot, no template-form dropdown"
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: report.xml
+    dst: App_Data/Controllers/Report/{new}.xml
+tokens:
+  "{{controller}}": "{new}"
+  "{{proc}}": "rs_{new}"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+  "{{title_v_upper}}": "{new}"
+  "{{title_e_upper}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Viết proc {{proc}} (rs_{new}) nhận đúng thứ tự param trong
+     Filter Processing, đổ recordset vào '#$query'; cột trả ra khớp
+     field trong Grid.
+  2. Đổi field lọc name_* và cột Grid theo UR; giữ systotal nếu proc
+     dùng cơ chế valid="systotal = 1".
+  3. report.xml khai báo form in (reportFile .rpt / templateFile .xlsx) —
+     file in thiết kế ngoài, KHÔNG có trong template.
+  4. Đổi {{proc}} prefix nếu project dùng zc_ thay rs_.
+  5. Đăng ký menu thủ công.

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Import XML (server-side xử lý file Excel upload, Import.ashx).
+  * <fields>: map cột Excel -> cột bảng. id tự tăng = cast(stt)+@max.
+    Đổi name_* cho khớp master.xml/grid.xml; thêm cột thì thêm field +
+    gán column="D/E/..." và header trong <template>.
+  * check="..." trên field = rule validate lookup (vd mã phải tồn tại
+    trong danh mục) — sửa bảng lookup thật.
+  * {{filename}} = tên file Excel mẫu khi user bấm "Tải tệp mẫu".
+============================================================================ -->
+<!DOCTYPE import [
+  <!ENTITY % Authentication SYSTEM "..\..\Include\AuthenticationImport.ent">
+  %Authentication;
+  <!ENTITY % ImportErrorMode SYSTEM "..\..\Include\ImportErrorMode.ent">
+  %ImportErrorMode;
+  <!ENTITY IrregularValue SYSTEM "Include\Irregular.txt">
+  <!ENTITY Error "
+if @r is not null begin
+  select '' as message, @field as field, @r as record
+  return
+end
+">
+  <!ENTITY Irregular "
+if @r is not null begin
+  select @irregular as message, @field as field, @r as record
+  return
+end
+">
+  <!ENTITY Duplicate "
+if @r is not null begin
+  select @duplicate as message, @field as field, @r as record
+  return
+end
+">
+  <!ENTITY Checking "@@checking">
+  <!ENTITY Inserting "@@inserting">
+  <!ENTITY Updating "@@updating">
+  <!ENTITY % ExportImportTemplate SYSTEM "..\..\Include\ExportImportTemplate.ent">
+  %ExportImportTemplate;
+  <!ENTITY ExportQueryStaticFile "
+declare @filename varchar(128)
+select @filename = '{{controller}}.xlsx'
+">
+  <!ENTITY Controller "{{controller}}">
+  <!ENTITY % ListEditLog SYSTEM "..\..\Include\ListEditLog.ent">
+  %ListEditLog;
+]>
+<import xmlns="urn:schemas-fast-com:data-import">
+  <setting>
+    <startRow value="6"/>
+    <maxFileSize value="10"/>
+    <uploadTimeOut value="120"/>
+    <importRecordTimeout value="1740"/>
+    <allowFileExtension value="^(.XLSX)$"/>
+    <onProcessFail value="parent.on${{importform}}$Fail(this.frameElement)"/>
+    <onProcessComplete value="parent.on${{importform}}$Complete(this.frameElement)"/>
+    <uploadContentType value="application/ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    <baseTable value="{{table}}"/>
+    <table value="{{table}}" alias="a"/>
+    <temporary value="#k" alias="b"/>
+
+    &UploadModeProcess;
+  </setting>
+  <variable>
+    <var id="00003">
+      <header v="Giá trị đã có trong danh mục." e="The value already exists." />
+    </var>
+  </variable>
+  <fields identity="true" name="stt">
+    <field name="id" column="None" isPrimaryKey="true" insertValue="(cast(stt as int) + rtrim(@max))" updateValue="None"/>
+    <field name="name_date_1" column="A" type="DateTime" allowNulls="false" updateValue="None"/>
+    <field name="name_lookup_1" column="B" allowNulls="false" upperCase="true" updateValue="None" check="name_lookup_1 not in (select ma_dvcs from dmdvcs)" errorCode="00001"/>
+    <field name="name_decimal_1" column="C" type="Decimal"/>
+    <field name="name_decimal_2" column="D" type="Decimal"/>
+    <field name="name_string_2" column="E"/>
+    <field name="status" column="None" insertValue="'1'" updateValue="None"/>
+    <field name="datetime0" column="None" type="DateTime" insertValue="getdate()" updateValue="None"/>
+    <field name="datetime2" column="None" type="DateTime" insertValue="getdate()" updateValue="getdate()"/>
+    <field name="user_id0" column="None" type="Int" insertValue="@@userID" updateValue="None"/>
+    <field name="user_id2" column="None" type="Int" insertValue="@@userID" updateValue="@@userID"/>
+  </fields>
+  <template>
+    <setting>
+      <downloadFile>
+        <text v="{{title_v}}" e="{{title_e}}"/>
+      </downloadFile>
+    </setting>
+    <fields row="5">
+      <field name="name_date_1" width ="16" starColor="&EIT.StarColor.Require;">
+        <text v="Ngày" e="Date"/>
+      </field>
+      <field name="name_lookup_1" width ="16" starColor="&EIT.StarColor.Require;">
+        <text v="Mã" e="Code"/>
+      </field>
+      <field name="name_decimal_1" width ="16">
+        <text v="Số tiền" e="Amount"/>
+      </field>
+      <field name="name_decimal_2" width ="16">
+        <text v="Số tiền 2" e="Amount 2"/>
+      </field>
+      <field name="name_string_2" width ="30">
+        <text v="Ghi chú" e="Note"/>
+      </field>
+      &EIT.NoteField;
+    </fields>
+  </template>
+  <processing>
+    <text>
+      <![CDATA[
+declare @message nvarchar(4000), @q nvarchar(4000), @duplicate nvarchar(4000), @irregular nvarchar(4000), @field varchar(32), @irregularChars varchar(128), @r int
+select @irregularChars = ]]>&IrregularValue;<![CDATA[
+select @duplicate = case @@language when 'v' then N'Giá trị tại ô <span class="Highlight">%invalidCell</span> đã có trong danh mục.' else 'The value of cell <span class="Highlight">%invalidCell</span> already exists.' end
+select @irregular = case @@language when 'v' then N'Giá trị tại ô <span class="Highlight">%invalidCell</span> có chứa các ký tự: ' + @irregularChars else 'The value of cell <span class="Highlight">%invalidCell</span> contains any of the following characters: ' + @irregularChars  end
+
+-- Checking
+]]>&Checking;<![CDATA[
+
+]]>&EndErrorMode;<![CDATA[
+
+-- Insert
+declare @max int
+select @max = isnull(max(id), 0) from {{table}}
+
+]]>&Inserting;<![CDATA[
+]]>
+    </text>
+  </processing>
+</import>

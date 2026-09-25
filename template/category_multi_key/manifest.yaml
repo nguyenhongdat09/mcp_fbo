@@ -1,0 +1,34 @@
+name: category_multi_key
+title_v: Danh mục nhiều khóa chính (PK composite), có import + kiểu sao chép
+jev_desc: "New master/category with composite primary key (2+ key columns), optional Excel import with overwrite option"
+files:
+  - src: master.xml
+    dst: App_Data/Controllers/Dir/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: filterimport.xml
+    dst: App_Data/Controllers/Filter/{new}Import.xml
+  - src: upload.xml
+    dst: App_Data/Controllers/Templates/Upload/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+  - src: table.sql
+    dst: SQL/{new}_table.sql
+tokens:
+  "{{controller}}": "{new}"
+  "{{table}}": "{new}"
+  "{{importform}}": "{new}ImportForm"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Đổi PK placeholder name_date_1 + name_string_1 thành cột khóa thật —
+     khớp code/order của <dir>/<grid>, exists-check trong Inserting/
+     Updating, và PK của bảng {new}. 3+ khóa: thêm field + nối vào mọi chỗ.
+  2. Đổi field thường name_decimal_1/name_string_2 theo UR.
+  3. Tạo bảng {new}: sửa SQL/{new}_table.sql (skeleton sẵn: PK composite
+     name_string_1+name_date_1 + status + datetime0/2 + user_id0/2) rồi
+     chạy qua query_database type=2.
+  4. Field 'type' (Kiểu sao chép) trong Filter Import + logic @type trong
+     Upload cho phép chép đè — xóa nếu UR không cần.
+  5. Sửa title v/e + đăng ký menu thủ công.

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Filter báo cáo thường (không pivot, không dropdown mẫu).
+  Token đã fill: {{controller}}, {{proc}} (= rs_{new} — đổi prefix nếu
+  project dùng zc_/khác; phải trùng tên proc thật agent tạo).
+  * Đổi field lọc theo UR: name_lookup_1 (Lookup), name_string_1
+    (AutoComplete + partner _name%l), name_mask_1 (Mask số).
+    tu_ngay/den_ngay + ma_dvcs + loai_du_lieu là field chuẩn — giữ nếu UR cần.
+  * Thứ tự param trong exec {{proc}} PHẢI khớp thứ tự khai báo proc.
+============================================================================ -->
+<!DOCTYPE dir [
+  <!ENTITY Controller "{{controller}}">
+  <!ENTITY XMLWhenFilterLoading SYSTEM "..\Include\XML\WhenFilterLoading.xml">
+  <!ENTITY XMLWhenFilterClosing SYSTEM "..\Include\XML\WhenFilterClosing.xml">
+
+  <!ENTITY ReportDataTypeField SYSTEM "..\Include\XML\ReportDataTypeField.xml">
+  <!ENTITY ScriptQueryFilterString SYSTEM "..\Include\Javascript\QueryFilterString.txt">
+
+  <!ENTITY OutlineCss SYSTEM "..\Include\Javascript\OutlineCss.txt">
+  <!ENTITY OutlineEntry SYSTEM "..\Include\Javascript\OutlineEntry.txt">
+  <!ENTITY OnSelectionOutline SYSTEM "..\Include\Javascript\OnSelectionOutline.txt">
+
+  <!ENTITY GetReportFormLimitRight SYSTEM "..\Include\Command\GetReportFormLimitRight.f">
+  <!ENTITY SetReportFormLimitRight SYSTEM "..\Include\Javascript\SetReportFormLimitRight.txt">
+
+  <!ENTITY XMLWhenFilterQuerying SYSTEM "..\Include\XML\WhenFilterQuerying.xml">
+
+  <!ENTITY % Tiny.External SYSTEM "..\Include\Tiny.External.ent">
+  %Tiny.External;
+]>
+
+<dir id="1" type="Report" cache="true" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="Điều kiện lọc" e="Filter Condition"/>
+  <fields>
+    <field name="tu_ngay" type="DateTime" dataFormatString="@datetimeFormat" allowNulls="false" aliasName="fromDate" defaultValue="new Date()">
+      <header v="Từ ngày" e="Date from"/>
+    </field>
+    <field name="den_ngay" type="DateTime" dataFormatString="@datetimeFormat" allowNulls="false" aliasName="toDate" defaultValue="new Date()">
+      <header v="Đến ngày" e="Date to"/>
+    </field>
+    <!-- AGENT: đổi controller="Site" + key/check theo danh mục lọc thật -->
+    <field name="name_lookup_1">
+      <header v="Mã" e="Code"/>
+      <items style="Lookup" controller="Site" key="status = '1'" check="1 = 1"/>
+    </field>
+    <field name="name_string_1" categoryIndex="1">
+      <header v="Mã 2" e="Code 2"/>
+      <items style="AutoComplete" controller="Item" reference="name_string_1_name%l" key="status = '1'" check="1 = 1"/>
+    </field>
+    <field name="name_string_1_name%l" readOnly="true" external="true">
+      <header v="" e=""/>
+    </field>
+
+    <field name="ma_dvcs" categoryIndex="1">
+      <header v="Đơn vị" e="Unit"></header>
+      <items style="Lookup" controller="Unit" key="status = '1'" check="1 = 1"/>
+    </field>
+    <field name="name_mask_1" dataFormatString="1, 2" clientDefault="1" align="right" categoryIndex="2">
+      <header v="Tùy chọn" e="Option"></header>
+      <footer v="1 - ..." e="1 - ..."></footer>
+      <items style="Mask"/>
+    </field>
+
+    &ReportDataTypeField;
+
+  </fields>
+
+  <views>
+    <view id="Dir" height="162 - (&Tiny.External.Height.Combo;)">
+      <item value="120, 30, 70, 100, 100, 130"/>
+      <item value="110---: [tu_ngay].Label, [tu_ngay], [den_ngay].Label, [den_ngay]"/>
+      <item value="11000-: [name_lookup_1].Label, [name_lookup_1]"/>
+      <item value="110100: [name_string_1].Label, [name_string_1], [name_string_1_name%l]"/>
+      <item value="11000-: [ma_dvcs].Label, [ma_dvcs]"/>
+      <item value="111000: [name_mask_1].Label, [name_mask_1], [name_mask_1].Description"/>
+      <item value="11000-: [loai_du_lieu].Label, [loai_du_lieu]"/>
+
+      <categories>
+        <category index="1" columns="120, 30, 70, 100, 100, 130">
+          <header v="Thông tin chung" e="General"/>
+        </category>
+        <category index="2" columns="120, 30, 70, 100, 100, 130">
+          <header v="Khác" e="Other"/>
+        </category>
+      </categories>
+
+    </view>
+  </views>
+
+  <commands>
+    <command event="Loading">
+      <text>
+        <![CDATA[
+declare @message nvarchar(1024)
+select @message = ''
+]]>&GetReportFormLimitRight;<![CDATA[
+select @message + 'active$VoucherFilter$(this);' as message
+return
+]]>
+      </text>
+    </command>
+
+    &XMLWhenFilterClosing;
+
+    &XMLWhenFilterQuerying;
+    <command event="Processing">
+      <text>
+        <![CDATA[
+select cast(@den_ngay as smalldatetime) as date_to
+exec {{proc}} @tu_ngay, @den_ngay, @name_lookup_1, @name_string_1, @name_mask_1, @loai_du_lieu, @ma_dvcs, @@language, @@userID, @@admin, ']]>&Controller;<![CDATA[', '@@sysDatabaseName', '#$query'
+]]>
+      </text>
+    </command>
+  </commands>
+
+  <script>
+    <text>
+      &OutlineEntry;
+      &ScriptQueryFilterString;
+      &SetReportFormLimitRight;
+      <![CDATA[/* <flatten type="Javascript"> */
+function onChange$VoucherFilter$Tab(f, e) {f.parentForm.focusWhenTabChanged(['name_string_1', 'name_mask_1']);}
+function active$VoucherFilter$(f) {
+  f.add_onResponseComplete(on$Filter$ResponseComplete);
+  f._tabContainer.add_activeTabChanged(onChange$VoucherFilter$Tab);
+  f._tabContainer._loaded = true;
+  if (f._convection) f._convection = null;
+  else {
+    changeLookupReadonly(f, 'name_lookup_1', true);
+    changeLookupReadonly(f, 'ma_dvcs');
+  }
+}
+function close$VoucherFilter$(f) {
+  try {f.remove_onResponseComplete(on$Filter$ResponseComplete);} catch (ex) {}
+  try {f._tabContainer.remove_activeTabChanged(onChange$VoucherFilter$Tab);} catch (ex) {}
+}
+function on$Filter$ResponseComplete(sender, e) {
+  var f = e.object, context = e.type.Context, result = e.type.Result;
+  switch (context) {
+    case 'Checking':
+      var g = f.grid;
+      g._alterTitle = [null, [['%d1', f.getItem('tu_ngay').value, true], ['%d2', f.getItem('den_ngay').value, true]]];
+      if (f._hidden$GridForm) g._grid$IdHidden$FormReport = f._hidden$GridForm;
+      break;
+    default:
+      break;
+  }
+}
+/* </flatten> */]]>
+    </text>
+  </script>
+
+  &OutlineCss;
+</dir>

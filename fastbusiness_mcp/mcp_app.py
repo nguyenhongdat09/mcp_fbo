@@ -844,6 +844,13 @@ def clone_things_tool(
             description="Chỉ dùng khi type=3: Số phần tử planned[] tối đa hiển thị mẫu khi vượt quá max_files (truncated=True). Mặc định 10.",
         ),
     ] = 10,
+    new_name: Annotated[
+        str,
+        Field(
+            default="",
+            description="Chỉ dùng khi type=4 (template paste): tên controller mới thay token {new} trong tên file + nội dung, vd 'zccnsldkbctdo'. Bắt buộc khi paste; object='?' để list template có sẵn.",
+        ),
+    ] = "",
 ) -> str:
     """
     BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa hoặc copy file:
@@ -874,6 +881,10 @@ def clone_things_tool(
        - Data lấy từ DB của project_source (tự dò app/sys); file .sql có USE đúng DB. User tự sửa giá trị rồi F5.
        - Tự bỏ cột computed/timestamp; có identity → bọc SET IDENTITY_INSERT ON/OFF.
        - Giới hạn dòng: clone_things.data_max_rows (mặc định 1000), vượt → truncated.
+    5) type=4 (template paste — dựng màn hình mới từ mẫu đóng gói sẵn):
+       - object='tên template' (vd 'category_1_key' — danh mục 1 khóa + import), object='?' để list.
+       - new_name='tên controller mới' (bắt buộc khi paste) — đổi tên file + rewrite token bên trong (controller/table/view) theo manifest.
+       - project_target = abs path project đích; execute=False (mặc định) = dry-run.
     """
     try:
         cfg = get_config()
@@ -896,6 +907,7 @@ def clone_things_tool(
             planned_sample_size=planned_sample_size,
             table=table,
             where=where,
+            new_name=new_name,
             config=cfg,
         )
         return format_clone_result(result)

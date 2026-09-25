@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Grid kết quả báo cáo thường.
+  * Cột phải khớp recordset mà {{proc}} đổ vào #$query.
+  * valid="systotal = 1": proc trả cột systotal=1 cho dòng dữ liệu —
+    giữ field systotal hidden nếu proc dùng cơ chế này, ngược lại xóa.
+  * aggregate="Sum" + allowFilter="&GridReportAllowFilter.Number;" cho cột số.
+============================================================================ -->
+<!DOCTYPE grid [
+	<!ENTITY Identification "{{controller}}">
+
+	<!ENTITY XMLWhenReportLoading SYSTEM "..\Include\XML\WhenReportLoading.xml">
+	<!ENTITY XMLWhenReportClosing SYSTEM "..\Include\XML\WhenReportClosing.xml">
+	<!ENTITY XMLStandardReportToolbar SYSTEM "..\Include\XML\StandardReportToolbar.xml">
+	<!ENTITY JavascriptReportInit SYSTEM "..\Include\Javascript\ReportInit.txt">
+
+	<!ENTITY WhenReportRenderingLimitRight SYSTEM "..\Include\XML\WhenReportRenderingLimitRight.xml">
+	<!ENTITY SetHiddenReportFormLimitRight SYSTEM "..\Include\Javascript\SetHiddenReportFormLimitRight.txt">
+
+	<!ENTITY % Control.Filter SYSTEM "..\Include\Filter.ent">
+	%Control.Filter;
+]>
+
+<grid type="Report" valid="systotal = 1" xmlns="urn:schemas-fast-com:data-grid">
+	<title v="{{title_v}}" e="{{title_e}}"></title>
+	<subTitle v="Từ ngày %d1 đến ngày %d2" e="From %d1 to %d2"></subTitle>
+	<fields>
+		<field name="stt" type="Int16" width="30" dataFormatString="# ###" allowSorting="true" allowFilter="true">
+			<header v="Stt" e="No."></header>
+		</field>
+		<field name="name_string_1" width="100" allowSorting="true" allowFilter="true">
+			<header v="Mã" e="Code"></header>
+		</field>
+		<field name="name_string_2" width="300" allowSorting="true" allowFilter="true">
+			<header v="Tên" e="Name"></header>
+		</field>
+
+		<field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountViewFormat" width="120" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 1" e="Amount 1"></header>
+		</field>
+		<field name="name_decimal_2" type="Decimal" width="120" dataFormatString="@baseCurrencyAmountViewFormat" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 2" e="Amount 2"></header>
+		</field>
+		<field name="name_decimal_3" type="Decimal" width="120" dataFormatString="@baseCurrencyAmountViewFormat" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;">
+			<header v="Số tiền 3" e="Amount 3"></header>
+		</field>
+
+		<field name="systotal" width="0" hidden="true">
+			<header v="" e=""></header>
+		</field>
+	</fields>
+
+	<views>
+		<view id="Grid">
+			<field name="stt"/>
+			<field name="name_string_1"/>
+			<field name="name_string_2"/>
+			<field name="name_decimal_1"/>
+			<field name="name_decimal_2"/>
+			<field name="name_decimal_3"/>
+			<field name="systotal"/>
+		</view>
+	</views>
+
+	<commands>
+		&WhenReportRenderingLimitRight;
+		&XMLWhenReportLoading;
+		&XMLWhenReportClosing;
+	</commands>
+
+	<script>
+		<text>
+			&JavascriptReportInit;
+			&SetHiddenReportFormLimitRight;
+		</text>
+	</script>
+
+	&XMLStandardReportToolbar;
+</grid>

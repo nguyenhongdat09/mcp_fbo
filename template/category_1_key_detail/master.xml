@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--C-->
+<!-- ============================================================================
+  AGENT GUIDE — danh mục 1 khóa (PK id identity) + TAB CHI TIẾT
+  ----------------------------------------------------------------------------
+  Token {{...}} đã fill bởi clone_things type=4:
+    {{ctrl_detail}}  = {new}detail  (tên Grid controller chi tiết)
+    {{table_detail}} = {new}ct      (bảng chi tiết — FK theo name_string_1)
+  Việc agent PHẢI làm:
+    1) Đổi name_* thành cột thật — name_string_1 là MÃ danh mục, cũng là
+       khóa nối master<->detail (ForeignKey + griddetail.xml code=).
+    2) Field name_grid_1: external field KHÔNG phải cột bảng — nó render
+       grid chi tiết. Muốn tách thành tab riêng: thêm categoryIndex + khai
+       báo <categories> trong view (xem mẫu thật Dir/Item.xml, LoanContract.xml).
+    3) ForeignKey format "String: <field_master>, <cột_bảng_detail>".
+       Nhiều cột nối: viết cặp nối tiếp (chưa verify trên mẫu thật — check
+       lại project nếu master có composite key).
+    4) Tạo 2 bảng: {{table}} (id identity PK + name_string_1 + ...) và
+       {{table_detail}} (name_string_1 FK + line_nbr + cột chi tiết).
+    5) Nếu cần xóa cascade: thêm delete {{table_detail}} trong command
+       Deleting/Deleted của master.
+============================================================================ -->
+<!DOCTYPE dir [
+  <!ENTITY ScriptIrregular SYSTEM "..\Include\Javascript\Irregular.txt">
+]>
+<dir table="{{table}}" code="id" order="id" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="{{title_v}}" e="{{title_e}}"></title>
+  <fields>
+    <field name="id" type="Decimal"  isPrimaryKey="true" hidden="true" readOnly="true">
+      <header v="ID" e="ID"></header>
+      <items style="Numeric"></items>
+    </field>
+    <field name="name_string_1" allowNulls="false">
+      <header v="Mã" e="Code"></header>
+      <!-- AGENT: mã danh mục — cũng là khóa nối detail. Cần unique thì thêm
+           exists-check trong Inserting (mẫu: category_multi_key/master.xml) -->
+    </field>
+    <field name="name_string_2">
+      <header v="Tên" e="Name"></header>
+    </field>
+    <field name="name_date_1" type="DateTime" dataFormatString="@datetimeFormat" align="left">
+      <header v="Ngày" e="Date"></header>
+    </field>
+    <field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountInputFormat">
+      <header v="Số tiền" e="Amount"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="status" dataFormatString="0, 1" clientDefault="1" align="right" inactivate="true" >
+      <header v="Trạng thái" e="Status"></header>
+      <footer v="1 - Còn sử dụng, 0 - Không còn sử dụng" e="1 - Active, 0 - Inactive"></footer>
+      <items style="Mask"/>
+    </field>
+
+    <!-- Tab chi tiết: external field render Grid controller {{ctrl_detail}}.
+         rows=220 = chiều cao grid; filterSource="Tidy"; categoryIndex nếu
+         muốn đặt vào tab riêng -->
+    <field name="name_grid_1" external="true" clientDefault="0" defaultValue="0" rows="220" filterSource="Tidy">
+      <header v="" e=""></header>
+      <label v="Chi tiết" e="Detail"></label>
+      <items style="Grid" controller="{{ctrl_detail}}" row="1">
+        <item value="ForeignKey">
+          <text v ="String: name_string_1, name_string_1" e="String: name_string_1, name_string_1"></text>
+        </item>
+      </items>
+    </field>
+  </fields>
+  <views>
+    <view id="Dir">
+      <item value="120, 30, 70, 100, 100, 130, 0"/>
+      <item value="110---1: [name_string_1].Label, [name_string_1], [id]"/>
+      <item value="110---: [name_string_2].Label, [name_string_2]"/>
+      <item value="110---: [name_date_1].Label, [name_date_1]"/>
+      <item value="110---: [name_decimal_1].Label, [name_decimal_1]"/>
+      <item value="11100: [status].Label, [status], [status].Description"/>
+      <item value="1: [name_grid_1]"/>
+    </view>
+  </views>
+  <commands>
+    <command event="Loading">
+      <text><![CDATA[
+select 'active$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Closing">
+      <text><![CDATA[
+select 'close$Form{{controller}}(this);' as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Declare">
+      <text><![CDATA[
+declare @$recordHasBeenChanged nvarchar(512)
+select @$recordHasBeenChanged = case when @@language = 'v' then N'Dòng dữ liệu đã được sửa hoặc xóa bởi người sử dụng khác.' else N'The record has been modified or deleted by another user.' end
+]]>
+      </text>
+    </command>
+    <command event="Inserting">
+      <text><![CDATA[
+select @id = coalesce((select max(id) from @@table), 0) + 1, @datetime0 = getdate(), @datetime2 = getdate(), @user_id0 = @@userID, @user_id2 = @@userID
+]]>
+      </text>
+    </command>
+    <command event="Inserted">
+      <text><![CDATA[
+select '' as message, @id as id 
+return
+]]>
+      </text>
+    </command>
+    <command event="Updating">
+      <text><![CDATA[
+if not exists(select * from @@table where id = $id.OldValue)
+  begin
+    select '' as field, @$recordHasBeenChanged as message
+    return
+  end
+]]>
+      </text>
+    </command>
+    <command event="Updated">
+      <text><![CDATA[
+update @@table set datetime2 = getdate(), user_id2 = @@userID where id = @id
+]]>
+      </text>
+    </command>
+  </commands>
+  <script>
+    <text><![CDATA[
+function active$Form{{controller}}(f) {
+  f.add_onResponseComplete(on$Form{{controller}}$ResponseComplete);
+}
+function close$Form{{controller}}(f) {try {f.remove_onResponseComplete(on$Form{{controller}}$ResponseComplete)} catch (ex) {}}
+function on$Form{{controller}}$ResponseComplete(sender, e) {
+  var f = e.object, context = e.type.Context, result = e.type.Result;
+  switch (context) {
+    case 'Checking':
+      break;
+    default:
+      break;
+  }
+}
+]]>
+      &ScriptIrregular;
+    </text>
+  </script>
+</dir>

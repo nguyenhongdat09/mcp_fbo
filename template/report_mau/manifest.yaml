@@ -1,0 +1,30 @@
+name: report_mau
+title_v: Báo cáo tạo mẫu (Filter có dropdown 'form' load v20dmmaubc chọn mẫu BC động)
+jev_desc: "Template-form report - Filter has 'form' dropdown loading v20dmmaubc to pick report layout dynamically"
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: report.xml
+    dst: App_Data/Controllers/Report/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+tokens:
+  "{{controller}}": "{new}"
+  "{{proc}}": "rs_{new}"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+  "{{title_v_upper}}": "{new}"
+  "{{title_e_upper}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. {{ma_maubc}} trong filter.xml GIỮ NGUYÊN literal — agent sửa thành mã
+     mẫu báo cáo thật (ma_maubc trong v20dmmaubc, vd 'V30GLTCTM') + literal
+     'V30GLTCTMA ' trong SQL Showing nếu form table khác.
+  2. Viết proc {{proc}} nhận @tu_ngay,@den_ngay,@ma_dvcs,@form,@mau_bc,...;
+     cột ra khớp Grid; cột sysprint=1 điều khiển rowFilter in.
+  3. _hiddenFields trong filter.xml + cặp cột _nt trong grid.xml phải
+     khớp (ẩn/hiện theo mau_bc).
+  4. File in Excel (templateFile {new}_01) thiết kế ngoài.
+  5. Đăng ký menu thủ công.

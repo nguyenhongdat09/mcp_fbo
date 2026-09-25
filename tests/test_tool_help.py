@@ -64,6 +64,7 @@ def test_high_conf_returns_card(patch_jev):
     s = out["steps"][0]
     assert out["router"] == "jev"
     assert s["task_type"] == "grep_content"
+    assert s["confidence_to_use_top"] == 1
     assert s["tool"] == "search_files"
     assert s["call"]["mode"] == "content"
     assert "root" in s["required_params"]
@@ -81,10 +82,61 @@ def test_mid_conf_has_alternatives(patch_jev):
     out = _parse(tool_help("Tìm cặp file Dir/Grid", jev_config=FAKE_CFG))
     s = out["steps"][0]
     assert s["task_type"] == "match_filename"
-    # alternatives = các option >20% trừ top-1
-    alts = {a["task_type"] for a in s["alternatives"]}
-    assert "grep_content" in alts
+    assert s["confidence_to_use_top"] == 2
+    # alternatives = các option >20% trừ top-1, kèm tool đích
+    alts = {a["task_type"]: a for a in s["alternatives"]}
+    assert alts["grep_content"]["tool"] == "search_files"
     assert "list_folder" not in alts   # 15% < 20% bị loại
+
+
+def test_low_conf_tier3_and_alts(patch_jev):
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "list_folder",
+                       "confidence": 0.26,
+                       "probabilities": {"list_folder": 0.28,
+                                         "graph_query": 0.24,
+                                         "grep_content": 0.22,
+                                         "no_match": 0.14}}})
+    out = _parse(tool_help("Tìm danh mục mẫu có import",
+                           jev_config=FAKE_CFG))
+    s = out["steps"][0]
+    assert s["confidence_to_use_top"] == 3
+    alts = {a["task_type"] for a in s["alternatives"]}
+    assert alts == {"graph_query", "grep_content"}   # >20% đều liệt kê
+
+
+def test_dominant_top1_is_tier1_no_alts(patch_jev):
+    """Top-1 áp đảo (68% vs 29% < 68%/2) -> tier 1, không alternative."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "read_snippet",
+                       "confidence": 0.66,
+                       "probabilities": {"read_snippet": 0.68,
+                                         "read_summary": 0.29,
+                                         "read_flat": 0.03}}})
+    out = _parse(tool_help("x", jev_config=FAKE_CFG))
+    s = out["steps"][0]
+    assert s["confidence_to_use_top"] == 1
+    assert "alternatives" not in s
+
+
+def test_alts_carry_full_card(patch_jev):
+    """Alternative phải đầy đủ như top-1: tool/call/required_params/pitfalls."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "match_filename",
+                       "confidence": 0.46,
+                       "probabilities": {"match_filename": 0.46,
+                                         "grep_content": 0.29}}})
+    out = _parse(tool_help("x", jev_config=FAKE_CFG))
+    s = out["steps"][0]
+    assert s["confidence_to_use_top"] == 2
+    alt = s["alternatives"][0]
+    assert alt["task_type"] == "grep_content"
+    assert alt["confidence_to_use_top"] == 2    # thứ hạng, không phải prob
+    assert "probability" not in alt
+    assert alt["tool"] == "search_files"
+    assert alt["call"]                          # full call template
+    assert "required_params" in alt
+    assert "pitfalls" in alt
 
 
 def test_no_match_near_100_self_handle(patch_jev):
@@ -181,9 +233,48 @@ def test_param_examples_only_for_used_tools(patch_jev):
                        "probabilities": {"no_match": 0.95}}})
     out = _parse(tool_help("a", "b", "c", jev_config=FAKE_CFG))
     pe = out["param_examples"]
-    assert set(pe) == {"search_files", "query_database"}
+    assert set(pe) - {"_note"} == {"search_files", "query_database"}
+    assert "VÍ DỤ" in pe["_note"]
     assert pe["search_files"]["root"].startswith("\\\\")
     assert "file_path" in pe["query_database"]
+
+
+def test_requirement_block_with_context(patch_jev):
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "read_summary",
+                       "confidence": 0.9,
+                       "probabilities": {"read_summary": 0.9}},
+        "requirement_type": {"type": "choice", "choice": "category_1_key",
+                             "confidence": 0.9,
+                             "probabilities": {"category_1_key": 0.9}}})
+    out = _parse(tool_help("đọc file mẫu",
+                           context={"task_requirement": "Thêm mới danh mục"},
+                           jev_config=FAKE_CFG))
+    req = out["requirement"]
+    assert req["type"] == "category_1_key"
+    assert req["template"]["dir"] == "template/category_1_key"
+    assert req["template"]["clone_call"]["type"] == 4
+    assert req["template"]["files"]
+
+
+def test_no_requirement_without_context(patch_jev):
+    patch_jev["fn"] = _fake_ask({})
+    out = _parse(tool_help("x", jev_config=FAKE_CFG))
+    assert "requirement" not in out
+
+
+def test_requirement_no_template_has_note(patch_jev):
+    patch_jev["fn"] = _fake_ask({
+        "requirement_type": {"type": "choice", "choice": "voucher",
+                             "confidence": 0.9,
+                             "probabilities": {"voucher": 0.9}}})
+    out = _parse(tool_help("x",
+                           context={"task_requirement": "chứng từ mới"},
+                           jev_config=FAKE_CFG))
+    req = out["requirement"]
+    assert req["type"] == "voucher"
+    assert "template" not in req
+    assert "chưa có template" in req["note"]
 
 
 def test_no_api_key_in_output(patch_jev):

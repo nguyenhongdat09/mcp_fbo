@@ -1,0 +1,35 @@
+name: category_1_key
+title_v: Danh mục 1 khóa (PK id identity tự tăng, không check trùng), có import
+jev_desc: "New master/category with single identity PK (id column), optional Excel import"
+files:
+  - src: master.xml
+    dst: App_Data/Controllers/Dir/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: filterimport.xml
+    dst: App_Data/Controllers/Filter/{new}Import.xml
+  - src: upload.xml
+    dst: App_Data/Controllers/Templates/Upload/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+  - src: table.sql
+    dst: SQL/{new}_table.sql
+tokens:
+  "{{controller}}": "{new}"
+  "{{table}}": "{new}"
+  "{{view}}": "v{new}"
+  "{{importform}}": "{new}ImportForm"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Đổi field placeholder name_date_1/name_lookup_1/name_decimal_1/
+     name_decimal_2/name_string_2 thành cột thật theo UR — phải khớp nhau
+     giữa Dir (master), Grid, Filter Import, Upload và bảng SQL.
+  2. Sửa items lookup (controller/key/information) theo danh mục thật.
+  3. Tạo bảng {new}: sửa SQL/{new}_table.sql (skeleton sẵn: id identity
+     PK + status + datetime0/2 + user_id0/2) cho khớp field rồi chạy qua
+     query_database type=2. Tạo view v{new} nếu Grid dùng table="v{new}"
+     (hoặc đổi Grid về table="{new}").
+  4. Sửa title v/e trong tất cả file + main.aspx.
+  5. Đăng ký menu web thủ công (tool không hỗ trợ).

@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Import XML danh mục nhiều khóa (composite PK).
+  * fields: name_date_1 (col A) + name_string_1 (col B) là PK — đổi tên khớp
+    master.xml; thêm cột nghiệp vụ từ col C trở đi.
+  * processing dưới đây là mẫu check trùng composite-key tối giản
+    (@@table = bảng staging tạm khi import). @type='1' = user chọn chép đè.
+  * check="..." trên field = validate lookup — sửa bảng danh mục thật.
+============================================================================ -->
+<!DOCTYPE import [
+  <!ENTITY % Authentication SYSTEM "..\..\Include\AuthenticationImport.ent">
+  %Authentication;
+
+  <!ENTITY % ImportErrorMode SYSTEM "..\..\Include\ImportErrorMode.ent">
+  %ImportErrorMode;
+
+  <!ENTITY IrregularValue SYSTEM "Include\Irregular.txt">
+
+  <!ENTITY Error "
+if @r is not null begin
+  select '' as message, @field as field, @r as record
+  return
+end
+">
+
+  <!ENTITY Irregular "
+if @r is not null begin
+  select @irregular as message, @field as field, @r as record
+  return
+end
+">
+
+  <!ENTITY Duplicate "
+if @r is not null begin
+  select @duplicate as message, @field as field, @r as record
+  return
+end
+">
+
+  <!ENTITY Checking "@@checking">
+  <!ENTITY Inserting "@@inserting">
+  <!ENTITY Updating "@@updating">
+
+  <!ENTITY % ExportImportTemplate SYSTEM "..\..\Include\ExportImportTemplate.ent">
+  %ExportImportTemplate;
+  <!ENTITY ExportQueryStaticFile "
+declare @filename varchar(128)
+select @filename = '{{controller}}.xlsx'
+">
+
+  <!ENTITY Controller "{{controller}}">
+  <!ENTITY % ListEditLog SYSTEM "..\..\Include\ListEditLog.ent">
+  %ListEditLog;
+]>
+
+<import xmlns="urn:schemas-fast-com:data-import">
+  <setting>
+    <startRow value="6"/>
+    <maxFileSize value="10"/>
+    <uploadTimeOut value="120"/>
+    <importRecordTimeout value="1740"/>
+    <allowFileExtension value="^(.XLSX)$"/>
+    <onProcessFail value="parent.on${{importform}}$Fail(this.frameElement)"/>
+    <onProcessComplete value="parent.on${{importform}}$Complete(this.frameElement)"/>
+    <uploadContentType value="application/ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    <baseTable value="{{table}}"/>
+    <table value="{{table}}" alias="a"/>
+    <temporary value="#k" alias="b"/>
+
+    &UploadModeProcess;
+  </setting>
+
+  <variable>
+    <var id="00003">
+      <header v="Giá trị đã có trong danh mục." e="The value already exists." />
+    </var>
+  </variable>
+
+  <fields identity="true" name="stt">
+    <field name="name_date_1" column="A" type="DateTime" isPrimaryKey="true" allowNulls="false" updateValue="None"/>
+    <field name="name_string_1" column="B" isPrimaryKey="true" allowNulls="false" upperCase="true" updateValue="None" check="name_string_1 not in (select ma_vt from dmvt)" errorCode="00001"/>
+    <field name="name_decimal_1" column="C" type="Decimal"/>
+    <field name="name_string_2" column="D"/>
+
+    <field name="status" column="None" insertValue="'1'" updateValue="None"/>
+    <field name="datetime0" column="None" type="DateTime" insertValue="getdate()" updateValue="None"/>
+    <field name="datetime2" column="None" type="DateTime" insertValue="getdate()" updateValue="getdate()"/>
+    <field name="user_id0" column="None" type="Int" insertValue="@@userID" updateValue="None"/>
+    <field name="user_id2" column="None" type="Int" insertValue="@@userID" updateValue="@@userID"/>
+  </fields>
+
+  <template>
+    <setting>
+      <downloadFile>
+        <text v="{{title_v}}" e="{{title_e}}"/>
+      </downloadFile>
+    </setting>
+    <fields row="5">
+      <field name="name_date_1" width ="16" starColor="&EIT.StarColor.Require;">
+        <text v="Ngày" e="Date"/>
+      </field>
+      <field name="name_string_1" width ="16" starColor="&EIT.StarColor.Require;">
+        <text v="Mã" e="Code"/>
+      </field>
+      <field name="name_decimal_1" width ="16">
+        <text v="Số tiền" e="Amount"/>
+      </field>
+      <field name="name_string_2" width ="30">
+        <text v="Ghi chú" e="Note"/>
+      </field>
+      &EIT.NoteField;
+    </fields>
+  </template>
+
+  <processing>
+    <text>
+      <![CDATA[
+-- AGENT: block check trùng chuẩn cho composite PK (mẫu quydmgtt) — chỉ
+-- import bảng MASTER; bảng chi tiết thường không import qua file này.
+-- Đổi name_string_1/name_date_1 -> các cột PK thật; PK_{{table}} = tên
+-- PK index thật. PK != 2 cột: sửa điều kiện join + concat khóa.
+if @@admin = 0 and @type = '1' begin
+  if @@sysDatabaseName.dbo.FastBusiness$System$GetAuthorize(@@admin, @@userID, '{{controller}}', 'Edit') = 0 select @type = '0'
+end
+
+declare @message nvarchar(4000), @q nvarchar(4000), @duplicate nvarchar(4000), @irregular nvarchar(4000), @field varchar(32), @irregularChars varchar(128), @r int
+select @irregularChars = ]]>&IrregularValue;<![CDATA[
+select @duplicate = case @@language when 'v' then N'Giá trị tại ô <span class="Highlight">%invalidCell</span> đã có trong danh mục.' else 'The value of cell <span class="Highlight">%invalidCell</span> is already exists.' end
+select @irregular = case @@language when 'v' then N'Giá trị tại ô <span class="Highlight">%invalidCell</span> có chứa các ký tự: ' + @irregularChars else 'The value of cell <span class="Highlight">%invalidCell</span> contains any of the following characters: ' + @irregularChars  end
+
+-- Check
+create index i on @@table (name_string_1)
+
+if @type = '0' delete @@table from @@table a join {{table}} b on a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1
+
+-- Checking
+]]>&Checking;<![CDATA[
+
+select a.* into #k from @@table a join {{table}} b with (nolock) on a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1
+
+if @type = '1' delete @@table where (name_string_1 + convert(varchar(12), name_date_1, 112)) in (select (name_string_1 + convert(varchar(12), name_date_1, 112)) from #k)
+--
+select @field = 'name_date_1'
+if @$mode = 1 begin
+  ]]>&StartErrorCount;<![CDATA[
+  select @q = ']]>&InsertErrorTable;<![CDATA[ select @field, a.stt, ''00003'' from @@table a, @@table b with (index(i)) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1 and a.stt > b.stt
+  ]]>&w1;<![CDATA[@field, ''@@primaryKeyList'']]>&w2;<![CDATA[a.stt]]>&w3;<![CDATA[''00003'']]>&w4;<![CDATA[ group by a.stt'
+  exec sp_executesql @q, N'@field varchar(32)', @field
+  ]]>&EndErrorCount;<![CDATA[
+  ]]>&StartErrorCount;<![CDATA[
+  select @q = ']]>&InsertErrorTable;<![CDATA[ select @field, a.stt, ''00003'' from @@table a, {{table}} b with (index(PK_{{table}})) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1
+  ]]>&w1;<![CDATA[@field, ''@@primaryKeyList'']]>&w2;<![CDATA[a.stt]]>&w3;<![CDATA[''00003'']]>&w4;<![CDATA[ group by a.stt'
+  exec sp_executesql @q, N'@field varchar(32)', @field
+  ]]>&EndErrorCount;<![CDATA[
+  ]]>&StartErrorCount;<![CDATA[
+  select @q = ']]>&InsertErrorTable;<![CDATA[ select @field, b.stt, ''00003'' from {{table}} a, @@table b with (index(i)) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1
+  ]]>&w1;<![CDATA[@field, ''@@primaryKeyList'']]>&w2;<![CDATA[b.stt]]>&w3;<![CDATA[''00003'']]>&w4;<![CDATA[ group by b.stt'
+  exec sp_executesql @q, N'@field varchar(32)', @field
+  ]]>&EndErrorCount;<![CDATA[
+end else begin
+  select @q = 'select top 1 @r = a.stt from @@table a, @@table b with (index(i)) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1 and a.stt > b.stt'
+  exec sp_executesql @q, N'@r int output', @r = @r output]]>&Duplicate;<![CDATA[
+  select top 1 @r = a.stt from @@table a, {{table}} b with (index(PK_{{table}})) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1]]>&Duplicate;<![CDATA[
+  select @q = 'select top 1 @r = b.stt from {{table}} a, @@table b with (index(i)) where a.name_string_1 = b.name_string_1 and a.name_date_1 = b.name_date_1'
+  exec sp_executesql @q, N'@r int output', @r = @r output]]>&Duplicate;<![CDATA[
+end
+
+]]>&EndErrorMode;<![CDATA[
+
+-- Insert
+]]>&Inserting;<![CDATA[
+-- Update
+if @type = '1' begin
+  ]]><!--&ListWhenBeforeImportUpdateLog;--><![CDATA[
+  ]]>&Updating;<![CDATA[
+end
+]]>
+    </text>
+  </processing>
+
+</import>

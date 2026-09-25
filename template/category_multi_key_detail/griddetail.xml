@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Grid controller của TAB CHI TIẾT (mount trong master.xml qua
+  field style="Grid" controller="{{ctrl_detail}}").
+  * table="{{table_detail}}" = bảng chi tiết (FK name_string_1 + line_nbr PK).
+  * code="name_string_1" = cột khóa nối — PHẢI trùng cột thứ 2 trong
+    ForeignKey "String: name_string_1, name_string_1" của master.xml.
+    KHÔNG khai báo field name_string_1 ở đây (engine tự fill theo master).
+  * Toolbar chi tiết dùng Insert/Grow/Down/Clone/Remove — KHÔNG phải
+    New/Edit/Delete của danh mục thường.
+  * Đổi name_* chi tiết theo UR; line_nbr giữ nguyên (hidden PK).
+============================================================================ -->
+
+<grid table="{{table_detail}}" code="name_string_1" order="name_string_1, line_nbr" xmlns="urn:schemas-fast-com:data-grid">
+  <title v="" e=""></title>
+  <subTitle v="" e=""></subTitle>
+  <fields>
+    <field name="name_date_1" type="DateTime" allowNulls="false" dataFormatString="@datetimeFormat" align="left" width="100">
+      <header v="Ngày" e="Date"></header>
+    </field>
+    <field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountInputFormat" width="120" clientDefault="0">
+      <header v="Số tiền" e="Amount"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="name_string_2" width="300">
+      <header v="Ghi chú" e="Note"></header>
+    </field>
+    <field name="line_nbr" type="Int32" isPrimaryKey="true" width="0" align="right" hidden="true">
+      <header v="" e=""></header>
+    </field>
+  </fields>
+
+  <views>
+    <view id="Grid">
+      <field name="name_date_1"/>
+      <field name="name_decimal_1"/>
+      <field name="name_string_2"/>
+      <field name="line_nbr"/>
+    </view>
+  </views>
+
+  <toolbar>
+    <button command="Insert">
+      <title v="Toolbar.Insert" e="Toolbar.Insert"></title>
+    </button>
+    <button command="Grow">
+      <title v="Toolbar.Grow" e="Toolbar.Grow"></title>
+    </button>
+    <button command="Down">
+      <title v="Toolbar.Down" e="Toolbar.Down"></title>
+    </button>
+    <button command="Clone">
+      <title v="Toolbar.Clone" e="Toolbar.Clone"></title>
+    </button>
+    <button command="Remove">
+      <title v="Toolbar.Remove" e="Toolbar.Remove"></title>
+    </button>
+
+    <button command="Freeze">
+      <title v="Toolbar.Freeze" e="Toolbar.Freeze"></title>
+    </button>
+  </toolbar>
+</grid>

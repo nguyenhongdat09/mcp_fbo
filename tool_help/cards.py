@@ -72,7 +72,9 @@ TASK_TYPES = {
     # ---------------- search_files ----------------
     "grep_content": {
         "desc": "Find WHICH files contain a string/keyword inside file "
-                "content (grep). Target files unknown",
+                "content (grep), or which files match a criterion (e.g. "
+                "controllers having an import filter). Target files "
+                "unknown",
         "tool": "search_files",
         "call": {"root": "<abs path>", "pattern": "<chuỗi>",
                  "mode": "content"},
@@ -100,8 +102,9 @@ TASK_TYPES = {
         "pitfalls": [],
     },
     "match_filename": {
-        "desc": "List files matching a NAME/glob only - does not read "
-                "content",
+        "desc": "Find files by NAME/glob pattern across the project "
+                "(e.g. Filter/*Import*, *.xml in Templates/Upload) - does "
+                "not read content",
         "tool": "search_files",
         "call": {"root": "<abs path>", "include_glob": "<*pattern*>",
                  "mode": "files_only"},
@@ -132,7 +135,9 @@ TASK_TYPES = {
         ],
     },
     "list_folder": {
-        "desc": "List files in ONE folder (like ls/dir), no compare",
+        "desc": "ONLY list children of ONE ALREADY-KNOWN folder (like "
+                "ls/dir). NOT a search tool - cannot find files by name "
+                "pattern or content criteria",
         "tool": "compare_things",
         "call": {"kind": "folder", "inventory": True,
                  "folder_a": "<abs path>"},
@@ -347,6 +352,24 @@ TASK_TYPES = {
             "query='' + fcode1/ma_da = bypass AI, siêu nhanh",
         ],
     },
+    "clone_template": {
+        "desc": "Paste a BUNDLED template suite (template/<name>/ shipped "
+                "with the server) into target project - copies files + "
+                "renames + rewrites controller/table tokens inside",
+        "tool": "clone_things",
+        "call": {"type": 4, "object": "<tên template>",
+                 "new_name": "<tên controller mới>",
+                 "project_target": "<abs path project>",
+                 "execute": False},
+        "required": ["type", "object", "new_name", "project_target"],
+        "pitfalls": [
+            "execute=False (mặc định) = dry-run; execute=True mới ghi file",
+            "object='?' để list template có sẵn",
+            "File paste ra còn placeholder name_* (và {{...}} chưa fill — "
+            "xem unresolved_placeholders + edit_guide trong response): "
+            "agent đổi field theo UR, khớp Dir/Grid/Upload/Filter + bảng SQL",
+        ],
+    },
     "no_match": {
         "desc": "None of the above fits this step",
         "tool": None,
@@ -355,6 +378,102 @@ TASK_TYPES = {
         "pitfalls": [],
     },
 }
+
+# Loại yêu cầu -> template dir tương ứng (None = chưa có mẫu).
+# Dùng cho question 'requirement_type' khi context.task_requirement có UR.
+REQUIREMENT_TYPES = {
+    "category_1_key": {
+        "desc": "CREATE a brand-new master/category screen with SINGLE "
+                "identity PK (id column), no detail tab, optional Excel "
+                "import - ONLY when the request ADDS a new category, "
+                "NEVER for editing an existing one",
+        "template": "category_1_key",
+    },
+    "category_multi_key": {
+        "desc": "CREATE a brand-new master/category screen with COMPOSITE "
+                "primary key (2+ key columns), no detail tab - ONLY for "
+                "new-creation requests, NEVER for edits",
+        "template": "category_multi_key",
+    },
+    "category_1_key_detail": {
+        "desc": "CREATE a brand-new master/category with single PK plus a "
+                "DETAIL tab (embedded Grid controller, ForeignKey link) - "
+                "ONLY for new-creation requests",
+        "template": "category_1_key_detail",
+    },
+    "category_multi_key_detail": {
+        "desc": "CREATE a brand-new master/category with composite PK "
+                "plus DETAIL tab(s) (embedded Grid controllers) - ONLY "
+                "for new-creation requests",
+        "template": "category_multi_key_detail",
+    },
+    "report_normal": {
+        "desc": "CREATE a brand-new standard listing/detail report "
+                "(Filter + Grid + Report controller, no pivot, no "
+                "template-form) - ONLY for new-creation requests",
+        "template": "report_normal",
+    },
+    "report_mau": {
+        "desc": "CREATE a brand-new template-form report (Filter has "
+                "'form' dropdown loading v20dmmaubc to pick report layout "
+                "dynamically) - ONLY for new-creation requests",
+        "template": "report_mau",
+    },
+    "report_pivot": {
+        "desc": "CREATE a brand-new pivot/crosstab report (Grid has "
+                "<pivot> rowField/columnField/dataFields) - ONLY for "
+                "new-creation requests",
+        "template": "report_pivot",
+    },
+    "voucher": {
+        "desc": "CREATE a brand-new transaction voucher (chung tu: "
+                "stt_rec, master-detail, phat hanh/hach toan) - ONLY for "
+                "new-creation requests",
+        "template": None,
+    },
+    "none": {
+        "desc": "DEFAULT CHOICE for anything that is NOT creating a "
+                "screen/report from scratch: edit/modify/add fields to an "
+                "EXISTING controller, bug fix, data query, deploy, "
+                "investigate - ALWAYS pick this when the target already "
+                "exists or intent is ambiguous",
+        "template": None,
+    },
+}
+
+REQUIREMENT_TYPE_CATALOG = {k: v["desc"] for k, v in REQUIREMENT_TYPES.items()}
+
+
+def template_block(req_type: str) -> dict | None:
+    """Block template cho response: files + clone_call mẫu. None nếu loại
+    yêu cầu chưa có mẫu."""
+    tpl = REQUIREMENT_TYPES.get(req_type, {}).get("template")
+    if not tpl:
+        return None
+    try:
+        from clone_things.type4_template import template_root
+        import yaml
+        mf = template_root() / tpl / "manifest.yaml"
+        files = []
+        if mf.is_file():
+            raw = (yaml.safe_load(mf.read_text(encoding="utf-8"))
+                   or {}).get("files") or []
+            # manifest v2: [{src, dst}] — trả dst pattern cho agent thấy
+            # output shape; v1 fallback: list path string
+            files = [(f.get("dst") if isinstance(f, dict) else f)
+                     for f in raw]
+    except Exception:
+        files = []
+    return {
+        "dir": f"template/{tpl}",
+        "files": files,
+        "clone_call": {
+            "tool": "clone_things", "type": 4, "object": tpl,
+            "new_name": "<tên controller mới>",
+            "project_target": "<abs path project>",
+            "execute": False,
+        },
+    }
 
 TASK_TYPE_CATALOG = {k: v["desc"] for k, v in TASK_TYPES.items()}
 
@@ -424,5 +543,8 @@ def card_for(task_type: str) -> dict | None:
     t = TASK_TYPES.get(task_type)
     if t is None or t["tool"] is None:
         return None
-    return {"tool": t["tool"], "call": t["call"],
-            "required_params": t["required"], "pitfalls": t["pitfalls"]}
+    card = {"tool": t["tool"], "call": t["call"],
+            "required_params": t["required"]}
+    if t["pitfalls"]:
+        card["pitfalls"] = t["pitfalls"]
+    return card

@@ -1,0 +1,43 @@
+name: category_multi_key_detail
+title_v: Danh mục nhiều khóa (PK composite) + 2 tab chi tiết (grid con), có import
+jev_desc: "New master/category with composite primary key plus detail tabs (embedded Grid controllers, ForeignKey link), optional Excel import"
+files:
+  - src: master.xml
+    dst: App_Data/Controllers/Dir/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: griddetail.xml
+    dst: App_Data/Controllers/Grid/{new}detail.xml
+  - src: griddetail2.xml
+    dst: App_Data/Controllers/Grid/{new}detail2.xml
+  - src: filterimport.xml
+    dst: App_Data/Controllers/Filter/{new}Import.xml
+  - src: upload.xml
+    dst: App_Data/Controllers/Templates/Upload/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+  - src: table.sql
+    dst: SQL/{new}_table.sql
+tokens:
+  "{{controller}}": "{new}"
+  "{{table}}": "{new}"
+  "{{importform}}": "{new}ImportForm"
+  "{{ctrl_detail}}": "{new}detail"
+  "{{ctrl_detail2}}": "{new}detail2"
+  "{{table_detail}}": "{new}ct"
+  "{{table_detail2}}": "{new}ct2"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Đổi PK name_date_1 + name_string_1 thành khóa thật — khớp code/order,
+     exists-check, và PK bảng {new}.
+  2. name_string_1 đồng thời là khóa nối 2 detail (ForeignKey trong Dir +
+     code= trong 2 Grid detail). Nối nhiều cột: thêm cặp "k,d" vào
+     ForeignKey (format chưa verify trên mẫu thật — check project).
+  3. Tạo 3 bảng: sửa SQL/{new}_table.sql (skeleton sẵn: {new} PK composite
+     + {new}ct/{new}ct2 FK name_string_1 + line_nbr PK) rồi chạy qua
+     query_database type=2.
+  4. Ít hơn 2 tab chi tiết: xóa field name_grid_2 + file Grid/{new}detail2.
+     Nhiều hơn: clone thêm griddetail.xml với new_name khác.
+  5. Cascade delete + đăng ký menu thủ công.

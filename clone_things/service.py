@@ -55,6 +55,7 @@ from .type0_flow import execute_type0_flow
 from .type1_flow import execute_type1_flow
 from .type2_data_clone import execute_type2_data_clone
 from .type3_file_clone import run_type3_file_clone
+from .type4_template import run_type4_template
 
 logger = logging.getLogger("clone_things")
 
@@ -84,6 +85,7 @@ def clone_things(
     planned_sample_size: int = 10,
     table: str = "",
     where: str = "",
+    new_name: str = "",
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -92,12 +94,13 @@ def clone_things(
     - type=1: Paste-for-edit trên project_source ra file .sql dạng ALTER (proc/func/view) hoặc CREATE (table).
     - type=2: Clone DATA — DELETE FROM <table> WHERE <where> + INSERT INTO từng dòng ra file .sql.
     - type=3: Copy file bất kỳ (relative, list, glob, preset) từ project_source sang project_target.
+    - type=4: Paste template suite đóng gói sẵn (template/<name>/) vào project_target — đổi tên file + rewrite token nội dung theo manifest. object='?' để list template.
 
     Args:
         object: Tên object SQL hoặc path .xml controller (hoặc file/glob/preset cho type=3)
         project_source: Absolute path tới project FBO nguồn
         project_target: Absolute path tới project FBO đích (bắt buộc với type=0; type=3 được để trống khi clone trong cùng project_source; bỏ qua khi type=1)
-        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone
+        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone, 4 = paste template bundled vào project_target
         path_to_pasted: File .sql để append; để trống = tự tạo temp và mở editor
         schema: Schema mặc định (default: "dbo")
         db_type: Ưu tiên lookup — "app" (app→sys) hoặc "sys" (sys→app). Mặc định luôn quét cả hai DB.
@@ -112,6 +115,7 @@ def clone_things(
         overwrite: Cho phép ghi đè file đã tồn tại trên target trong type=3 (default: False)
         table: Tên bảng cần clone data (type=2). Khi truyền table+where → chạy data clone bất kể type
         where: Điều kiện lọc dòng cho data clone (bắt buộc khi table được truyền)
+        new_name: Tên controller mới cho type=4 (vd 'zccnsldkbctdo') — dùng thay token {new} trong tên file và nội dung
         config: Cấu hình hệ thống từ config.yaml
     """
     start_time = time.perf_counter()
@@ -145,6 +149,19 @@ def clone_things(
             start_time=start_time,
         )
 
+    # type=4: paste template — object='?'/'list' để xem template có sẵn
+    if type == 4:
+        return run_type4_template(
+            object=object,
+            new_name=new_name,
+            project_target=project_target,
+            execute=execute if execute_clone is None else execute_clone,
+            overwrite=overwrite,
+            confirm_overwrite=confirm_overwrite,
+            warnings=warnings,
+            start_time=start_time,
+        )
+
     # 1. Validation
     if type not in (0, 1, 2, 3):
         logger.warning("Unsupported type requested: %s", type)
@@ -153,7 +170,7 @@ def clone_things(
             "spec_version": "1.0",
             "type": type,
             "error_code": "unsupported_type",
-            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), type=2 (data clone), and type=3 (file clone) are supported",
+            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), type=2 (data clone), type=3 (file clone), and type=4 (template paste) are supported",
             "path_to_pasted": None,
             "cloned": [],
             "skipped_exists": [],

@@ -1,0 +1,27 @@
+name: report_pivot
+title_v: Báo cáo xoay (Grid có <pivot rowField/columnField/dataFields>)
+jev_desc: "Pivot/crosstab report - Grid has <pivot rowField/columnField/dataFields>, proc returns rowField + sysColumn + dataFields"
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: report.xml
+    dst: App_Data/Controllers/Report/{new}.xml
+tokens:
+  "{{controller}}": "{new}"
+  "{{proc}}": "rs_{new}"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+  "{{title_v_upper}}": "{new}"
+  "{{title_e_upper}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Viết proc {{proc}} trả recordset: rowField (name_string_1) +
+     sysColumn (giá trị pivot -> cột động) + dataFields (name_decimal_*).
+  2. <pivot> trong Grid: rowField/columnField/dataFields khớp output proc;
+     indexTable/indexColumn/indexHeader/indexView chỉnh theo nhóm header.
+  3. pv_* trong report.xml = header cột pivot động trên file in;
+     file in (.rpt/.xlsx) thiết kế ngoài — KHÔNG có trong template.
+  4. Đổi {{proc}} prefix nếu project dùng zc_ thay rs_.
+  5. Đăng ký menu thủ công.
