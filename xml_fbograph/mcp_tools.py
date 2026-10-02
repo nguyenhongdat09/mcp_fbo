@@ -70,7 +70,7 @@ def start_watcher_for_project(reference_file: str):
             try:
                 import os
                 sys.stderr.write(f"[FboFBOGraph MCP] Starting file watcher thread for {controllers_dir} (PID: {os.getpid()})\n")
-                sys.stderr.write(f"[FboFBOGraph MCP] WARNING: Recommend using a single MCP instance per machine for same KuzuDB to avoid lock conflicts.\n")
+                sys.stderr.write(f"[FboFBOGraph MCP] Watcher election active: chi 1 process giu quyen ghi; write khac route qua daemon pipe neu daemon song.\n")
                 start_watcher(controllers_dir, graph_dir)
             except Exception as e:
                 sys.stderr.write(f"[FboFBOGraph MCP] Watcher thread failed: {e}\n")
@@ -258,6 +258,20 @@ def mcp_query_radar(
                 indent=2,
                 ensure_ascii=False,
             )
+
+        # Uu tien daemon qua pipe (auto-spawn): daemon la single-accessor cua
+        # file Kuzu — process nay khong mo DB, tranh RO-conn block writer.
+        from xml_fbograph.service.daemon_client import daemon_rpc
+        daemon_res = daemon_rpc(reference_file, {
+            "query_type": "radar",
+            "target": cypher_query,
+            "ref_file": str(reference_file),
+            "kwargs": {"mode": normalized_mode},
+        }, autostart=True)
+        if daemon_res is not None:
+            if set(daemon_res.keys()) == {"output"}:
+                return str(daemon_res["output"])
+            return json.dumps(daemon_res, indent=2, ensure_ascii=False)
 
         store = get_kuzu_store(reference_file, progress_callback=progress_callback)
         if normalized_mode == "schema":

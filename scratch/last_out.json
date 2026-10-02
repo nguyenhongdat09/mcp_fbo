@@ -1,0 +1,147 @@
+{
+ "description": "Each step is recommended the most suitable tool to execute. Always try the recommended tool first (step.tool + step.call). Only fall back to step.alternatives or another tool if the recommended one fails or cannot fulfill the task.",
+ "steps": [
+  {
+   "step": "Đọc nội dung file Dir/SOTran.xml đã biết path",
+   "task_type": "read_flat",
+   "confidence_to_use_top": 1,
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 2
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "Dùng khi snippet không đủ — output dài, tốn token"
+   ]
+  },
+  {
+   "step": "Kiểm tra cấu trúc các bảng đơn hàng bán m24 và d24 trong database xem các cột đã tồn tại chưa",
+   "task_type": "db_object",
+   "confidence_to_use_top": 1,
+   "tool": "query_database",
+   "call": {
+    "file_path": "<path trong project>",
+    "query": "<tên object>",
+    "query_type": 0,
+    "mode": "summary"
+   },
+   "required_params": [
+    "file_path",
+    "query",
+    "query_type"
+   ],
+   "pitfalls": [
+    "KHÔNG dùng mode=full chỉ để đọc proc — đó là việc của clone_things type=1"
+   ]
+  },
+  {
+   "step": "Tìm file báo cáo Tổng hợp nhập xuất tồn theo vị trí vỏ bình trong project",
+   "task_type": "grep_content",
+   "confidence_to_use_top": 2,
+   "tool": "search_files",
+   "call": {
+    "root": "<abs path>",
+    "pattern": "<chuỗi>",
+    "mode": "content"
+   },
+   "required_params": [
+    "root",
+    "pattern"
+   ],
+   "pitfalls": [
+    "mode=files_only KHÔNG đọc nội dung — chỉ match tên file; tìm chuỗi trong file phải dùng mode=content",
+    "regex=True chỉ khi pattern có ký tự regex; mặc định literal"
+   ],
+   "alternatives": [
+    {
+     "task_type": "match_filename",
+     "confidence_to_use_top": 2,
+     "tool": "search_files",
+     "call": {
+      "root": "<abs path>",
+      "include_glob": "<*pattern*>",
+      "mode": "files_only"
+     },
+     "required_params": [
+      "root"
+     ],
+     "pitfalls": [
+      "KHÔNG đọc nội dung — chỉ lọc theo tên/path file"
+     ]
+    }
+   ]
+  },
+  {
+   "step": "Viết câu lệnh alter table vào file sql temp",
+   "task_type": "db_add_field",
+   "confidence_to_use_top": 1,
+   "tool": "query_database",
+   "call": {
+    "file_path": "<path trong project>",
+    "query": "exec fsd_addFields '<table|partition$>','<field>','<type>'",
+    "query_type": 1
+   },
+   "required_params": [
+    "file_path",
+    "query",
+    "query_type"
+   ],
+   "pitfalls": [
+    "Bảng PHÂN KỲ (m**/d**/c**$YYYYMM): exec fsd_addFields 'd21$','dvt_ebs','varchar(16)' — pattern có $ add vào mọi bảng kỳ",
+    "Bảng thường (dmkh, dmvt...): exec fsd_addFields 'dmkh','dvt_ebs','varchar(16)'",
+    "KHÔNG viết ALTER TABLE tay — fsd_addFields xử lý phân kỳ + chuẩn hệ thống"
+   ]
+  },
+  {
+   "step": "Chỉnh sửa file Dir/SOTran.xml để khai báo các fields và view tương ứng",
+   "task_type": "read_suggest_edit",
+   "confidence_to_use_top": 1,
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 4,
+    "old_string|symbol|block": "<selector>",
+    "new_string": "<code thay thế>"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "Nhiều edit 1 file → truyền edits[] (batch) thay vì selector top-level"
+   ]
+  }
+ ],
+ "param_examples": {
+  "_note": "CHỈ LÀ VÍ DỤ format giá trị — thay mọi path \\\\172.168.5.14\\...\\SP2264 bằng path project HIỆN TẠI của user; đừng copy nguyên địa chỉ/tên file trong ví dụ",
+  "search_files": {
+   "root": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers",
+   "pattern": "dmku",
+   "include_glob": "*kheuoc*",
+   "symbol": "fn_TinhLai"
+  },
+  "query_database": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml  # path BẤT KỲ trong project — chỉ để resolve Web.config/connection",
+   "query": "dmku  # tên object | 'SELECT * FROM dmku' | path .sql — tùy query_type",
+   "object_name": "%ttdcd%",
+   "references": "dmku.so_ku",
+   "keywords": [
+    "cursor",
+    "update"
+   ]
+  },
+  "read_local_file": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml",
+   "symbol": "fsd_TinhLai",
+   "block": "command:Inserting",
+   "start_line": 120,
+   "end_line": 160
+  }
+ },
+ "jev_usage": {
+  "input_tokens": 2903,
+  "output_tokens": 1532
+ }
+}

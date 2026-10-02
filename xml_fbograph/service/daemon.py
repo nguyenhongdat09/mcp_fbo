@@ -10,6 +10,7 @@ from multiprocessing.connection import Listener, Client
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
+from xml_fbograph.core.schema import GraphNode
 from xml_fbograph.query.engine import xml_graph_query, _graph_cache
 from xml_fbograph.storage.kuzu_index import KuzuIndexStore
 from xml_fbograph.utils.path_helper import ProjectPathHelper
@@ -48,18 +49,24 @@ def handle_client(conn, helper: ProjectPathHelper):
         
         if query_type == "radar":
             from xml_fbograph.mcp_tools import mcp_query_radar
-            raw_res = mcp_query_radar(target, ref_file)
+            raw_res = mcp_query_radar(target, ref_file, mode=kwargs.get("mode", "query"))
             try:
                 result = json.loads(raw_res)
             except Exception:
                 result = {"output": raw_res}
+        elif query_type == "write":
+            result = _handle_write_rpc(msg, helper)
         else:
             result = xml_graph_query(query_type, target, ref_file, **kwargs)
             
         conn.send(json.dumps(result, ensure_ascii=False))
     except Exception as e:
+        # Gate errors (invalid ref, not-FBO project, build fail) mang payload
+        # structured — chuyen nguyen ve client de agent doc duoc hint.
         try:
-            conn.send(json.dumps({"error": str(e)}))
+            payload = getattr(e, "payload", None)
+            body = payload if isinstance(payload, dict) else {"error": str(e)}
+            conn.send(json.dumps(body, ensure_ascii=False))
         except Exception:
             pass
     finally:
@@ -67,14 +74,49 @@ def handle_client(conn, helper: ProjectPathHelper):
         active_clients -= 1
         last_activity_time = time.time()
 
+def _handle_write_rpc(msg: dict, helper: ProjectPathHelper) -> dict:
+    """Write RPC qua named pipe: watcher cua process khac route vao day de
+    daemon dong vai tro single writer. allow_daemon=False de tranh vong lap."""
+    from xml_fbograph.service.watcher import run_incremental_write
+    fp = Path(msg.get("file_path") or "")
+    action = msg.get("action") or "update"
+    out = run_incremental_write(
+        fp, action,
+        helper.get_controllers_path(),
+        helper.get_graph_dir(),
+        allow_daemon=False,
+    )
+    resp = {"ok": True, "relative_path": None, "node": None}
+    if isinstance(out, GraphNode):
+        resp["node"] = dict(out.__dict__)
+        resp["relative_path"] = out.relative_path
+        gk = str(helper.get_graph_dir())
+        cached = _graph_cache.get(gk)
+        if cached:
+            cached[1].add_node(out)
+    elif out:
+        resp["relative_path"] = str(out)
+    return resp
+
+
 def run_daemon(ref_file_path: Path):
     global last_activity_time
+    os.environ["FBOGRAPH_DAEMON"] = "1"  # watcher trong daemon ghi truc tiep, khong vong pipe
     ref_file_path = Path(ref_file_path).resolve()
     helper = ProjectPathHelper(str(ref_file_path))
     controllers_dir = helper.get_controllers_path()
     graph_dir = helper.get_graph_dir()
     db_path = graph_dir / "kuzu"
-    
+
+    # Chi 1 daemon/project: named pipe AF_PIPE chap nhan nhieu listener trung
+    # ten — khong election thi 2 daemon spawn cung luc cung nhan request ->
+    # 2 process mo cung file Kuzu -> lock fight.
+    from xml_fbograph.service.watcher import _WatcherOwnership
+    daemon_ownership = _WatcherOwnership(graph_dir, lock_name=".daemon_owner")
+    if not daemon_ownership.try_acquire():
+        print(f"[Daemon] Mot daemon khac dang giu project nay ({graph_dir}/.daemon_owner) — thoat.")
+        sys.exit(0)
+
     def watcher_thread():
         print(f"[Daemon Watcher] Starting file watcher for: {controllers_dir}")
         try:

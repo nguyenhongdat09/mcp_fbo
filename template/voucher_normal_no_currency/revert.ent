@@ -1,0 +1,9 @@
+<!ENTITY % Conditional.Revert SYSTEM "..\Include\Revert.txt">
+
+<![%Conditional.Revert;[
+  <!ENTITY Revert.Field.0 "so_ct">
+  <!ENTITY Revert.Field.1 "ngay_lct">
+]]>
+
+<!ENTITY Revert.Field.0 "ngay_lct">
+<!ENTITY Revert.Field.1 "so_ct">

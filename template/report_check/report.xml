@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Report controller báo cáo check-chọn.
+  * <query>: chạy TRƯỚC khi render form in — @$keys là memvar chứa danh
+    sách khóa các dòng đã tick (grid init$ExportKey -> filter memvar
+    'keys'). Proc {{proc_print}} sinh recordset riêng cho file in, KHÁC
+    {{proc}} fill grid. XÓA <query> nếu báo cáo không in theo dòng chọn.
+  * Proc {{proc_print}} phải khai báo param nhận #_lst_keys / dùng lại
+    bảng tạm này — đổi cột name_key_1 theo field khóa thật.
+  * forms: form id="110" Excel làm mẫu; thêm form 120/130 nếu nhiều mẫu
+    in. File .xlsx/.rpt thiết kế ngoài, không có trong template.
+  * Đổi h_* theo cột thật của proc in.
+============================================================================ -->
+<!DOCTYPE report [
+	<!ENTITY b SYSTEM ".\Include\BaseCurrency.xml">
+	<!ENTITY f SYSTEM ".\Include\ForeignCurrency.xml">
+	<!ENTITY s SYSTEM ".\Include\Separate.xml">
+
+	<!ENTITY p "../images/pdf.gif">
+	<!ENTITY e "../images/excel.gif">
+]>
+
+<report xmlns="urn:schemas-fast-com:data-report">
+	<query>
+		<text><![CDATA[
+
+select b.val as name_key_1
+	into #_lst_keys
+		from @$keys cross apply dbo.fsd_StringToTable(text) b
+		where b.val <> ''
+
+exec {{proc_print}} @tu_ngay, @den_ngay, @@form, @@language
+
+]]></text>
+	</query>
+
+	<forms>
+		<form id="010" reportFile="{{controller}}_01" templateFile="" commandArgument="Pdf" urlImage="&p;">
+			<header v="{{title_v}}" e="{{title_e}}"></header>
+			<download>
+				<header v="{{title_v}}" e="{{title_e}}"/>
+			</download>
+		</form>
+
+		&s;
+
+		<form id="110" reportFile="" templateFile="{{controller}}_01" commandArgument="Excel" urlImage="&e;">
+			<header v="{{title_v}}" e="{{title_e}}"></header>
+			<download>
+				<header v="{{title_v}}" e="{{title_e}}"/>
+			</download>
+		</form>
+	</forms>
+
+	<fields>
+		<field name="title" type="String">
+			<header v="{{title_v_upper}}" e="{{title_e_upper}}"/>
+		</field>
+		<field name="h_tu_ngay" type="String">
+			<header v="Từ ngày" e="From Date"/>
+		</field>
+		<field name="h_den_ngay" type="String">
+			<header v="Đến ngày" e="To Date"/>
+		</field>
+		<field name="h_name_string_1" type="String">
+			<header v="Mã" e="Code"/>
+		</field>
+		<field name="h_name_string_2" type="String">
+			<header v="Tên" e="Name"/>
+		</field>
+		<field name="h_name_decimal_1" type="String">
+			<header v="Số tiền 1" e="Amount 1"/>
+		</field>
+		<field name="h_name_decimal_2" type="String">
+			<header v="Số tiền 2" e="Amount 2"/>
+		</field>
+		<field name="h_tong_cong" type="String">
+			<header v="Tổng cộng" e="Total"/>
+		</field>
+	</fields>
+</report>

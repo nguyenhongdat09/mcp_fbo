@@ -70,17 +70,49 @@ Copy file / folder giữa 2 project hoặc trong cùng 1 project (`project_targe
   - `suite:MRTran->DDVTran` hoặc `suite:MRTran->rlx(MRTran,DDVTran)` (đổi tên bộ suite)
 - **Same-source guard:** Nếu file nguồn và file đích cùng là một file vật lý (`src_file.resolve() == tgt_file.resolve()`), MCP trả status `same_source_target`, đưa vào `skipped_same_source[]` và không ghi đè lên chính nó.
 
+### type=5
+
+Tạo file `.sql` temp **rỗng (UTF-8 BOM)** trong `clone_things.sql_temp_folder` để agent viết script tay (proc/script mới cho user F5) — thay vì tự tạo `.sql` trong workspace:
+
+- Chỉ cần `project_source` (abs path project — dùng đặt tên file `{project}.sql`, suffix ` (2)`, ` (3)` nếu trùng); `object` không bắt buộc.
+- `path_to_pasted` rỗng = auto-temp; truyền path `.sql` = tạo/dùng đúng file đó (file mới có BOM, file có sẵn giữ nguyên).
+- Trả `path_to_pasted` + `hint` nhắc Edit/Write vào file rồi `query_database` query_type=3 (PARSEONLY) trước khi báo user F5.
+
+### type=6
+
+**Save-as / copy từ chức năng có sẵn** — BA hay viết "thêm mới X *save as / copy từ* chức năng Y". Một call làm 3 việc:
+
+```
+object = "saveas:<src>-><new_ctrl>"
+```
+
+- `<src>`: `ctrl:zclctt` (tên controller trực tiếp) | `title:Báo cáo lưu chuyển tiền tệ...` (tìm theo `<title v>`) | tên trần `zclctt` / path `.xml` (auto = ctrl) | text có space/dấu (auto = title).
+- **Title resolve:** Kuzu graph trước (`title_v`/`title_e`, `match_type=file`), nếu DB chưa build / không match → **fallback quét `<title v="...">` trên disk** trong `App_Data/Controllers/{Filter,Report,Grid,Dir,Lookup,Query,View}`. Không thấy → `source_not_found` (nhắc hỏi user — project có thể chỉ có `.f`); nhiều controller match → `ambiguous_source` + `candidates[]` (không auto-pick — candidate KHÔNG hậu tố `Graph`/`Group`/`Detail`/`Form` được gắn `suggested=true`, message gợi ý phân biệt thêm bằng `search_files` pattern `Controller="<stem>"` trên `Main/`).
+- **Suite clone:** delegate type=3 `suite:Old->New` — copy + đổi tên mọi file suite (Filter/Grid/Dir/Report/Lookup/Query/Notify/Include/Templates/`Main/*.aspx`...). Giữ nguyên semantics: `execute=False` = dry-run, `overwrite` cần `confirm_overwrite`. Ngoài templated + prefix-scan, suite còn bắt:
+  - **`Templates/Excel/*.xlsx`** (trong `SUITE_SCAN_DIRS`) và mọi file khai báo `templateFile=`/`reportFile=` trong Report XML — kể cả tên **lệch prefix** controller (vd `rpt_gltc5t_01.xlsx`) → warning `suite_templates_found`.
+  - **`Main/*.aspx` detect theo nội dung**: nếu `Main/{ctrl}.aspx` không tồn tại, quét `Main/*.aspx` tìm `Controller="<ctrl>"` (≤64KB/file, ≤200 file) → auto-add + warning `suite_aspx_detected`; không thấy → `suite_aspx_missing` kèm gợi ý `search_files`.
+- **SQL export:** extract `sql.procs` từ XML nguồn (qua `summary_xml`) → export từng proc dạng ALTER vào **1 file .sql temp** (UTF-8 BOM) — **giữ nguyên tên nguồn, KHÔNG auto-rename**; agent đổi tên trong file theo tên user gửi. Proc encrypted/không tìm thấy → `sql_objects_encrypted` / `sql_objects_unresolved` + warning (không fail cả flow).
+- Trả thêm `source_ctrl`, `source_title`, `dest_ctrl`, `sql_objects[]`, `skipped_same_source[]`, `next_steps[]` (đổi tên proc, sửa `<title v>`, đăng ký menu, PARSEONLY + bullets điều kiện):
+  - `.aspx` detect được → nhắc review; same-project save-as bị skip same-name (`skipped_same_source`) → copy tay + đổi tên + sửa `Controller=` trỏ ctrl mới.
+  - `*.xsd` denied (schema dataset designer sinh) → liệt kê file + hướng tạo lại/copy tay.
+  - `*Graph.xml` trong suite → clone chỉ đổi **tên file**, nội dung vẫn trỏ `entity`/`Identification` nguồn — sửa tay sau clone (nút Đồ thị còn cần aspx `LoadControl("Chart.ascx")`).
+  - Không có `Templates/Excel` → nhắc clone/tạo mẫu Excel tay (skill `fbo-excel-pivot-template`).
+
 ## 4. Validation (fail-fast)
 
 Trả lỗi dạng chuẩn MCP (string hoặc JSON error — thống nhất với `format_execution_error` hiện có). Bảng mã:
 
 | Điều kiện | `error_code` | Message gợi ý |
 |-----------|--------------|---------------|
-| Thiếu `object` / rỗng | `invalid_object` | object is required |
+| Thiếu `object` / rỗng | `invalid_object` | object is required (trừ type=2 truyền `table`, type=5 không cần object) |
 | Thiếu `project_source` | `invalid_project_source` | project_source is required |
 | Thiếu `project_target` khi **type=0** | `invalid_project_target` | project_target is required |
 | `project_target` rỗng khi **type=1** | *(không lỗi)* | bỏ qua target |
-| `type` ∉ `{0, 1}` | `unsupported_type` | type={n} not implemented; only type=0\|1 |
+| `type` ∉ `{0,1,2,3,4,5,6}` | `unsupported_type` | type={n} not implemented |
+| type=6 `object` sai grammar | `invalid_object` / `invalid_rename` | phải dạng `saveas:<src>-><new_ctrl>` |
+| type=6 title không match controller nào | `source_not_found` | kèm hướng dẫn hỏi user / `ctrl:` |
+| type=6 title match nhiều controller | `ambiguous_source` | kèm `candidates[]` để user chọn |
+| type=6 ctrl nguồn không có file suite | `suite_empty` | project có thể chỉ có `.f` |
 | type=1 `mode_get` không còn kind hợp lệ | `invalid_mode_get` | |
 | type=1 `mode_recursion` ∉ {0,1} | `invalid_mode_recursion` | |
 | Không resolve được Web.config source | `invalid_project_source` | cannot resolve connection from project_source |

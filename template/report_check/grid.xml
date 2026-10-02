@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ============================================================================
+  AGENT GUIDE — Grid báo cáo CHECK-CHỌN: cột `tag` để tick dòng, rồi
+  toolbar buttons xử lý (g.request -> <response><action> server SQL)
+  và/hoặc in chỉ các dòng đã tick (memvar `keys` -> Report @$keys).
+  * Cột phải khớp recordset mà {{proc}} đổ vào #$query; recordset PHẢI
+    trả thêm cột `tag` (vd cast(0 as bit) as tag) + các field khóa.
+  * name_key_1/name_key_2: field KHÓA của dòng (vd stt_rec, ma_ct,
+    ma_dvcs) — hidden, đổi theo bảng thật; name_key_1 phải khớp param
+    'Infinite' trong g.request và biến @name_key_1 trong <response>.
+  * g._$i: phần tử đầu là khóa dedupe — cập nhật cho khớp name_key_*.
+  * g._$only_one = 1 → chỉ chọn 1 dòng duy nhất.
+  * valid="systotal = 1": giữ nếu proc trả cột systotal=1, ngược lại xóa.
+============================================================================ -->
+<!DOCTYPE grid [
+	<!ENTITY Identification "{{controller}}">
+
+	<!ENTITY XMLStandardReportToolbar SYSTEM "..\Include\XML\StandardReportToolbar.xml">
+
+	<!ENTITY WhenReportRenderingLimitRight SYSTEM "..\Include\XML\WhenReportRenderingLimitRight.xml">
+	<!ENTITY SetHiddenReportFormLimitRight SYSTEM "..\Include\Javascript\SetHiddenReportFormLimitRight.txt">
+
+	<!ENTITY % Control.Filter SYSTEM "..\Include\Filter.ent">
+	%Control.Filter;
+]>
+
+<grid type="Report" valid="systotal = 1" xmlns="urn:schemas-fast-com:data-grid">
+	<title v="{{title_v}}" e="{{title_e}}"></title>
+	<subTitle v="Từ ngày %d1 đến ngày %d2" e="From %d1 to %d2"></subTitle>
+	<fields>
+		<field name="tag" type="Boolean" width="60" filterSource="Tag">
+			<header v="&lt;div onclick=&quot;toggle$Grid(this);&quot; style=&quot;cursor:pointer;background-position:3px 3px;&quot; class=&quot;HeaderArrowImage&quot;&gt;Chọn&lt;/div&gt;" e="&lt;div onclick=&quot;toggle$Grid(this);&quot; style=&quot;cursor:pointer;background-position:3px 3px;&quot; class=&quot;HeaderArrowImage&quot;&gt;Select&lt;/div&gt;"></header>
+			<clientScript><![CDATA[onclick="onChange$SelectedValue(this);"]]></clientScript>
+		</field>
+		<field name="stt" type="Int16" width="30" dataFormatString="# ###" allowSorting="true" allowFilter="true">
+			<header v="Stt" e="No."></header>
+		</field>
+		<field name="name_string_1" width="100" allowSorting="true" allowFilter="true" readOnly="true">
+			<header v="Mã" e="Code"></header>
+		</field>
+		<field name="name_string_2" width="300" allowSorting="true" allowFilter="true" readOnly="true">
+			<header v="Tên" e="Name"></header>
+		</field>
+
+		<field name="name_decimal_1" type="Decimal" dataFormatString="@baseCurrencyAmountViewFormat" width="120" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;" readOnly="true">
+			<header v="Số tiền 1" e="Amount 1"></header>
+		</field>
+		<field name="name_decimal_2" type="Decimal" width="120" dataFormatString="@baseCurrencyAmountViewFormat" aggregate="Sum" allowFilter="&GridReportAllowFilter.Number;" readOnly="true">
+			<header v="Số tiền 2" e="Amount 2"></header>
+		</field>
+
+		<!-- AGENT: field khóa — đổi tên theo bảng thật (stt_rec, ma_ct...)
+		     và cập nhật g._$i + g.request + <response> tương ứng -->
+		<field name="name_key_1" width="0" hidden="true">
+			<header v="" e=""></header>
+		</field>
+		<field name="name_key_2" width="0" hidden="true">
+			<header v="" e=""></header>
+		</field>
+
+		<field name="systotal" width="0" hidden="true">
+			<header v="" e=""></header>
+		</field>
+	</fields>
+
+	<views>
+		<view id="Grid">
+			<field name="tag"/>
+			<field name="stt"/>
+			<field name="name_string_1"/>
+			<field name="name_string_2"/>
+			<field name="name_decimal_1"/>
+			<field name="name_decimal_2"/>
+			<field name="name_key_1"/>
+			<field name="name_key_2"/>
+			<field name="systotal"/>
+		</view>
+	</views>
+
+	<commands>
+		<command event="Loading">
+			<text><![CDATA[
+select 'load$GridReport$(this);' as message
+return
+]]></text>
+		</command>
+		<command event="Closing">
+			<text><![CDATA[
+select 'dispose$GridReport$(this);' as message
+return
+]]></text>
+		</command>
+	</commands>
+
+	<script>
+		<text><![CDATA[
+
+function load$GridReport$(g) {
+	g.add_onRender(on$GridReport$Render);
+	g._$k = [];
+	g._$i = ['name_key_1']; // phan tu 1 la key dedupe — doi theo field khoa that
+	g._$t = g._getColumnOrder('tag');
+	g._$only_one = 0; // 1 = chi chon duoc 1 dong
+	g.add_commandEvent(on$GridReport$ExecuteCommand);
+	g.add_onResponseComplete(on$GridReport$ResponseComplete);
+	g._$f = 'keys'; // memvar keys trong Filter — chi dung khi IN theo dong tick
+}
+
+function dispose$GridReport$(g) {
+	g._$k = g._$i = g._$t = null;
+	try {g.remove_onRender(on$GridReport$Render);} catch (ex) {}
+	try {g.remove_onResponseComplete(on$GridReport$ResponseComplete);} catch (ex) {}
+}
+function on$GridReport$Render(sender, eventArgs) {
+	var g = eventArgs.grid;
+	if (g._hiddenFields) {
+		var a = g._hiddenFields, h = '';
+		for (var i = 0; i < a.length; i++) {
+			setGridHiddenFields(g, a[i].Fields, a[i].Value);
+			if (a[i].Value) h += (h == '' ? '' : ',') + a[i].Fields;
+		}
+		g._externalHiddenFields = h;
+	}
+	g._$k = [];
+}
+function setGridHiddenFields(g, c, v) {
+	var a = c.split(',');
+	for (var i = 0; i < a.length; i++) {
+		g._setColumnVisible(g._getColumnOrder($func.trim(a[i])), !v);
+	}
+}
+function on$GridReport$ExecuteCommand(sender, e) {
+	var action = e.type.Action, g = sender;
+	switch (action) {
+		case 'Action1':
+			if (!isCheck$Grid(g)) break;
+			g.request(g, 'Action1', 'Action1', [['name_key_1', 'Infinite', arrField(g, 'name_key_1')]]);
+			break;
+		case 'Action2':
+			if (!isCheck$Grid(g)) break;
+			g.request(g, 'Action2', 'Action2', [['name_key_1', 'Infinite', arrField(g, 'name_key_1')]]);
+			break;
+		default:
+			break;
+	}
+}
+function on$GridReport$ResponseComplete(sender, e) {
+	var g = e.object, context = e.type.Context, result = e.type.Result;
+	switch (context) {
+		case 'Action1':
+		case 'Action2':
+			$message.show(result[0].Value);
+			g.goToPage(-1);
+			break;
+		default:
+			break;
+	}
+}
+function isCheck$Grid(g) {
+	var msg = (g._language == 'v' ? 'Chưa có bản ghi nào được chọn, phải đánh dấu trước khi thực hiện chức năng này.' : 'No record selected, please select at least one record to process.');
+	if (g._$k.length == 0) {
+		$message.show(msg, String.format('$find(\'{0}\')._focusWhenTabChanged();', g.get_id()));
+		return false;
+	}
+	return true;
+}
+function toggle$Grid(o) {
+	var c = o.parentNode.parentNode.parentNode.id, g = $find($func.left(c, c.length - 11));
+	if (!g._$only_one) {
+		for (var r = 1; r <= g._rowCount; r++) {
+			if (!g._getItem(r, g._$t).disabled) {
+				var checked = addOrRemove(g, r);
+				g._setItemValue(r, g._$t, !checked);
+			}
+		}
+		init$ExportKey(g);
+		if (g._rowCount <= 0) return;
+		else {
+			g._activeRow = g._rowCount;
+			g._activeColumn = g._$t;
+			g._activeCell = g._getItem(g._activeRow, g._activeColumn);
+			g._focusWhenTabChanged();
+		}
+	}
+}
+function onChange$SelectedValue(o) {
+	var a = o.id.split('_inputCell_'), g = o.grid;
+	if (!g) g = $find(a[0]);
+	var r = $func.getLocationCell(o)[0];
+	addOrRemove(g, r);
+	init$ExportKey(g);
+	g._activeRow = a[1].split('.')[0];
+	g._activeColumn = a[1].split('.')[1];
+	g._activeCell = g._getItem(g._activeRow, g._activeColumn);
+}
+function addOrRemove(g, r) {
+	var json = {}, key = g._$i[0], key_val = g._getItemValue(r, g._getColumnOrder(key));
+	for (idx in g._$i) {
+		var field = g._$i[idx];
+		var val = g._getItemValue(r, g._getColumnOrder(field));
+		json[field] = val;
+	}
+	var checked = g._$k.some(function (x) { return x[key] == key_val });
+	if (checked)
+		g._$k = g._$k.filter(function (x) { return x[key] != key_val });
+	else {
+		if (g._$only_one) g._$k = [];
+		g._$k.push(json);
+	}
+	if (g._$only_one) fill$Grid(g);
+	return checked;
+}
+function fill$Grid(g) {
+	var key = g._$i[0];
+	for (var i = 1; i <= g._rowCount; i++) {
+		var key_val = g._getItemValue(i, g._getColumnOrder(key));
+		var checked = g._$k.some(function (x) { return x[key] == key_val });
+		g._setItemValue(i, g._$t, checked);
+	}
+}
+function arrField(g, field) {
+	return g._$k.map(function (item) { return item[field] });
+}
+function init$ExportKey(g, c) {
+	var p = (c ? c : ''), keys = p + arrField(g, g._$i[0]).join(',') + p, v = g._filterMemvars, i = $func.findMemvarIndex(g._$f, v);
+	if (i > -1) {
+		var memvar = v[i];
+		memvar.NewValue = memvar.Compressed ? $func.compress(keys) : keys;
+	}
+}
+function refresh$Page(g) {
+	g._$k = [];
+	g.goToPage(-1);
+}
+function beforeDrillDown(g) {g._args.cancelEvent = !($func.trim(g._getItemValue(g._activeRow, g._activeColumn)));}
+function formatDateView(c) {return String.format('{0}/{1}/{2}', c.substring(6, 8), c.substring(4, 6), c.substring(0, 4));}
+
+]]></text>
+	</script>
+
+	<!-- AGENT: moi <action id> phai trung command nut tren toolbar +
+	     case trong on$GridReport$ExecuteCommand; @name_key_1 la param
+	     Infinite tu g.request -->
+	<response>
+		<action id="Action1">
+			<text><![CDATA[
+
+select b.val as name_key_1
+	into #keys
+		from @name_key_1 cross apply dbo.fsd_StringToTable(text) b
+
+-- AGENT: xu ly #keys theo UR (update/insert/exec proc...), vd:
+-- exec {{proc}}Action @name_key_1, @@language, @@userID
+
+select case when @@language = 'V' then N'Thực hiện Action1 thành công' else 'Action1 done' end as message
+return
+
+]]></text>
+		</action>
+		<action id="Action2">
+			<text><![CDATA[
+
+select b.val as name_key_1
+	into #keys
+		from @name_key_1 cross apply dbo.fsd_StringToTable(text) b
+
+-- AGENT: xu ly #keys theo UR
+
+select case when @@language = 'V' then N'Thực hiện Action2 thành công' else 'Action2 done' end as message
+return
+
+]]></text>
+		</action>
+	</response>
+
+	<!-- AGENT: doi url(../images/...) theo icon co san trong project -->
+	<css>
+		<text><![CDATA[
+
+div.Action1{background-image:url(../images/TextSave.png);background-repeat:no-repeat;background-position:0 0;}
+div.TextAction1{background-image:url(../images/TextSave.png),url(../images/Line.png);background-repeat:no-repeat,repeat-x;background-position:0 0;}
+div.TextAction1OverGreen, div.Action1OverGreen{background-position:0 -22px;}
+div.Action2{background-image:url(../images/TextRevert.png);background-repeat:no-repeat;background-position:0 0;}
+div.TextAction2{background-image:url(../images/TextRevert.png),url(../images/Line.png);background-repeat:no-repeat,repeat-x;background-position:0 0;}
+div.TextAction2OverGreen, div.Action2OverGreen{background-position:0 -22px;}
+
+]]></text>
+	</css>
+
+	<!-- Toolbar tuy bien thay &XMLStandardReportToolbar; — button Print
+	     giu lai neu bao cao co in theo dong tick -->
+	<toolbar>
+		<button command="Action1">
+			<title v="Xử lý 1$$200" e="Action 1$$200"></title>
+		</button>
+		<button command="Action2">
+			<title v="Xử lý 2$$200" e="Action 2$$200"></title>
+		</button>
+		<button command="Search">
+			<title v="Toolbar.Search" e="Toolbar.Search"></title>
+		</button>
+		<button command="Print">
+			<title v="Toolbar.Print" e="Toolbar.Print"></title>
+		</button>
+		<button command="Export">
+			<title v="Toolbar.Export" e="Toolbar.Export"></title>
+		</button>
+		<button command="Aggregate">
+			<title v="Toolbar.Aggregate" e="Toolbar.Aggregate"></title>
+		</button>
+		<button command="Seprate">
+			<title v="-" e="-"></title>
+		</button>
+		<button command="Freeze">
+			<title v="Toolbar.Freeze" e="Toolbar.Freeze"></title>
+		</button>
+	</toolbar>
+</grid>

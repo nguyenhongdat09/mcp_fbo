@@ -131,6 +131,11 @@ function on$Filter$ResponseComplete(sender, e) {
         {Fields: 'name_decimal_3, name_decimal_4', Value: v == '10'},
         {Fields: 'name_decimal_1, name_decimal_2', Value: v == '20'}
       ];
+      g._hiddenForms = [
+        // TODO: ẩn/hiện layout form theo điều kiện — vd {Form: [4], Value: (f._language == 'v')}
+        // (để [] nếu không dùng; report tạo mẫu thường KHÔNG cần)
+      ];
+      remove$GridReport$Filter(g);
       g._nam = (function (v) {
         if (!v) return (new Date()).getFullYear();
         var s = String(v);

@@ -151,6 +151,7 @@ SUITE_SCAN_DIRS = [
     "App_Data/Controllers/Report/Config",
     "App_Data/Controllers/View",
     "App_Data/Controllers/Templates/Rpt",
+    "App_Data/Controllers/Templates/Excel",
     "App_Data/Controllers/Templates/Upload",
     "App_Data/Controllers/Templates/Mail",
     "App_Data/Controllers/Include",
@@ -222,12 +223,103 @@ def rename_suite_basename(
     return old_base
 
 
+RE_TEMPLATE_FILE = re.compile(
+    r'(?:templateFile|reportFile)\s*=\s*"([^"]+)"', re.IGNORECASE
+)
+
+# Thư mục mẫu in chuẩn của FBO — basename trong templateFile/reportFile
+# của Report XML được resolve vào đây.
+_TEMPLATE_FILE_DIRS = (
+    "App_Data/Controllers/Templates/Excel",
+    "App_Data/Controllers/Templates/Rpt",
+)
+
+
+def _expand_report_template_files(
+    root_src_path: Path, ctrl_name: str, suite_files: list[str]
+) -> list[str]:
+    """Parse Report XML của suite tìm ``templateFile=``/``reportFile=`` rồi
+    resolve basename vào ``Templates/Excel`` + ``Templates/Rpt``.
+
+    Bắt được mẫu in có tên LỆCH prefix controller (vd controller
+    ``rptDirectCashFlowMultiPeriod`` nhưng mẫu ``rpt_gltc5t_01.xlsx``) —
+    trường hợp prefix-scan không bắt được. Skip ``.f``/``.xsd``."""
+    cand_xml = [
+        rel
+        for rel in suite_files
+        if rel.startswith("App_Data/Controllers/Report/")
+        and rel.lower().endswith(".xml")
+    ]
+    if not cand_xml:
+        fallback = f"App_Data/Controllers/Report/{ctrl_name}.xml"
+        if (root_src_path / fallback).is_file():
+            cand_xml = [fallback]
+    out: list[str] = []
+    seen: set[str] = set()
+    for rel in cand_xml:
+        f_path = root_src_path / rel
+        try:
+            text = f_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        for m in RE_TEMPLATE_FILE.finditer(text):
+            base = Path(m.group(1).strip()).name
+            if not base or base.lower().endswith((".f", ".xsd")):
+                continue
+            for tdir in _TEMPLATE_FILE_DIRS:
+                cand = root_src_path / tdir / base
+                if cand.is_file():
+                    rel_out = to_posix(Path(tdir) / base)
+                    if rel_out not in seen:
+                        seen.add(rel_out)
+                        out.append(rel_out)
+    return out
+
+
+def _detect_suite_aspx(
+    root_src_path: Path, ctrl_name: str, max_files: int = 200
+) -> list[str]:
+    """Quét ``Main/*.aspx`` tìm trang chứa ``Controller="<ctrl>"`` — dùng khi
+    ``Main/{ctrl}.aspx`` không tồn tại (trang report/voucher thường đặt tên
+    lệch ctrl: ``rpt_*.aspx``, ``inct*.aspx``, ``zc*.aspx``)."""
+    main_dir = root_src_path / "Main"
+    if not main_dir.is_dir():
+        return []
+    pat = re.compile(
+        r'Controller\s*=\s*["\']' + re.escape(ctrl_name) + r'["\']',
+        re.IGNORECASE,
+    )
+    out: list[str] = []
+    try:
+        entries = sorted(os.scandir(main_dir), key=lambda e: e.name)
+    except Exception:
+        return []
+    count = 0
+    for e in entries:
+        if count >= max_files:
+            break
+        if not e.is_file() or not e.name.lower().endswith(".aspx"):
+            continue
+        count += 1
+        try:
+            head = Path(e.path).read_text(
+                encoding="utf-8", errors="ignore"
+            )[:65536]
+        except Exception:
+            continue
+        if pat.search(head):
+            out.append(to_posix(Path("Main") / e.name))
+    return out
+
+
 def _expand_suite_files(
     root_src_path: Path, ctrl_name: str, warnings: list[str]
 ) -> list[str]:
     """Templated candidates tồn tại trên source + prefix-family scan
-    (dedupe với templated, giữ thứ tự). Append warning
-    ``suite_prefix_expanded`` / ``suite_aspx_missing`` khi cần."""
+    (dedupe với templated, giữ thứ tự) + mẫu in khai báo trong Report XML +
+    aspx detect theo Controller=. Append warning ``suite_prefix_expanded`` /
+    ``suite_templates_found`` / ``suite_aspx_detected`` /
+    ``suite_aspx_missing`` khi cần."""
     found = [
         c for c in get_suite_candidates(ctrl_name) if (root_src_path / c).is_file()
     ]
@@ -244,11 +336,38 @@ def _expand_suite_files(
             f"'{src_prefix}*' — review planned[] trước khi execute"
         )
         found.extend(extra)
-    if not (root_src_path / f"Main/{ctrl_name}.aspx").is_file():
+    known = set(found)
+    tpl_extra = [
+        rel
+        for rel in _expand_report_template_files(root_src_path, ctrl_name, found)
+        if rel not in known
+    ]
+    if tpl_extra:
         warnings.append(
-            "suite_aspx_missing: trang .aspx của voucher thường tên riêng "
-            "(zc*/inct*) — copy tay nếu cần"
+            f"suite_templates_found: +{len(tpl_extra)} file mẫu in khai báo "
+            "trong Report XML (templateFile/reportFile): "
+            + ", ".join(tpl_extra)
         )
+        found.extend(tpl_extra)
+    if not (root_src_path / f"Main/{ctrl_name}.aspx").is_file():
+        detected = _detect_suite_aspx(root_src_path, ctrl_name)
+        known = set(found)
+        detected = [a for a in detected if a not in known]
+        if detected:
+            found.extend(detected)
+            warnings.append(
+                f'suite_aspx_detected: {", ".join(detected)} — trang .aspx '
+                f'tìm theo nội dung Controller="{ctrl_name}" (tên file lệch '
+                "ctrl). Same-project save-as sẽ skip same-name → copy tay + "
+                "đổi tên + sửa Controller= trỏ controller mới"
+            )
+        else:
+            warnings.append(
+                "suite_aspx_missing: trang .aspx thường đặt tên lệch ctrl "
+                f'(zc*/rpt_*/inct*) — tìm tay bằng search_files pattern '
+                f'\'Controller="{ctrl_name}"\' trên <project>\\Main rồi copy '
+                "tay nếu cần"
+            )
     return found
 
 

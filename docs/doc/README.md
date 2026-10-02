@@ -9,6 +9,7 @@ Thư mục tài liệu thiết kế và spec cho FastBusiness MCP Server.
 | [clone_things/](./clone_things/) | MCP tool `clone_things` — clone SQL object (table/proc/func/view) source → target |
 | [compare_things/](./compare_things/) | MCP tool `compare_things` — so sql/table/xml/file/folder (JSON agent-actionable); spec cho Gemini implement |
 | [config_local/](./config_local/) | Tách path theo máy (`config_path.yaml`) khỏi `config.yaml` dùng chung |
+| [tool_help/](./tool_help/) | tool `tool_help` — routing step→tool (Jev + keyword); catalog `db_balance` proc số-dư; `jev_desc` nén token Jev ~-16% lossless |
 | [doc_fix/](./doc_fix/) | Fix notes + prompt Gemini review (vd. dual app/sys) |
 | [doc_gop_y/](./doc_gop_y/) | Góp ý / đánh giá thiết kế |
 | [doc_summary_xml/](../doc_summary_xml/) | Summary XML controller (`read_option=3`) |

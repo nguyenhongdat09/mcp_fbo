@@ -1,0 +1,145 @@
+name: voucher_normal_currency
+title_v: Chứng từ mới — KHÔNG duyệt, CÓ ngoại tệ (skeleton đầy đủ)
+jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) with NO
+  approval flow but WITH foreign currency (ma_nt, ty_gia, _nt columns):
+  Dir/Grid/Filter/Query/Report/Detail controllers + Currency behavior JS +
+  Include/Extender + Revert.ent + Fields Grid.ent + Main aspx + SYS/APP SQL
+  skeleton. Pick when UR asks tao chung tu/voucher moi WITHOUT duyet but WITH
+  ma_nt/ngoai te/ty gia. NOT for: modifying an existing voucher (use none),
+  retrieve flow (retrieve_flow_*), voucher with approval (voucher_approval_*),
+  voucher without currency (voucher_normal_no_currency)."
+files:
+  - src: dir_tran.xml
+    dst: App_Data/Controllers/Dir/{new}Tran.xml
+  - src: grid_tran.xml
+    dst: App_Data/Controllers/Grid/{new}Tran.xml
+  - src: filter_tran.xml
+    dst: App_Data/Controllers/Filter/{new}Tran.xml
+  - src: grid_detail.xml
+    dst: App_Data/Controllers/Grid/{new}Detail.xml
+  - src: query_tran.xml
+    dst: App_Data/Controllers/Query/{new}Tran.xml
+  - src: report_tran.xml
+    dst: App_Data/Controllers/Report/{new}Tran.xml
+  - src: extender
+    dst: App_Data/Controllers/Include/Extender.{new}Tran
+  - src: revert.ent
+    dst: App_Data/Controllers/Include/Revert.{new}Tran.ent
+  - src: fields_grid.ent
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Grid.ent
+  - src: field.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Field.txt
+  - src: view.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}View.txt
+  - src: extra_detail
+    dst: App_Data/Controllers/Include/Extra/Extra.{new}Detail
+  - src: gnedit_cmd.txt
+    dst: App_Data/Controllers/Include/Command/GNEditCheckTable{new}Tran.txt
+  - src: ref_fields.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceFields.txt
+  - src: ref_view.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceView.txt
+  - src: main_voucher.aspx
+    dst: Main/zc{new_lower}d.aspx
+  - src: voucher.sql
+    dst: RetrieveTemp/{new}_voucher.sql
+tokens:
+  "{{x}}": "{new}"
+  "{{xt}}": "{new_lower}"
+edit_guide: |
+  Template CHỨNG TỪ MỚI variant KHÔNG duyệt + CÓ ngoại tệ — skeleton
+  strip-tối-thiểu port từ SVTran (FBISP2421), bỏ phần stock/thuế/CTKM/EI.
+  Mỗi file có comment TODO(…) đánh dấu chỗ phải sửa theo nghiệp vụ.
+
+  new_name = MÃ CHỨNG TỪ 3 ký tự (vd PLH → Dir/PLHTran.xml, bảng mplh$,
+  aspx zcPLHd.aspx). KHÔNG truyền 'PLHTran'.
+
+  A. INPUT cần hỏi/trích từ user trước khi fill:
+  - {{x}} (đã = new_name), {{title_v}}, {{title_e}}, {{title_upper_v/e}}
+  - {{ma_kh_v/e}} — header field đối tượng chính (mặc định 'Mã khách'/'Customer')
+  - {{status1_v/e}} — trạng thái 1 của phiếu
+  - {{ma_vt_v/e}} — header mã dòng detail (mặc định 'Mã hàng'/'Item Code')
+  - {{so_ct_v/e}}, {{ngay_lct_v/e}}, {{ten_gd1_v/e}}, {{ong_ba_v/e}}
+  - {{t_tien_nt_v/e}} — header tổng tiền NT (vd 'Tiền hàng nt'/'FC Amount')
+  - menu: {{menu_dir}}, {{menu_list}}, {{menu_parent}} (id dạng xx.yy.zz)
+  - {{DB_SYS}}, {{DB_APP}} — tên db hệ thống + db dữ liệu của project đích
+  - {{mau_ctrl}} — controller mẫu CÓ NT cùng project để clone (vd SVTran)
+  - Quy ước bảng nếu KHÔNG phải m{x}$/d{x}$/c{x}$/i{x}$ (đổi toàn bộ file)
+
+  B. BƯỚC 0.5 — CAPABILITY-CHECK (chống conflict phiên bản — BẮT BUỘC):
+  Ngoài danh sách core như voucher_normal_no_currency, variant NT cần thêm:
+  - Include/XML/GetExchangeRate.xml — THIẾU → xóa &XMLGetExchangeRate; và
+    viết action trả ty_gia tay (select ty_gia from dmtgnt where ma_nt…)
+  - Include/Javascript/Currency.txt + WhenCurrencyDateChanged.txt +
+    WhenCurrencyResponse.txt — THIẾU → bỏ objectBehavior$Voucher$Currency
+    + &CurrencyResponse;, tự viết JS tính _nt↔base trong onChange
+  - Include/Tiny.Currency.ent — THIẾU → bỏ %Tiny.Currency;
+  - Include/Command/CheckLockedDate.txt (hoặc CheckClosingDate.txt)
+  - Include/Command/ExternalFieldDeclare/Select/Assign/Query.txt — cần cho
+    InitExternalFields lấy @defaultCurrency/@defaultExchangeRate
+  - Bảng: dmnt, dmtgnt (tỷ giá theo ngày), options name='m_ma_nt0'
+  - Include/HandleVoucherNumber.ent + biến thể .001/.002/.009 — skeleton đang
+    dùng .001; project chỉ có .002/.009 thì đổi %HandleVoucherNumber.Definition;
+    thiếu &HandleVoucherNumberUpdateGrandTable; → XÓA tham số đó khỏi
+    AfterUpdate (dòng UpdateGrandTable)
+  Thiếu file shared → clone lẻ từ project có nó hoặc BỎ block + BÁO user.
+  KHÔNG để entity trỏ file không tồn tại.
+  Lưới an toàn cuối: get_xml_entities checking từng file — undeclared_entities
+  phải = 0 (trừ %Extender.Include.{X}Tran; chỉ resolve sau khi đăng ký ở mục D).
+
+  C. SAU PASTE — sửa theo nghiệp vụ:
+  1. Fill unresolved_placeholders (mục A) trong MỌI file.
+  2. Dir/{X}Tran.xml: thêm field master; mọi cột tiền PHẢI có cặp _nt/base
+     (format @foreignCurrencyAmountInputFormat / @baseCurrencyAmountInputFormat);
+     cập nhật v.set_currencyFields('nt1,nt2:base1,base2') + aTotalFields trong
+     objectBehavior$Voucher$Currency cho đúng cặp của chứng từ.
+  3. Grid/{X}Detail.xml: cột tiền detail cũng có cặp _nt; map trong
+     $dt.aGridFields/aTotalFields; onChange tien_nt → executeExpression
+     [tien]:=[tien_nt]*[$ty_gia].
+  4. Thêm tab lưới → file Grid/{X}{Tab}Detail.xml + bảng d{x}{tab}$ + khai báo
+     trong Inserting/Updating/Updated/Deleting.
+  5. Checking (Dir): viết validation JS/SQL theo UR.
+  6. Report/{X}Tran.xml: entity &f; (ForeignCurrency.xml) đã có — mẫu in dùng
+     nó để đổi cột NT/base theo ma_nt phiếu; sửa query + fields.
+  7. voucher.sql: SCHEMA-CHECK từng bảng đích (query_database type=0) trước
+     khi viết INSERT; clone row mẫu {{mau_ctrl}} rồi đổi mã — KHÔNG viết mù.
+
+  D. CONFIG CHUNG — chỉ APPEND, không overwrite:
+  - Include/Extender.ent: khai báo %Extender.Include.{X}Tran; CẢ nhánh List
+    lẫn Post — THIẾU → lỗi &ListTabChange;/&PostTabChange; undeclared
+  - Filter/Config/Initialize.xml: append <controller name="{X}Tran"
+    group="Aggregation.Voucher"/> — clone cạnh dòng của mẫu
+  - Grid/Config/Aggregation.v: append <controller name="{X}Tran"
+    description="{title_e}"/> — thiếu → list không có aggregation/group
+  - Grid/Config/Include/Voucher.Controller.00x: file ĐÁNH SỐ .001-.006 —
+    append <controller name="{X}Tran" group="00x"/> vào ĐÚNG file chứa
+    controller mẫu (grep từng file tìm {mau_ctrl}; vd DDV ở .003)
+  - Query/{new}Tran.xml: block LocationID/LotID trong DOCTYPE +
+    &Query.LocationFields;/&Query.LotFields;/&Query.LocationFieldsName;/&Query.LotFieldsName;
+    la OPTIONAL — chi dung khi chi tiet co dims vi tri/lot (ma_vitri, ma_lo);
+    khong co thi XOA ca block + 4 entity ref (Query.ent mac dinh "")
+  - Include per-voucher (da ship skeleton):
+    Include/XML/Config/Fields/{X}Field.txt + {X}View.txt — cap nay duoc
+    {X}Grid.ent tro toi khi flag UserDefined.Fields ON (thiếu → loi entity);
+    skeleton mau field ma_vv AutoComplete + view — sua/xoa theo user-defined
+    fields thuc te. Include/Extra/Extra.{X}Detail — chi can khi
+    Grid/{X}Detail.xml khai %Extra.{X}Detail;+%Extra; va dung
+    &GridExtraToolbar*; (skeleton da strip → giu file cung khong hai).
+    Include/Command/GNEditCheckTable{X}Tran.txt — chi can khi dir_tran dung
+    %GNEdit; (skeleton da strip GNEdit); pattern select @cols into
+    #editmaster + #IF $d{x}.NewValue <> OldValue #THEN #editdetail.
+    Include/XML/{X}ReferenceFields.txt + {X}ReferenceView.txt — chi khi CT
+    co tracking ref nguon (fsdSttRecRef / stt_rec_ref); resolve theo ten
+    controller, khong khai entity tuong minh.
+  - sysfilterdeclares phải là m{X}$%Partition của CT mới
+  - KHÔNG tạo Structure/App/*.xml — hệ thống tự sinh khi đăng ký bảng
+
+  E. VERIFY (bắt buộc trước khi báo xong):
+  - get_xml_entities checking TỪNG file XML — undeclared_entities = 0
+  - read_local_file read_option=3 — js.parse_status=ok, sql.parse_status=ok
+  - query_database query_type=3 PARSEONLY file voucher.sql (bỏ qua 1059)
+  - search literal mã mẫu còn sót ('SV', 'd81', 'm81'…) trong file {X}
+  - search '_nt' còn thiếu cặp base không; kiểm tra cột NT trong m{x}$/d{x}$ đã
+    CREATE đủ trong voucher.sql
+  - Nhắc user: F5 chạy voucher.sql → khai quyển số trong v20dmctnk →
+    phân quyền → test UI (đổi ma_nt phải đổi được ty_gia và tính _nt↔base)

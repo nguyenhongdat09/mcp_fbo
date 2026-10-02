@@ -58,6 +58,7 @@ def sql_temp_base_name_from_project(project_path: str) -> str:
 def create_sql_temp_file(base_name: str, folder_path: str) -> str:
     """
     Create a new .sql temp file with incremental suffix (2), (3)... if already exists.
+    File mới được ghi UTF-8 BOM (\ufeff) để SSMS/editor nhận đúng encoding khi user F5.
     Returns absolute path of the created file.
     """
     target_dir = Path(folder_path)
@@ -71,7 +72,7 @@ def create_sql_temp_file(base_name: str, folder_path: str) -> str:
         file_path = target_dir / f"{stem} ({counter}).sql"
         counter += 1
 
-    file_path.write_text("", encoding="utf-8")
+    file_path.write_text("\ufeff", encoding="utf-8")
     return str(file_path.resolve())
 
 
@@ -253,7 +254,7 @@ def resolve_output_file(
     Returns (abs_sql_file_path, error_code).
 
     Khi path_to_pasted rỗng: tên file theo project_target (parity NewSqlTemp group.label),
-    không theo seed_object / XML stem.
+    không theo seed_object / XML stem. File mới tạo (cả 2 nhánh) có UTF-8 BOM.
     Nếu clone_things.sql_temp_folder để rỗng, tự động tạo thư mục Scripts trong folder chứa mcp.
     Nếu IDE là Antigravity: chuyển hướng tạo file vào ~/.gemini/config/skills/<folder_name>.
     """
@@ -265,7 +266,7 @@ def resolve_output_file(
         if not p.parent.exists():
             return "", "invalid_path_to_pasted"
         if not p.exists():
-            p.write_text("", encoding="utf-8")
+            p.write_text("\ufeff", encoding="utf-8")
         return str(p.resolve()), None
 
     # Parity NewSqlTemp: read config

@@ -29,13 +29,54 @@ KEYWORD_RULES: list[tuple[str, str]] = [
     (r"(so sánh|compare|diff).*xml", "diff_xml"),
     (r"(so sánh|compare|diff).*file", "diff_file"),
     # --- clone ---
-    (r"clone.*(dòng|data|row)|kéo.*data.*\.sql|delete.*insert",
+    (r"(clone|copy|kéo|đưa).*(dòng|data|row|dữ liệu).*(ra|vào|sang|"
+     r"\.sql|file|db|database)|clone.*(dòng|data|row|dữ liệu)|"
+     r"delete.*insert|"
+     r"(dump|export|viết|ghi).*(dữ liệu|data|rows?|dòng).*"
+     r"(vào|ra|into|to).*(file|\.sql)|dữ liệu.*(mẫu|test).*\.sql",
      "clone_data"),
+    (r"(tạo|new|mở|xin).{0,25}(file|tệp)?\s*\.?\s*sql.{0,20}"
+     r"(mới|trống|rỗng|temp|scratch|để viết)|"
+     r"(file|tệp)\s*\.?\s*sql\s*(mới|trống|rỗng)|"
+     r"(tạo|new)\s+(?:(?:file|tệp)\s+)?[^\s]*\.sql\b|"
+     r"new\s+(empty\s+)?sql\s+file|sql_temp",
+     "new_sql_file"),
+    (r"save[\s_-]*as|"
+     r"(copy|clone)\s+(theo|từ|giống|tương tự|dựa\s+trên)\s+"
+     r"(chức năng|báo cáo|màn hình|controller|phiếu|chứng từ)|"
+     r"(làm|tạo|thêm)\s+(?:\w+\s+){0,3}?(giống|tương tự|dựa\s+trên)\s+"
+     r"(chức năng|báo cáo|màn hình|controller|phiếu|chứng từ)",
+     "save_as_existing"),
+    # đọc/trích ĐOẠN proc (có cue đoạn/block/phần/cách tính) → db_snippet;
+    # đặt TRƯỚC paste_sql vì paste_sql bắt cả "đọc proc" (toàn bộ).
+    (r"(đọc|xem|trích).*(đoạn|block|phần|cách\s*tính|khu\s*vực).*(proc|"
+     r"procedure|func(tion)?)|"
+     r"(proc|procedure|func(tion)?)\b.*(đoạn|block|phần|cách\s*tính|"
+     r"khu\s*vực)",
+     "db_snippet"),
     (r"(lấy|xuất|paste).*(proc|func|view).*(ra|sửa|edit)|"
-     r"paste.?for.?edit", "paste_sql"),
+     r"paste.?for.?edit|"
+     r"(sửa|chỉnh|edit|xem|đọc|viết lại|dump).*(nội dung |source |body )?"
+     r"(proc|procedure|func(tion)?)\b", "paste_sql"),
+    (r"(tạo|thêm).*(bộ|suite|template).*(controller|báo cáo|danh mục|"
+     r"lấy dữ liệu|chứng từ|voucher)|chức năng lấy dữ liệu|"
+     r"retrieve.*(flow|suite)|"
+     r"(tạo|thêm).*(chứng từ|voucher).*(mới|suite|bộ|template)|"
+     r"chứng từ mới|voucher.*(suite|mới)", "clone_template"),
     (r"(copy|clone).*(bộ|suite|controller|file)", "copy_files"),
     (r"(clone|mang|kéo).*(proc|sql|object|thiếu)", "clone_sql"),
     # --- query_database ---
+    (r"(tính|lấy|xác định|hạch toán).{0,30}(số dư|dư đầu|dư cuối|"
+     r"tồn đầu|tồn cuối|công nợ|dư nợ|dư có)|"
+     r"(số dư|dư|tồn)\s*(đầu|cuối)\s*kỳ|tồn kho|dư nợ|dư có|công nợ|"
+     r"tồn\s*(theo\s+)?(kho|mã kho|vị trí|lô|vật tư|site|location|lot|"
+     r"item)|đáo hạn|maturity|balance\$|openingbalance|opening\s+balance|"
+     r"số dư (theo )?(tk|tài khoản|khách hàng|kho|lô|vị trí|khế ước|"
+     r"hợp đồng|vụ việc|công trình|nhân viên|nvbh|sale)|"
+     r"dư (khế ước|hợp đồng|vụ việc|nhân viên|nvbh)",
+     "db_balance"),
+    (r"(thêm|add|bổ sung).*(trường|cột|field|column).*(bảng|table|vào|cho)|"
+     r"fsd_addfields|alter\s+table", "db_add_field"),
     (r"(check|kiểm tra).*(syntax|cú pháp).*\.sql|parseonly",
      "db_check_syntax"),
     (r"(chạy|execute|run).*(file|script).*\.sql", "db_run_file"),
@@ -45,8 +86,12 @@ KEYWORD_RULES: list[tuple[str, str]] = [
      "db_snippet"),
     (r"(xem|inspect|schema|cấu trúc).*(bảng|table|proc|view)|"
      r"create table|cột.*của bảng", "db_object"),
+    (r"(kiểm tra|check|xem).*(dữ liệu|data|tồn|rows?|dòng).*(bảng|table|"
+     r"database|trong db)|exec.*proc|chạy.*proc.*test", "db_run_sql"),
     (r"(chạy|run|select|query).*\b(sql|select|proc)\b", "db_run_sql"),
     # --- query_radar ---
+    (r"(tìm|find|search|xác định|locate).*(title|tiêu đề|tên hiển thị)|"
+     r"(theo|qua|bằng)\s*(title|tiêu đề|tên hiển thị)", "find_by_title"),
     (r"(file|controller|chứng từ).*(nào).*(gọi|call|retrieve|dùng)|"
      r"graph|radar|quan hệ.*file", "graph_query"),
     # --- search_files ---

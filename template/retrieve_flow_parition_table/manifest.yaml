@@ -1,0 +1,100 @@
+name: retrieve_flow_parition_table
+title_v: Chức năng lấy dữ liệu từ chứng từ nguồn — bảng PHÂN KỲ (m/d/i{ext}$YYYYMM)
+jev_desc: "ADD a data-retrieval (lay du lieu / Retrieve) flow ONTO an EXISTING
+  voucher: creates a NEW controller suite {X}Filter/{X}MultiForm/{X}MultiGrid/
+  {X}Lookup + taken-qty tracking proc. SOURCE voucher tables are PARTITIONED
+  (m/d/i<ext>$YYYYMM). Pick when UR asks chuc nang lay du lieu / retrieve tu
+  chung tu nguon, theo doi da lay/con lai, phieu da lay het khong lay nua,
+  lay nhieu phieu 1 lan - it attaches to an existing voucher but CREATES
+  new controllers."
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}Filter.xml
+  - src: multiform.xml
+    dst: App_Data/Controllers/Filter/{new}MultiForm.xml
+  - src: multigrid.xml
+    dst: App_Data/Controllers/Grid/{new}MultiGrid.xml
+  - src: lookup.xml
+    dst: App_Data/Controllers/Lookup/{new}Lookup.xml
+  - src: retrieve.sql
+    dst: RetrieveTemp/{new}_retrieve.sql
+tokens:
+  "{{identity}}": "{new}"
+edit_guide: |
+  Template "lấy dữ liệu" (Retrieve / FlowMulti 1-nhiều phiếu) gắn lên voucher
+  ĐÍCH — suite mới {X}Filter/{X}MultiForm/{X}MultiGrid/{X}Lookup lấy chi tiết
+  từ voucher NGUồN có bảng PHÂN KỲ (m/d/i{ext}$YYYYMM).
+
+  new_name = prefix suite, vd UR "lấy từ phiếu PO1 lên phiếu LTB" →
+  new_name=LTBPO1 → LTBPO1Filter/LTBPO1MultiForm/LTBPO1MultiGrid/LTBPO1Lookup.
+
+  A. PLACEHOLDER {{...}} phải điền (xem unresolved_placeholders):
+  - Tiêu đề: {{title_filter_*}}, {{title_multiform_*}}, {{title_multigrid_*}},
+    {{subtitle_multigrid_*}} (giữ %d1/%d2 cho ngày lọc), {{title_lookup_*}},
+    {{title_filter_date_*}}, {{title_filter_so_*}}, {{src_taken_header_v/e}}.
+  - Nguồn (partitioned): {{src_ext}} = phần đuôi bảng (vd '64' cho m64$/d64$/
+    i64$/c64$); {{src_ma_ct}} = ma_ct nguồn; {{src_c_table}} = c{ext}$000000;
+    {{src_m_prefix}} = m{ext}$; {{src_i_prefix}} = i{ext}$.
+  - Theo dõi đã lấy: {{src_taken_col}} = cột SL đã lấy trên d{ext}$ (tạo bằng
+    fsd_addFields, vd 'sl_ycn'); {{src_qty_col}} = cột SL gốc (vd so_luong);
+    {{src_taken_sql_type}} (vd numeric(18,3)).
+  - Trạng thái: {{finding_status_arg}} (vd '2' hoặc '2, 3'),
+    {{filter_key_flow}} (vd status in (''2'')), {{multigrid_status_clause}}
+    (vd ' and m.status in (''2'')').
+  - Lookup: {{lookup_output_fields}}, {{lookup_select_fields}},
+    {{lookup_from_clause}} (mặc định join dmttct theo src_ma_ct);
+    {{lookup_detail_table}}/{{lookup_detail_alias}}/{{lookup_detail_remain_expr}}
+    — ĐỂ '' nếu UR không yêu cầu lọc số lượng còn lại trên lookup.
+  - Filter/transfer: {{filter_retrieve_fields}} (vd ma_nt; '' nếu không),
+    {{filter_none_message_v/e}}, {{f1}} (cột key map, mặc định 'so_luong0,
+    so_luong, stt_rec, stt_rec0, so_ct, line_nbr'), {{f2}} (cột SL + trường
+    vết), {{other_copy_field}} (dữ liệu kéo về: nhieu_dvt, he_so, ma_vt, dvt,
+    ngay_ct, ma_lo_ban, lo_yn...), {{multiform_transfer_js}} (khối JS transfer
+    — xem variant mặc định trong derive: lặp tagRow, appendRow, gọi
+    insert$RetrieveTagRow$Items + $func.setObjectWhen dvt).
+  - Đích: {{parent_controller}} = controller voucher đích (vd 'LTBTran'),
+    {{dest_parent_unit_field}} (vd ma_dvcs), {{dest_parent_date_field}}
+    (vd ngay_lct), {{dest_tran}}, {{dest_tran_detail}}, {{dest_d_table}},
+    {{dest_m_table}}, {{dest_line_qty_col}}, {{proc_name}} (chuẩn
+    fsd_FastBusiness$Voucher$BeforeAfterUpdate${Dest}From${Src}).
+  - Ngoại tệ: {{multigrid_ma_nt_field}} + {{multigrid_ma_nt_view}} — điền field
+    ma_nt chuẩn hoặc XÓA placeholder nếu phiếu không có NT.
+  - {{he_so_cols}}/{{he_so_cols_a}} trong retrieve.sql = ', he_so'/', a.he_so'
+    — chỉ khi quy đổi theo he_so, không thì xóa.
+
+  B. INCLUDE ENTITIES — project đích PHẢI có sẵn (check trước, thiếu thì clone
+  từ project mẫu bằng clone_things type=3):
+  Include/FlowMultiVoucher.ent, Include/CheckRelative.ent,
+  Include/XML/FlowFilterViews.txt, FlowFilterCommand.txt, FlowFilterCheck.txt,
+  Include/Javascript/FlowFilterCss.txt, FlowFilterFunction.txt,
+  Include/Filter.Voucher.ent, Include/Filter.Lookup.ent, Include/Grid.ent,
+  Include/FilterInitialize.xml, Include/FilterQuery.xml.
+
+  C. GLUE TRÊN VOUCHER ĐÍCH (không nằm trong suite):
+  1. Grid/{dest_tran_detail}.xml, on$Grid$ExecuteCommand:
+       case 'Retrieve':
+           if (f._action == 'View') break;
+           g.showForm('{new}Filter');
+           break;
+     (pattern: LTBDetail.xml → LTBPO1Filter)
+  2. Cùng file: thêm các trường vết {{stt_rec_src_col}}, {{stt_rec0_src_col}},
+     ... vào <fields> (width=0 hidden nếu không hiển thị) + <view id="Grid">.
+  3. Dir/{dest_tran}.xml: khai báo 4 entity VoucherBeforeUpdate /
+     VoucherAfterUpdate / UpdatefsdSttRecRef / DeletefsdSttRecRef trong
+     DOCTYPE (nội dung sẵn trong RetrieveTemp/{new}_retrieve.sql section 4)
+     rồi đặt &entity; vào command Updating/Inserted/Updated/Deleting —
+     &...; phải nằm NGOÀI <![CDATA[]]>.
+
+  D. SQL (RetrieveTemp/{new}_retrieve.sql) — sửa {{...}} rồi deploy TỪNG PHẦN:
+  1. fsd_addFields: cột {{src_taken_col}} trên d{ext}$ + trường vết trên
+     {{dest_d_table}} — KHÔNG viết ALTER TABLE tay.
+  2. CREATE PROC {{proc_name}} (Type '1' trừ / '2' cộng vào {{src_taken_col}}
+     theo kỳ parti từ ngay_ct của phiếu nguồn).
+  3. sysfilterdeclares cho '{new}MultiGrid' nếu MultiGrid dùng column filter.
+  4. Check: query_database query_type=3 (PARSEONLY) trước, rồi query_type=2.
+
+  E. RUNTIME: menu Retrieve → {new}Filter (số CT/ngày, AutoComplete
+  {new}Lookup) → {new}MultiForm → {new}MultiGrid (chỉ hiện dòng status đạt và
+  taken < qty; tick 'chon' + sửa so_luong0) → Nhận → insert$RetrieveTagRow$
+  Items đổ vào detail đích; proc cập nhật {{src_taken_col}} khi Insert/Update/
+  Delete → phiếu nguồn "lấy hết không hiện nữa" tự đúng.

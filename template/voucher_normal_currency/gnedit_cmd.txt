@@ -1,0 +1,7 @@
+select @stt_rec as stt_rec, @dept_id as dept_id, @ma_kh as ma_kh, @dien_giai as dien_giai, @ma_nk as ma_nk, @so_ct as so_ct,
+    @ngay_lct as ngay_lct, @ngay_ct as ngay_ct, @status as status, @t_so_luong as t_so_luong
+  into #editmaster
+
+#IF $d{{xt}}.NewValue &lt;&gt; $d{{xt}}.OldValue #THEN
+  select * into #editdetail from @d{{xt}}
+#END

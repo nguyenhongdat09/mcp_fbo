@@ -68,10 +68,17 @@ def _err(msg: str, code: str, start: float) -> dict[str, Any]:
             "elapsed_ms": round((time.perf_counter() - start) * 1000, 1)}
 
 
+def _expand_val(val: Any, new_name: str) -> str:
+    """Thay {new}/{new_lower}/{new_upper} trong token value."""
+    return (str(val).replace("{new_lower}", new_name.lower())
+            .replace("{new_upper}", new_name.upper())
+            .replace("{new}", new_name))
+
+
 def _expand(text: str, tokens: dict[str, str], new_name: str) -> str:
     """Thay {new} trong value rồi thay mọi {{token}} trong text."""
     for tok, val in tokens.items():
-        text = text.replace(tok, str(val).replace("{new}", new_name))
+        text = text.replace(tok, _expand_val(val, new_name))
     return text
 
 
@@ -134,7 +141,7 @@ def run_type4_template(
             continue
 
         rel_new = _expand(dst_rel.replace("\\", "/"), tokens, new_name)
-        rel_new = rel_new.replace("{new}", new_name)
+        rel_new = _expand_val(rel_new, new_name)
         dst = tgt_root / rel_new
         entry = {"src": src_rel, "dst": rel_new}
         if dst.exists() and not do_over:
@@ -148,7 +155,7 @@ def run_type4_template(
             except UnicodeDecodeError:
                 content = src.read_text(encoding="utf-8", errors="replace")
             for tok, val in tokens.items():
-                new_v = str(val).replace("{new}", new_name)
+                new_v = _expand_val(val, new_name)
                 n_rep += content.count(tok)
                 content = content.replace(tok, new_v)
             # token {{x}} còn sót = placeholder agent phải fill
@@ -188,8 +195,8 @@ def run_type4_template(
         "files": planned + skipped,
         "written": written,
         "unresolved_placeholders": sorted(unresolved),
-        "edit_guide": (manifest.get("edit_guide") or "")
-                      .replace("{new}", new_name),
+        "edit_guide": _expand_val(manifest.get("edit_guide") or "",
+                                  new_name),
         "warnings": warnings,
         "elapsed_ms": round((time.perf_counter() - start) * 1000, 1),
     }

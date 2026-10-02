@@ -200,6 +200,24 @@ def ensure_fresh_readonly_store(db_path: Path, graph_dir: Path) -> KuzuIndexStor
         
     return _store_cache[graph_dir_key]
 
+
+def _query_via_daemon(query_type: str, target: str, reference_file: str, kwargs: dict):
+    """Route query qua daemon named-pipe khi daemon song (auto-spawn neu vang).
+
+    Daemon la single-accessor cua file Kuzu: process nay khong mo DB, tranh
+    RO connection cross-process block writer. None = fallback local."""
+    try:
+        from xml_fbograph.service.daemon_client import daemon_rpc
+        return daemon_rpc(reference_file, {
+            "query_type": query_type,
+            "target": target,
+            "ref_file": str(reference_file),
+            "kwargs": kwargs,
+        }, autostart=True)
+    except Exception:
+        return None
+
+
 def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs) -> Dict[str, Any]:
     """
     HÀM TRUY VẤN DUY NHẤT cho XML FBOGraph.
@@ -212,6 +230,11 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
       folder_filter: str hoặc list, lọc theo thư mục (ví dụ: 'Dir' hoặc ['Dir', 'Grid'])
       type_filter: str hoặc list, lọc theo loại controller (ví dụ: 'dir' hoặc 'grid')
     """
+    # Uu tien daemon: giu 1 accessor duy nhat cho file Kuzu giua nhieu process
+    daemon_res = _query_via_daemon(query_type, target, reference_file, kwargs)
+    if daemon_res is not None:
+        return daemon_res
+
     # 1. Gate ensure_mcp_kuzu_ready (thieu Kuzu -> sync-build in-process)
     helper = ProjectPathHelper(reference_file)
     graph_dir = helper.get_graph_dir()
@@ -249,8 +272,10 @@ def xml_graph_query(query_type: str, target: str, reference_file: str, **kwargs)
 
 
     # 2. Load Graph và Kuzu Index (ưu tiên cache in-memory, auto reopen nếu mtime đổi)
+    # Cache key phai la str(graph_dir.resolve()) — khop voi key ghi trong
+    # ensure_fresh_readonly_store (path short-name 'WINDOW~1' se resolve ra ten day du).
     kuzu_store = ensure_fresh_readonly_store(db_path, graph_dir)
-    _, graph = _graph_cache[str(graph_dir)]
+    _, graph = _graph_cache[str(graph_dir.resolve())]
 
     # 3. Phân nhánh xử lý các kiểu query
     query_type = query_type.lower().strip()

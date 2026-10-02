@@ -1,0 +1,38 @@
+<![%Conditional.VoucherDeleteLog;[
+
+  <!ENTITY ListDeleted "">
+  <!ENTITY PostDeleted "">
+]]>
+<![%Conditional.Extender.List.{{x}}Tran;[
+  %Extender.List.Include;
+
+  <!ENTITY ListIndex "14">
+  <!ENTITY ListWidth "769">
+  <!ENTITY ListControlerName "{{x}}Tran">
+  <!ENTITY ListTabChange ", null">
+]]>
+
+<!ENTITY ListIndex "">
+<!ENTITY ListWidth "">
+<!ENTITY ListControlerName "">
+<!ENTITY ListTabChange "">
+
+<![%Conditional.Extender.Post.{{x}}Tran;[
+  %Extender.Post.Include;
+
+  <!ENTITY PostIdentity "stt_rec">
+  <!ENTITY PostIndex "15">
+  <!ENTITY PostOrder "5">
+  <!ENTITY PostWidth "769">
+  <!ENTITY PostDelta "41">
+  <!ENTITY PostController "{{x}}Tran">
+  <!ENTITY PostTabChange ", null">
+]]>
+
+<!ENTITY PostIdentity "">
+<!ENTITY PostIndex "">
+<!ENTITY PostOrder "">
+<!ENTITY PostWidth "">
+<!ENTITY PostDelta "">
+<!ENTITY PostController "">
+<!ENTITY PostTabChange "">

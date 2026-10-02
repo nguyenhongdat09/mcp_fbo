@@ -1,0 +1,186 @@
+name: voucher_approval_no_currency
+title_v: Chứng từ mới — CÓ duyệt, KHÔNG ngoại tệ (skeleton đầy đủ)
+jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) WITH an
+  approval flow (duyet/APV: Approval grid + filter + ApprovalItem + files +
+  kieu duyet 015xx) but WITHOUT foreign currency: Dir/Grid/Filter/Query/
+  Report/Detail/Approval controllers + Include/Extender + Revert.ent +
+  Fields Grid.ent + 2 Main aspx (voucher page + approval page) + SYS/APP
+  SQL skeleton. Pick when UR asks tao chung tu/voucher moi WITH duyet/
+  approval and WITHOUT ma_nt/ngoai te. NOT for: modifying an existing
+  voucher (use none), retrieve flow (retrieve_flow_*), voucher without
+  approval (voucher_normal_*), voucher with currency (*_currency)."
+files:
+  - src: dir_tran.xml
+    dst: App_Data/Controllers/Dir/{new}Tran.xml
+  - src: grid_tran.xml
+    dst: App_Data/Controllers/Grid/{new}Tran.xml
+  - src: filter_tran.xml
+    dst: App_Data/Controllers/Filter/{new}Tran.xml
+  - src: grid_detail.xml
+    dst: App_Data/Controllers/Grid/{new}Detail.xml
+  - src: grid_approval.xml
+    dst: App_Data/Controllers/Grid/{new}Approval.xml
+  - src: grid_approval_item.xml
+    dst: App_Data/Controllers/Grid/{new}ApprovalItem.xml
+  - src: grid_approval_files.xml
+    dst: App_Data/Controllers/Grid/{new}ApprovalFiles.xml
+  - src: filter_approval.xml
+    dst: App_Data/Controllers/Filter/{new}Approval.xml
+  - src: notify_tran.xml
+    dst: App_Data/Controllers/Notify/{new}Tran.xml
+  - src: query_tran.xml
+    dst: App_Data/Controllers/Query/{new}Tran.xml
+  - src: report_tran.xml
+    dst: App_Data/Controllers/Report/{new}Tran.xml
+  - src: extender
+    dst: App_Data/Controllers/Include/Extender.{new}Tran
+  - src: revert.ent
+    dst: App_Data/Controllers/Include/Revert.{new}Tran.ent
+  - src: fields_grid.ent
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Grid.ent
+  - src: field.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Field.txt
+  - src: view.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}View.txt
+  - src: extra_detail
+    dst: App_Data/Controllers/Include/Extra/Extra.{new}Detail
+  - src: gnedit_cmd.txt
+    dst: App_Data/Controllers/Include/Command/GNEditCheckTable{new}Tran.txt
+  - src: ref_fields.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceFields.txt
+  - src: ref_view.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceView.txt
+  - src: main_voucher.aspx
+    dst: Main/zc{new_lower}d.aspx
+  - src: main_approval.aspx
+    dst: Main/zcd{new_lower}d.aspx
+  - src: voucher.sql
+    dst: RetrieveTemp/{new}_voucher.sql
+tokens:
+  "{{x}}": "{new}"
+  "{{xt}}": "{new_lower}"
+edit_guide: |
+  Template CHỨNG TỪ MỚI variant CÓ duyệt + KHÔNG ngoại tệ — skeleton
+  strip-tối-thiểu port từ DDVTran (FBISP2421), bỏ nghiệp vụ tiệc/CTKM/
+  voucher mệnh giá/GNEdit. Mỗi file có comment TODO(…) đánh dấu chỗ phải sửa.
+
+  new_name = MÃ CHỨNG TỪ 3 ký tự (vd PLH → Dir/PLHTran.xml, bảng mplh$,
+  aspx zcPLHd.aspx + zcdPLHd.aspx). KHÔNG truyền 'PLHTran'.
+
+  A. INPUT cần hỏi/trích từ user trước khi fill:
+  - {{x}} (đã = new_name), {{title_v}}, {{title_e}}, {{title_upper_v/e}}
+  - {{apv_type}} — MÃ KIỂU DUYỆT MỚI dạng 015xx — KHÔNG copy mã của mẫu
+    (01511 DDV, 01531 LTB…): check gndmkieuduyet lấy mã 015xx còn trống
+  - {{apv_title_v/e}} — tiêu đề trang duyệt (vd 'Duyệt hợp đồng dịch vụ')
+  - {{ma_kh_v/e}}, {{ten_kh_v/e}} — đối tượng chính trên voucher + list duyệt
+  - {{ma_vt_v/e}}, {{ten_vt_v/e}} — mã/tên dòng detail
+  - {{so_ct_v/e}}, {{ngay_lct_v/e}}, {{ten_gd1_v/e}}, {{ong_ba_v/e}}, {{t_tien_v/e}}
+  - menu: {{menu_dir}}, {{menu_list}}, {{menu_parent}} (id dạng xx.yy.zz)
+  - {{DB_SYS}}, {{DB_APP}} — tên db hệ thống + db dữ liệu của project đích
+  - {{mau_ctrl}} — controller mẫu CÓ DUYỆT cùng project (vd DDVTran/LTBTran)
+  - {{mau_apv_ctrl}} — approval controller mẫu (vd DDVApproval) để clone
+    sysrelativeright/dmctduyet
+  - Quy ước bảng nếu KHÔNG phải m{x}$/d{x}$/c{x}$/i{x}$/a{x}$ (đổi toàn bộ)
+
+  B. BƯỚC 0.5 — CAPABILITY-CHECK (chống conflict phiên bản — BẮT BUỘC):
+  Ngoài danh sách core như voucher_normal_no_currency, variant DUYỆT cần thêm:
+  - Include/XML: APVXMLFields.txt, APVXMLViews.txt, APVXMLCategoryIndex.txt,
+    APVHistoryToolbar.xml, APVHistoryCss.txt, APVHistoryGetData.xml,
+    APVApprovalFilesGrid.txt
+  - Include/Command: APVInitExternalFieldsDeclare/Select.txt, APVCheckApprove.txt,
+    APVApprove.txt, APVMailApproveInsert/Update.txt, APVDelete.txt
+  - Include/Javascript: APVWhenVoucherCopying.txt, APVSetVoucherDefaultValue.txt,
+    APVSetReadOnlyFields.txt, APVHandleStatus.txt, APVAddStatus.txt,
+    APVFunctionScript.txt
+  - Include: APVComment.ent, PostNotifyApprovalVoucher.ent
+  - Notify deps (Notify/{X}Tran.xml — chỉ voucher duyệt mới có):
+    Include/XML/NotifyApprove.xml + NotifyContentCss.txt +
+    NotifyApproveComment.ent + APVComment.txt — thiếu → lỗi entity;
+    NotifyID phải trỏ {X}Approval
+  - Proc: FastBusiness$APV$GetApprovalRole, FastBusiness$APV$LoadApproval,
+    FastBusiness$App$GetApprovalKey, FastBusiness$APV$GetApprovalCategory —
+    CHỮ KÝ tham số khác nhau giữa phiên bản → đối chiếu proc thật
+  - Bảng: a{x}$ (lịch sử duyệt — BẮT BUỘC tạo), dmctduyet, gndmkieuduyet,
+    gndmloaiduyet, gndmttcttg, gndmquyenct, gnctkieuduyet, sysfileinfo (cho ApprovalFiles grid),
+    sysrelativeright (KHÔNG phải project nào cũng có — thiếu thì bỏ block
+    trong voucher.sql)
+  - Entity mới hơn (khai sẵn trong skeleton — project cũ thiếu thì include
+    đó không tham chiếu, để nguyên không hại): APVCheckCategory,
+    APVVisibleStatusNum, APVHiddenStatusNum, APVPrimeTable
+  - THIẾU file include APV → variant duyệt KHÔNG chạy được: clone file đơn
+    từ project có nó hoặc BÁO user chuyển sang voucher_normal_*.
+  - Include/HandleVoucherNumber.ent + .001/.002/.009 — skeleton dùng .001;
+    thiếu &HandleVoucherNumberUpdateGrandTable; → xóa khỏi AfterUpdate.
+  Lưới an toàn cuối: get_xml_entities checking từng file — undeclared = 0
+  (trừ %Extender.Include.{X}Tran; — resolve sau mục D).
+
+  C. SAU PASTE — sửa theo nghiệp vụ:
+  1. Fill unresolved_placeholders (mục A) — đặc biệt {{apv_type}} trong
+     Dir/{X}Tran.xml + Grid/{X}Approval.xml.
+  2. Dir/{X}Tran.xml: thêm field master; thêm tab lưới → file Grid/{X}{Tab}Detail.xml
+     + bảng d{x}{tab}$ + khai báo Inserting/Updating/Updated/Deleting;
+     APVCheckCategory đổi theo chiều duyệt (ma_dvcs/ma_bp/…); status 3/4 nếu
+     nghiệp vụ có (sửa cả APVVisibleStatusNum/APVHiddenStatusNum + dmttct).
+  3. Grid/{X}Approval.xml: cột list duyệt + join trong Loading/Finding —
+     ĐỔI 'a left join dmkh…' theo bảng join của chứng từ.
+  4. Grid/{X}ApprovalItem.xml: cột detail hiển thị khi duyệt + join
+     Loading/Finding (đang join dmvt — đổi theo bảng danh mục thật).
+  5. Grid/{X}ApprovalFiles.xml: chỉ giữ nếu project có sysfileinfo +
+     APVApprovalFilesGrid.txt; thiếu → XÓA file + xóa approvalAttachment div
+     trong main_approval.aspx.
+  6. Filter/{X}Approval.xml: tiêu chí lọc trang duyệt.
+  7. Checking/response: validation + actions theo UR.
+  8. voucher.sql: SCHEMA-CHECK từng bảng đích (query_database type=0);
+     clone row mẫu {{mau_ctrl}} rồi đổi mã — KHÔNG viết INSERT mù.
+     Nhớ tạo a{x}$ + Dynamic$AddTable 'a{x}$' (thiếu → duyệt không ghi lịch sử).
+
+  D. CONFIG CHUNG — chỉ APPEND, không overwrite:
+  - Include/Extender.ent: khai báo %Extender.Include.{X}Tran; CẢ nhánh List
+    lẫn Post — THIẾU → lỗi &ListTabChange;/&PostTabChange; undeclared
+  - Filter/Config/Initialize.xml: append 2 dòng — <controller
+    name="{X}Tran" group="Aggregation.Voucher"/> + <controller
+    name="{X}Approval" group="Aggregation.Approval"/> — clone cạnh mẫu
+  - Grid/Config/Aggregation.v: append <controller name="{X}Tran"
+    description="{title_e}"/> + <controller name="{X}Approval"
+    description="{apv_title_e}"/>
+  - Grid/Config/Include/Voucher.Controller.00x: file ĐÁNH SỐ .001-.006 —
+    append <controller name="{X}Tran" group="00x"/> vào ĐÚNG file chứa
+    controller mẫu (grep từng file tìm {mau_ctrl}; vd DDV ở .003)
+  - Options/Message.xml: APPEND action {X}Approval — clone block action
+    mẫu, đổi @voucherType='{{apv_type}}' + proc GN
+    FastBusiness$APV$PostAuthorize/UnPostAuthorize (KHÔNG PU$/SO$)
+  - Message.xml/post view của trang duyệt: page zcd{x}d.aspx render theo
+    div approvalMaster/Detail/Attachment — KHÔNG cần file riêng; nếu project
+    dùng Post.xml view cho tab 'Chứng từ hạch toán' thì đăng ký view Post
+    trong Grid/{X}Approval.xml theo mẫu.
+  - Query/{new}Tran.xml: block LocationID/LotID trong DOCTYPE +
+    &Query.LocationFields;/&Query.LotFields;/&Query.LocationFieldsName;/&Query.LotFieldsName;
+    la OPTIONAL — chi dung khi chi tiet co dims vi tri/lot (ma_vitri, ma_lo);
+    khong co thi XOA ca block + 4 entity ref (Query.ent mac dinh "")
+  - Include per-voucher (da ship skeleton):
+    Include/XML/Config/Fields/{X}Field.txt + {X}View.txt — cap nay duoc
+    {X}Grid.ent tro toi khi flag UserDefined.Fields ON (thiếu → loi entity);
+    skeleton mau field ma_vv AutoComplete + view — sua/xoa theo user-defined
+    fields thuc te. Include/Extra/Extra.{X}Detail — chi can khi
+    Grid/{X}Detail.xml khai %Extra.{X}Detail;+%Extra; va dung
+    &GridExtraToolbar*; (skeleton da strip → giu file cung khong hai).
+    Include/Command/GNEditCheckTable{X}Tran.txt — chi can khi dir_tran dung
+    %GNEdit; (skeleton da strip GNEdit); pattern select @cols into
+    #editmaster + #IF $d{x}.NewValue <> OldValue #THEN #editdetail.
+    Include/XML/{X}ReferenceFields.txt + {X}ReferenceView.txt — chi khi CT
+    co tracking ref nguon (fsdSttRecRef / stt_rec_ref); resolve theo ten
+    controller, khong khai entity tuong minh.
+  - sysfilterdeclares phải là m{x}$%Partition của CT mới — KHÔNG để mẫu cũ
+  - dmctduyet + gndmkieuduyet + gndmloaiduyet {{apv_type}} — bắt buộc trước khi test duyệt
+  - KHÔNG tạo Structure/App/*.xml — hệ thống tự sinh khi đăng ký bảng
+
+  E. VERIFY (bắt buộc trước khi báo xong):
+  - get_xml_entities checking TỪNG file XML — undeclared_entities = 0
+  - read_local_file read_option=3 — js.parse_status=ok, sql.parse_status=ok
+  - query_database query_type=3 PARSEONLY file voucher.sql (bỏ qua 1059)
+  - search literal mã mẫu còn sót ('DDV', 'dddv', 'mddv', '01511'…) trong file {X}
+  - search 'ma_nt|ty_gia|_nt' — variant không NT chỉ được có ẩn ''/1 + comment
+  - Check đủ: &APVApprove; ở cả Inserted+Updated, &APVCheckApprove; ở
+    Inserting+Updating, &APVDelete; ở Deleting, APVXML* ở fields+views
+  - Nhắc user: F5 chạy voucher.sql → khai quyển số v20dmctnk → phân quyền
+    kiểu duyệt (sysrelativeright/gnctkieuduyet) → test luồng duyệt UI

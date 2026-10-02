@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!DOCTYPE grid [
+  <!ENTITY CommandWhenVoucherBeforeInit SYSTEM "..\Include\Command\WhenVoucherBeforeInit.txt">
+  <!ENTITY CommandWhenVoucherBeforeAddNew SYSTEM "..\Include\Command\WhenVoucherBeforeAddNew.txt">
+  <!ENTITY CommandWhenVoucherAfterInit SYSTEM "..\Include\Command\WhenVoucherAfterInit.txt">
+  <!ENTITY XMLStandardVoucherToolbar SYSTEM "..\Include\XML\StandardVoucherToolbar.xml">
+
+  <!ENTITY QueryID "{{x}}Tran">
+  <!ENTITY QueryScript SYSTEM "..\Include\Javascript\Query.txt">
+  <!ENTITY QueryExecuteCommand SYSTEM "..\Include\Javascript\QueryExecuteCommand.txt">
+  <!ENTITY QueryToolbar SYSTEM "..\Include\XML\QueryToolbar.xml">
+  <!ENTITY QueryCss SYSTEM "..\Include\Javascript\QueryCss.txt">
+
+  <!ENTITY % Control.Filter SYSTEM "..\Include\Filter.Voucher.ent">
+  %Control.Filter;
+
+  <!ENTITY % FlowMultiVoucher SYSTEM "..\Include\FlowMultiVoucher.ent">
+  %FlowMultiVoucher;
+
+  <!ENTITY VisibleFieldController "">
+  <!ENTITY % VoucherVisibleField SYSTEM "..\Include\VoucherVisibleField.ent">
+  %VoucherVisibleField;
+]>
+
+<grid table="m{{xt}}$000000" code="stt_rec" order="ngay_ct, so_ct" type="Voucher" id="{{x}}" uniKey="true" xmlns="urn:schemas-fast-com:data-grid">
+  <title v="{{title_v}}" e="{{title_e}}"></title>
+  <subTitle v="Cập nhật {{title_v}}: thêm, sửa, xóa..." e="Add New, Edit, Delete {{title_e}}..."></subTitle>
+  <partition table="c{{xt}}$000000" prime="m{{xt}}$" inquiry="i{{xt}}$" field="ngay_ct" expression="convert(char(6), {0}, 112)" increase="dateadd(month, 1, {0})" default="000000"/>
+
+  <fields>
+    <field name="stt_rec" isPrimaryKey="true" width="0" hidden="true">
+      <header v="" e=""></header>
+    </field>
+    <field name="ma_dvcs" width="100" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="Đơn vị" e="Unit"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <field name="ngay_ct" type="DateTime" dataFormatString="@datetimeFormat" width="100" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="Ngày" e="Date"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <field name="so_ct" width="100" align="right" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="Số" e="Number"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <field name="ma_kh" width="100" aliasName="a" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="{{ma_kh_v}}" e="{{ma_kh_e}}"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <field name="ten_kh%l" width="300" external="true" aliasName="b" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="Tên khách" e="Customer Name"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <field name="dien_giai" width="300" allowFilter="&GridVoucherAllowFilter;" allowSorting="&GridVoucherAllowSorting;">
+      <header v="Diễn giải" e="Description"></header>
+      <query>&InsertCommandFilter;</query>
+    </field>
+    <!-- TODO(field): thêm field master hiển thị trên list -->
+  </fields>
+
+  <views>
+    <view id="Grid">
+      <field name="stt_rec"/>
+      <field name="ma_dvcs"/>
+      <field name="ngay_ct"/>
+      <field name="so_ct"/>
+      <field name="ma_kh"/>
+      <field name="ten_kh%l"/>
+      <field name="dien_giai"/>
+    </view>
+  </views>
+
+  <commands>
+    <command event="Showing">
+      <text>
+        <![CDATA[
+declare @message nvarchar(4000)
+select @message = ''
+]]>&VisibleFieldGridShowing;<![CDATA[
+select @message as message
+return
+]]>
+      </text>
+    </command>
+
+    <command event="Loading">
+      <text>
+        &CommandWhenVoucherBeforeInit;
+        <![CDATA[
+select @message = @message + 'load$Grid(this);'
+]]>
+        &CommandWhenVoucherBeforeAddNew;
+        &CommandWhenVoucherAfterInit;
+      </text>
+    </command>
+  </commands>
+
+
+  <script>
+    <text>
+      <![CDATA[/* <flatten type="Javascript"> */
+function load$Grid(g) {
+  g.add_commandEvent(on$Grid$ExecuteCommand);
+}
+function dispose$Grid(g) {
+  try {g.remove_commandEvent(on$Grid$ExecuteCommand);} catch (ex) {}
+}
+/* </flatten> */
+function on$Grid$ExecuteCommand(sender, e) {
+  var action = e.type.Action, g = sender, id = g.get_id();
+  switch (action) {
+    ]]>&QueryExecuteCommand;<![CDATA[
+    default:
+      break;
+  }
+}
+]]>
+      &QueryScript;
+      &FlowMultiScript;
+      &VisibleFieldScript;
+    </text>
+  </script>
+
+  <queries>
+    <query event="Loading">
+      <text>
+        <![CDATA[exec FastBusiness$App$Voucher$Loading
+@@id, @@master, @@prime, @@partition, @@expression, @@extension, @@pageCount, 'stt_rec', @@textList, @@textExternal, 'a left join dmkh b on a.ma_kh = b.ma_kh', @@textOrderBy, @@admin, @@userID, @@viewAccessMode, 0, @@queryString]]>
+      </text>
+    </query>
+
+    <query event="Declare">
+      <text>&DeclareCommandFilter;</text>
+    </query>
+
+    <query event="Finding">
+      <text>
+        <![CDATA[exec FastBusiness$App$Voucher$Finding
+@@id, @@master, @@prime, @@inquiry, @@partition, @@expression, @@increase, @@extension, @@refresh, @@pageIndex, @@pageCount, @@lastPage, @@lastCount, @@firstItem, @@lastItem,
+@@keyMaster, @@keyDetail, 'stt_rec', @@textList, @@textExternal,
+'a left join dmkh b on a.ma_kh = b.ma_kh', @@textOrderBy, @@admin, @@userID, @@viewAccessMode,
+@ngay_ct1, @ngay_ct2, @so_ct1, @so_ct2, @status, @user_id0, @ma_dvcs]]>
+      </text>
+    </query>
+  </queries>
+
+  <css>
+    <text>
+      &QueryCss;
+    </text>
+  </css>
+
+  <toolbar>
+    <button command="New">
+      <title v="Toolbar.New" e="Toolbar.New"></title>
+    </button>
+    <button command="Edit">
+      <title v="Toolbar.Edit" e="Toolbar.Edit"></title>
+    </button>
+    <button command="Delete">
+      <title v="Toolbar.Delete" e="Toolbar.Delete"></title>
+    </button>
+    <button command="Search">
+      <title v="Toolbar.Search" e="Toolbar.Search"></title>
+    </button>
+    <button command="View">
+      <title v="Toolbar.View" e="Toolbar.View"></title>
+    </button>
+    <button command="Print">
+      <title v="Toolbar.Print" e="Toolbar.Print"></title>
+    </button>
+
+    &QueryToolbar;
+
+    <button command="-">
+      <title v="-" e="-"/>
+    </button>
+
+    <button command="Freeze">
+      <title v="Toolbar.Freeze" e="Toolbar.Freeze"></title>
+    </button>
+  </toolbar>
+</grid>

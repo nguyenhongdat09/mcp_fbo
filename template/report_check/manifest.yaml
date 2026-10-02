@@ -1,0 +1,44 @@
+name: report_check
+title_v: Báo cáo check-chọn dòng (tag) + nút xử lý / in theo dòng đã tick
+jev_desc: "Listing report whose Grid has a check-box 'tag' column to SELECT
+  ROWS: toolbar buttons process checked rows (g.request + response.action
+  server SQL) and/or print exports ONLY checked rows via @$keys +
+  fsd_StringToTable - ONLY for new-creation requests"
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}.xml
+  - src: grid.xml
+    dst: App_Data/Controllers/Grid/{new}.xml
+  - src: report.xml
+    dst: App_Data/Controllers/Report/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
+tokens:
+  "{{controller}}": "{new}"
+  "{{proc}}": "rs_{new}"
+  "{{proc_print}}": "rs_{new}Print"
+  "{{title_v}}": "{new}"
+  "{{title_e}}": "{new}"
+  "{{title_v_upper}}": "{new}"
+  "{{title_e_upper}}": "{new}"
+edit_guide: |
+  Sau khi clone_things type=4:
+  1. Viết proc {{proc}} (rs_{new}): đổ recordset vào '#$query' — PHẢI trả
+     thêm cột `tag` (cast(0 as bit) as tag) + các field khóa name_key_*
+     (đổi thành tên thật, vd stt_rec).
+  2. Grid: đổi name_key_*/g._$i theo khóa thật; g._$only_one=1 nếu chỉ
+     cho chọn 1 dòng.
+  3. Nút xử lý: đổi Action1/Action2 (toolbar button command + case trong
+     on$GridReport$ExecuteCommand + <action id> trong <response> — 3 chỗ
+     phải trùng nhau); viết SQL xử lý #keys trong mỗi action; thêm/bớt
+     nút theo UR; đổi icon trong <css>.
+  4. In theo dòng chọn: giữ field `keys` trong Filter + init$ExportKey
+     trong grid JS + <query> trong Report; viết proc {{proc_print}}
+     (rs_{new}Print) đọc #_lst_keys. NẾU KHÔNG in theo dòng chọn: xóa
+     field keys (filter), g._$f/init$ExportKey (grid), <query> (report).
+  5. NẾU chỉ in không có nút xử lý: xóa 2 button Action trong toolbar,
+     on$GridReport$ExecuteCommand/ResponseComplete, block <response>+css.
+  6. Đổi {{proc}} prefix nếu project dùng zc_ thay rs_.
+  7. Main/{new}.aspx là ENTRY POINT mở báo cáo (ReportExtender
+     Controller={new}) — BẮT BUỘC phải có, KHÔNG được bỏ qua.
+  8. Đăng ký menu thủ công trỏ tới Main/{new}.aspx.

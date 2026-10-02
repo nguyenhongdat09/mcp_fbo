@@ -11,6 +11,7 @@ a = Analysis(
         ('query_database/object_catalog/queries', 'query_database/object_catalog/queries'),
         ('xml_fbograph/kuzu_build.txt', 'xml_fbograph'),
         ('template', 'template'),
+
         # config_jev.xml / config_jev.yaml intentionally NOT in datas
         # (per-machine entitlement file, xin riêng — không ship trong dist)
     ],

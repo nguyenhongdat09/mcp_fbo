@@ -8,6 +8,8 @@ files:
     dst: App_Data/Controllers/Grid/{new}.xml
   - src: report.xml
     dst: App_Data/Controllers/Report/{new}.xml
+  - src: main.aspx
+    dst: Main/{new}.aspx
 tokens:
   "{{controller}}": "{new}"
   "{{proc}}": "rs_{new}"
@@ -24,4 +26,6 @@ edit_guide: |
   3. pv_* trong report.xml = header cột pivot động trên file in;
      file in (.rpt/.xlsx) thiết kế ngoài — KHÔNG có trong template.
   4. Đổi {{proc}} prefix nếu project dùng zc_ thay rs_.
-  5. Đăng ký menu thủ công.
+  5. Main/{new}.aspx là ENTRY POINT mở báo cáo (ReportExtender
+     Controller={new}) — BẮT BUỘC phải có, KHÔNG được bỏ qua.
+  6. Đăng ký menu thủ công trỏ tới Main/{new}.aspx.

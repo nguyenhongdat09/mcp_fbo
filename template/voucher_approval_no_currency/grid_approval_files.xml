@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!DOCTYPE grid [
+  <!ENTITY ParentController "{{x}}Tran">
+  <!ENTITY GeneralTable "c{{xt}}$000000">
+  <!ENTITY APVApprovalFilesGrid SYSTEM "..\Include\XML\APVApprovalFilesGrid.txt">
+]>
+
+<grid table="sysfileinfo" code="syskey" order="syskey, line_nbr" type="Detail" freezeColumns="3" id="{{x}}" xmlns="urn:schemas-fast-com:data-grid">
+  <title v="" e=""></title>
+  <subTitle v="" e=""></subTitle>
+  <partition table="sysfileinfo" prime="d{{xt}}$" inquiry="i{{xt}}$" field="ngay_ct" expression="convert(char(6), {0}, 112)" increase="dateadd(month, 1, {0})" default="000000"/>
+  &APVApprovalFilesGrid;
+</grid>

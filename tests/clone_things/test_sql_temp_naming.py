@@ -31,6 +31,8 @@ def test_create_sql_temp_file(tmp_path):
     f1 = create_sql_temp_file("vlotus_sp228", str(tmp_path))
     assert Path(f1).name == "vlotus_sp228.sql"
     assert Path(f1).exists()
+    # File .sql mới tạo luôn có UTF-8 BOM
+    assert Path(f1).read_bytes().startswith(b"\xef\xbb\xbf")
 
     f2 = create_sql_temp_file("vlotus_sp228", str(tmp_path))
     assert Path(f2).name == "vlotus_sp228 (2).sql"

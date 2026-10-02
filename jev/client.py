@@ -17,7 +17,8 @@ def post_systemone(cfg: dict, state, questions: dict) -> dict:
     }
     req = urllib.request.Request(
         url,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        data=json.dumps(payload, ensure_ascii=False,
+                        separators=(",", ":")).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {cfg['api_key']}",
             "Content-Type": "application/json",

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE query [
+  <!ENTITY Config SYSTEM "Config.xml">
+  <!ENTITY % Query SYSTEM "Query.ent">
+  %Query;
+
+  <!ENTITY LocationID "2004">
+  <!ENTITY LocationTable "20">
+  <!ENTITY LocationNameID "7005">
+  <!ENTITY LocationNameTable "70">
+  <!ENTITY LocationText "Location">
+
+  <!ENTITY LotID "2005">
+  <!ENTITY LotTable "20">
+  <!ENTITY LotNameID "7006">
+  <!ENTITY LotNameTable "70">
+
+  <!ENTITY TableName "d{{xt}}**partition">
+]>
+
+<query prime="m{{xt}}$" field="ngay_ct" order="m0.ngay_ct, m0.so_ct" defaultFilter="false" xmlns="urn:schemas-fast-com:data-query">
+  <title v="{{title_v}}" e="{{title_e}}"/>
+
+  <filterTitle v="Danh sách điều kiện lọc" e="Filter List"/>
+  <filterSubTitle v="Kéo thả các trường để thêm vào danh sách" e="Drag and drop to add fields to the list"/>
+
+  <previewTitle v="Số liệu" e="Data"/>
+  <previewSubTitle v="Xem, kết xuất thông tin dưới dạng tệp bảng tính..." e="View, Export the data as a spreadsheet file..."/>
+
+  <format>
+    &Config;
+    <type name="AllowNulls" value="true"></type>
+    <type name="ColumnList" value="1003,1006,1018,1019,1020,1029,1032,1033,2000,2001,2002,2003,2009"></type>
+    <type name="GroupList" value=""></type>
+    <type name="FilterList" value="1001,1002"></type>
+    <type name="OnProcessFailure" value="parent.on${{x}}Tran$OnProcessFailure({0});"></type>
+  </format>
+
+  <commands>
+    <command event="Initialize">
+      <text>
+        &Initialize;
+      </text>
+    </command>
+
+    <command event="InitExternalFields">
+      <text>
+        &InitExternalFields;
+      </text>
+    </command>
+  </commands>
+
+  <data>
+    <tables>
+      <table id="10" parentID="" name="m{{xt}}$$partition" controller="" key="stt_rec" type="1" prime="true" distinctField="stt_rec">
+        <title v="Thông tin chung" e="General Information"/>
+      </table>
+      <table id="20" parentID="" name="d{{xt}}$$partition" controller="" key="stt_rec" type="1" distinctField="stt_rec, [stt_rec0]">
+        <title v="Thông tin chi tiết" e="Detail Information"/>
+      </table>
+      <table id="70" parentID="" name="d{{xt}}$$partition" controller="" key="stt_rec" type="1" distinctField="stt_rec, [stt_rec0]">
+        <title v="Khác" e="Other"/>
+      </table>
+    </tables>
+
+    <columns>
+      <column id="1001" tableID="10" name="ngay_ct" aliasName="{0}.ngay_ct" dataType="smalldatetime" dataFormatString="@datetimeFormat" width="120" allowNulls="false" allowRemove="false" hidden="true" defaultOperation="c6" defaultValue="new Date(new Date().getFullYear(), new Date().getMonth(), 1)">
+        <title v="Ngày từ" e="Date From"/>
+      </column>
+      <column id="1002" tableID="10" name="ngay_ct" aliasName="{0}.ngay_ct" dataType="smalldatetime" dataFormatString="@datetimeFormat" width="120" allowNulls="false" allowRemove="false" hidden="true" defaultOperation="c5" defaultValue="new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)">
+        <title v="Ngày đến" e="Date To"/>
+      </column>
+
+      <column id="1003" tableID="10" name="ma_dvcs" dataType="char" width="120" dataFormatString="@upperCaseFormat" defaultOperation="c7" pivot="0">
+        <title v="Đơn vị" e="Unit"/>
+      </column>
+      <column id="1006" tableID="10" name="ngay_ct" dataType="smalldatetime" dataFormatString="@datetimeFormat" width="120">
+        <title v="Ngày lập" e="Voucher Date"/>
+      </column>
+      <column id="1018" tableID="10" name="so_ct" dataType="char" align="right" maxLength="&MaxLengthVoucherNumber;" width="120" dataFormatString="@upperCaseFormat" pivot="0">
+        <title v="Số chứng từ" e="Voucher Number"/>
+      </column>
+      <column id="1019" tableID="10" name="ma_kh" dataType="char" width="120" dataFormatString="@upperCaseFormat" pivot="0">
+        <title v="{{ma_kh_v}}" e="{{ma_kh_e}}"/>
+      </column>
+      <column id="1020" tableID="10" name="ten_kh%l" dataType="nvarchar" width="300" external="true" chart="1" mapping="m{{xt}}**partition.ma_kh$dmkh.ma_kh">
+        <title v="Tên khách" e="Customer Name"/>
+      </column>
+      <column id="1029" tableID="10" name="dien_giai" dataType="nvarchar" width="300" pivot="0">
+        <title v="Diễn giải" e="Memo"/>
+      </column>
+      <column id="1032" tableID="10" name="status" width="80" dataType="char">
+        <title v="Trạng thái" e="Status" />
+      </column>
+      <column id="1033" tableID="10" name="statusname%l" width="120" dataType="nvarchar" external="true" mapping="ma_ct#status$dmttct.ma_ct#status" chart="1">
+        <title v="Tên trạng thái" e="Status Name" />
+      </column>
+      <column id="1036" tableID="10" name="t_so_luong" dataType="numeric" align="right" width="120" dataFormatString="@quantityInputFormat" aggregate="Sum">
+        <title v="Tổng số lượng" e="Total Quantity"/>
+      </column>
+      <column id="1045" name="datetime0" tableID="10" dataType="smalldatetime" aliasName="cast({0}.datetime0 as smalldatetime)" dataFormatString="dd/MM/yyyy HH:mm" align="center" width="150">
+        <title v="Ngày tạo" e="Created Date" />
+      </column>
+      <column id="1046" name="datetime2" tableID="10" dataType="smalldatetime" aliasName="cast({0}.datetime2 as smalldatetime)" dataFormatString="dd/MM/yyyy HH:mm" align="center" width="150">
+        <title v="Ngày sửa" e="Modified Date" />
+      </column>
+      <column id="1047" name="user_id0" tableID="10" aliasName="{0}.name" dataFormatString="@upperCaseFormat" dataType="char" width="120" external="true" mapping="user_id0$vsysuserinfo.id" chart="1">
+        <title v="Người tạo" e="Created By" />
+      </column>
+      <column id="1048" name="user_id2" tableID="10" aliasName="{0}.u_name" dataFormatString="@upperCaseFormat" dataType="char" width="120" external="true" mapping="user_id2$vsysuser.u_id" chart="1">
+        <title v="Người sửa" e="Modified By" />
+      </column>
+
+      <!-- TODO(query): thêm column master nghiệp vụ (1xxx) + detail (2xxx) + tên ngoài (7xxx) -->
+
+      <column id="2000" tableID="20" name="ma_vt" dataType="char" width="120" dataFormatString="@upperCaseFormat"  pivot="0">
+        <title v="{{ma_vt_v}}" e="{{ma_vt_e}}"/>
+      </column>
+      <column id="2001" tableID="20" name="ten_vt%l" dataType="nvarchar" width="300" external="true" chart="1" mapping="d{{xt}}**partition.ma_vt$dmvt.ma_vt">
+        <title v="Tên mặt hàng" e="Item Description"/>
+      </column>
+      <column id="2002" tableID="20" name="dvt" dataType="nvarchar" align="left" width="50">
+        <title v="Đvt" e="UOM"/>
+      </column>
+      <column id="2003" tableID="20" name="ma_kho" dataType="char" width="120" dataFormatString="@upperCaseFormat" defaultOperation="c7" pivot="0">
+        <title v="Mã kho" e="Site"/>
+      </column>
+      &Query.LocationFields;
+      &Query.LotFields;
+      <column id="2009" tableID="20" name="so_luong" dataType="numeric" align="right" width="80" dataFormatString="@quantityInputFormat" aggregate="Sum">
+        <title v="Số lượng" e="Quantity"/>
+      </column>
+    </columns>
+
+    <column id="7000" tableID="70" name="ten_kho%l" dataType="nvarchar" width="300" external="true" chart="1" mapping="d{{xt}}**partition.ma_kho$dmkho.ma_kho">
+      <title v="Tên kho" e="Site Name"/>
+    </column>
+    &Query.LocationFieldsName;
+    &Query.LotFieldsName;
+  </data>
+</query>

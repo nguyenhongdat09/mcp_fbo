@@ -56,6 +56,8 @@ from .type1_flow import execute_type1_flow
 from .type2_data_clone import execute_type2_data_clone
 from .type3_file_clone import run_type3_file_clone
 from .type4_template import run_type4_template
+from .type5_new_sql_file import run_type5_new_sql_file
+from .type6_save_as import run_type6_save_as
 
 logger = logging.getLogger("clone_things")
 
@@ -95,12 +97,14 @@ def clone_things(
     - type=2: Clone DATA — DELETE FROM <table> WHERE <where> + INSERT INTO từng dòng ra file .sql.
     - type=3: Copy file bất kỳ (relative, list, glob, preset) từ project_source sang project_target.
     - type=4: Paste template suite đóng gói sẵn (template/<name>/) vào project_target — đổi tên file + rewrite token nội dung theo manifest. object='?' để list template.
+    - type=5: Tạo file .sql temp rỗng (UTF-8 BOM) trong sql_temp_folder để viết script tay — object không bắt buộc, project_source bắt buộc.
+    - type=6: Save-as — clone chức năng có sẵn theo title hoặc tên controller. object="saveas:<ctrl|title>-><new_ctrl>"; clone suite file (delegate type=3) + export proc ra .sql temp.
 
     Args:
         object: Tên object SQL hoặc path .xml controller (hoặc file/glob/preset cho type=3)
         project_source: Absolute path tới project FBO nguồn
         project_target: Absolute path tới project FBO đích (bắt buộc với type=0; type=3 được để trống khi clone trong cùng project_source; bỏ qua khi type=1)
-        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone, 4 = paste template bundled vào project_target
+        type: 0 = SQL clone giữa 2 project (mặc định), 1 = paste-for-edit, 3 = file clone, 4 = paste template bundled vào project_target, 5 = tạo file .sql temp rỗng, 6 = save-as chức năng có sẵn
         path_to_pasted: File .sql để append; để trống = tự tạo temp và mở editor
         schema: Schema mặc định (default: "dbo")
         db_type: Ưu tiên lookup — "app" (app→sys) hoặc "sys" (sys→app). Mặc định luôn quét cả hai DB.
@@ -163,14 +167,14 @@ def clone_things(
         )
 
     # 1. Validation
-    if type not in (0, 1, 2, 3):
+    if type not in (0, 1, 2, 3, 5, 6):
         logger.warning("Unsupported type requested: %s", type)
         return {
             "success": False,
             "spec_version": "1.0",
             "type": type,
             "error_code": "unsupported_type",
-            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), type=2 (data clone), type=3 (file clone), and type=4 (template paste) are supported",
+            "message": f"type={type} not implemented; only type=0 (SQL clone), type=1 (paste-for-edit), type=2 (data clone), type=3 (file clone), type=4 (template paste), type=5 (new sql file), and type=6 (save-as) are supported",
             "path_to_pasted": None,
             "cloned": [],
             "skipped_exists": [],
@@ -207,7 +211,7 @@ def clone_things(
                 "warnings": warnings,
             }
 
-    if not data_mode and (not object or not str(object).strip()):
+    if not data_mode and type != 5 and (not object or not str(object).strip()):
         logger.warning("Empty object parameter provided")
         err_res: dict[str, Any] = {
             "success": False,
@@ -380,14 +384,14 @@ def clone_things(
                 "not_found_both": [],
             }
             return err_res
-    elif type == 3 and not data_mode:
+    elif type in (3, 6) and not data_mode:
         if project_target and str(project_target).strip():
             if not Path(project_target).is_absolute():
                 logger.warning("project_target is not an absolute path: %s", project_target)
                 return {
                     "success": False,
                     "spec_version": "1.0",
-                    "type": 3,
+                    "type": type,
                     "error_code": "invalid_project_target",
                     "message": f"project_target must be an absolute path: {project_target}",
                     "path_to_pasted": None,
@@ -442,6 +446,34 @@ def clone_things(
             copy_filter=copy_filter,
             list_presets=list_presets,
             planned_sample_size=planned_sample_size,
+            warnings=warnings,
+            start_time=start_time,
+        )
+    elif type == 6:
+        result = run_type6_save_as(
+            object=object,
+            project_source=project_source,
+            project_target=project_target,
+            execute=execute_clone if execute_clone is not None else execute,
+            overwrite=overwrite,
+            confirm_overwrite=confirm_overwrite,
+            expand_dirs=expand_dirs,
+            max_files=max_files,
+            schema=schema,
+            open_file=open_file,
+            open_editor_cmd=open_editor_cmd,
+            config=config,
+            warnings=warnings,
+            start_time=start_time,
+        )
+    elif type == 5:
+        result = run_type5_new_sql_file(
+            object=object,
+            project_source=project_source,
+            path_to_pasted=path_to_pasted,
+            open_file=open_file,
+            open_editor_cmd=open_editor_cmd,
+            config=config,
             warnings=warnings,
             start_time=start_time,
         )

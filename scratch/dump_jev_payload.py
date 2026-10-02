@@ -21,14 +21,14 @@ from tool_help.cards import TASK_TYPE_CATALOG, REQUIREMENT_TYPE_CATALOG
 # ===================== DÁN STEPS VÀO ĐÂY =====================
 STEPS_JSON = """
 [
-    "Đọc file Grid/DDVDetail.xml quanh field dvt và action Item/UOM để xem lookup đơn vị tính",
-    "Đọc file Grid/SVDetail.xml quanh field dvt, nhieu_dvt và handle so sánh với DDVDetail",
-    "Tìm file controller UOMItem trong project",
-    "Check cột dvt, nhieu_dvt của bảng dmvt và view vdmvtqddvt cho mã vật tư TTU1"
+    "Kiểm tra dữ liệu thực tế các trái phiếu có sẵn trong bảng dmvt và tồn kho cdvt trong database",
+    "Tạo kịch bản test dữ liệu mẫu trái phiếu đáo hạn và tồn kho để kiểm thử",
+    "Chạy test thử nghiệm thủ tục báo cáo rs_zccndhctp và tạo xóa chứng từ zc_zccndhctp_CreateVoucher zc_zccndhctp_DeleteVoucher",
+    "Viết toàn bộ script SQL test và dữ liệu test vào file c:\\\\Users\\\\Windows 10\\\\.gemini\\\\config\\\\skills\\\\SQL Temp\\\\chubb_sp2264 (8).sql"
 ]
 """
 # UR nguyên văn (optional, để "" nếu không có)
-TASK_REQUIREMENT = ""
+TASK_REQUIREMENT = """Xem trong database có case dữ liệu trái phiếu nào không, tạo dữ liệu mẫu nếu chưa có để test toàn bộ chức năng đáo hạn trái phiếu (báo cáo rs_zccndhctp, tạo phiếu xuất kho zc_zccndhctp_CreateVoucher, kiểm tra sổ kho r70, sổ cái ct00, trường pxa_created_yn, và xóa phiếu xuất kho zc_zccndhctp_DeleteVoucher). Viết toàn bộ SQL vào c:\\Users\\Windows 10\\.gemini\\config\\skills\\SQL Temp\\chubb_sp2264 (8).sql"""
 # ============================================================
 
 steps = _normalize_steps(tuple(json.loads(STEPS_JSON)))

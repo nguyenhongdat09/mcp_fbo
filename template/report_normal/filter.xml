@@ -138,8 +138,17 @@ function on$Filter$ResponseComplete(sender, e) {
   var f = e.object, context = e.type.Context, result = e.type.Result;
   switch (context) {
     case 'Checking':
-      var g = f.grid;
+      var g = f.grid, v = f._language == 'v';
       g._alterTitle = [null, [['%d1', f.getItem('tu_ngay').value, true], ['%d2', f.getItem('den_ngay').value, true]]];
+      g._hiddenFields = [
+        // TODO: {Fields: 'f1,f2', Value: true/false} — ẩn cột grid theo điều kiện; để [] nếu không dùng
+      ];
+      g._hiddenForms = [
+        // TODO: chọn layout form theo ngôn ngữ — vd {Form: [4], Value: v}, {Form: [3], Value: !v}
+        // (bỏ comment + sửa Form ids theo report thật; để [] nếu không dùng)
+      ];
+      g._queryFilterString = getQueryFilterString(f, 'TODO_field_list');  // TODO: liệt kê field lọc truyền xuống grid
+      remove$GridReport$Filter(g);
       if (f._hidden$GridForm) g._grid$IdHidden$FormReport = f._hidden$GridForm;
       break;
     default:

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<grid table="d{{xt}}$000000" code="stt_rec" order="stt_rec, line_nbr" type="Detail" freezeColumns="3" id="{{x}}" xmlns="urn:schemas-fast-com:data-grid">
+  <title v="" e=""></title>
+  <subTitle v="" e=""></subTitle>
+  <partition table="d{{xt}}$000000" prime="d{{xt}}$" inquiry="i{{xt}}$" field="ngay_ct" expression="convert(char(6), {0}, 112)" increase="dateadd(month, 1, {0})" default="000000"/>
+  <fields>
+    <!-- TODO(cột duyệt chi tiết): liệt kê cột detail hiển thị khi duyệt (read-only) -->
+    <field name="ma_vt" allowNulls="false" width="100" aliasName="a">
+      <header v="{{ma_vt_v}}" e="{{ma_vt_e}}"></header>
+    </field>
+    <field name="ten_vt%l" readOnly="true" external="true" defaultValue="''" inactivate="true" width="300" aliasName="b">
+      <header v="{{ten_vt_v}}" e="{{ten_vt_e}}"></header>
+    </field>
+    <field name="dvt" width="50" aliasName="a">
+      <header v="Đvt" e="UOM"></header>
+    </field>
+    <field name="so_luong" type="Decimal" dataFormatString="@quantityInputFormat" clientDefault="0" width="80">
+      <header v="Số lượng" e="Quantity"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="tien" type="Decimal" dataFormatString="@baseCurrencyAmountViewFormat" clientDefault="0" readOnly="true" inactivate="true" width="110" aliasName="a">
+      <header v="Thành tiền" e="Amount"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="ghi_chu" width="200" aliasName="a">
+      <header v="Ghi chú" e="Note"></header>
+    </field>
+  </fields>
+
+  <views>
+    <view id="Grid">
+      <field name="ma_vt"/>
+      <field name="ten_vt%l"/>
+      <field name="dvt"/>
+      <field name="so_luong"/>
+      <field name="tien"/>
+      <field name="ghi_chu"/>
+    </view>
+  </views>
+
+  <commands>
+    <command event="Showing">
+      <text>
+        <![CDATA[
+select 'onShow$Item(this);' as message
+return
+]]>
+      </text>
+    </command>
+    <command event="Loading">
+      <text>
+        <![CDATA[
+select 'load$GridReport$Item(this);' as message
+return
+]]>
+      </text>
+    </command>
+  </commands>
+
+  <script>
+    <text>
+      <![CDATA[
+function onShow$Item(g) {
+  var a = [];
+  Array.add(a, {Name: 'stt_rec', Opr: '=', Value: '', Type: 'String', Ignore: false});
+  g.set_externalKey(a);
+  g.set_gridPageIndex(-2);
+}
+function load$GridReport$Item(g) {g.add_onRender(on$GridReport$Render$Item);}
+function dispose$GridReport$Item(g) {try {g.remove_onRender(on$GridReport$Render$Item);} catch (ex) {}}
+function on$GridReport$Render$Item(sender, eventArgs) {
+  var g = eventArgs.grid;
+  var mainSplitter = document._mainSplitter;
+  g._divGrid.style.height = mainSplitter._left.cells("b").getHeight() - 120 + 'px';
+}
+]]>
+    </text>
+  </script>
+
+  <queries>
+    <query event="Loading">
+      <text>
+        <![CDATA[
+select top 0 @@fieldExternal
+  from @@prime$partition$current a
+    left join dmvt b on a.ma_vt = b.ma_vt
+]]>
+      </text>
+    </query>
+
+    <query event="Finding">
+      <text>
+        <![CDATA[
+if dbo.FastBusiness$Function$CheckSQLInjection(@stt_rec) = 0 return
+declare @ngay_ct datetime, @q nvarchar(max)
+select @ngay_ct = ngay_ct from c{{xt}}$000000 where stt_rec = @stt_rec
+
+select @q = 'select @@fieldExternal
+  from d{{xt}}$' + convert(varchar(6), @ngay_ct, 112) + ' a
+    left join dmvt b on a.ma_vt = b.ma_vt
+      where stt_rec = ''' + @stt_rec + ''' order by a.stt_rec, a.line_nbr'
+exec (@q)
+    ]]>
+      </text>
+    </query>
+  </queries>
+
+  <toolbar>
+    <button command="Freeze">
+      <title v="Toolbar.Freeze" e="Toolbar.Freeze"></title>
+    </button>
+  </toolbar>
+</grid>

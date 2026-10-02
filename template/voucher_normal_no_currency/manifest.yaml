@@ -1,0 +1,156 @@
+name: voucher_normal_no_currency
+title_v: Chứng từ mới — KHÔNG duyệt, KHÔNG ngoại tệ (skeleton đầy đủ)
+jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) with NO
+  approval flow and NO foreign currency: Dir/Grid/Filter/Query/Report/Detail
+  controllers + Include/Extender + Revert.ent + Fields Grid.ent + Main aspx
+  + SYS/APP SQL skeleton. Pick when UR asks tao chung tu/voucher moi WITHOUT
+  duyet (approval) and WITHOUT ma_nt/ty_gia (ngoai te). NOT for: modifying an
+  existing voucher (use none), adding a retrieve flow to existing voucher
+  (retrieve_flow_*), voucher with approval (voucher_approval_*) or currency
+  (voucher_*_currency)."
+files:
+  - src: dir_tran.xml
+    dst: App_Data/Controllers/Dir/{new}Tran.xml
+  - src: grid_tran.xml
+    dst: App_Data/Controllers/Grid/{new}Tran.xml
+  - src: filter_tran.xml
+    dst: App_Data/Controllers/Filter/{new}Tran.xml
+  - src: grid_detail.xml
+    dst: App_Data/Controllers/Grid/{new}Detail.xml
+  - src: query_tran.xml
+    dst: App_Data/Controllers/Query/{new}Tran.xml
+  - src: report_tran.xml
+    dst: App_Data/Controllers/Report/{new}Tran.xml
+  - src: extender
+    dst: App_Data/Controllers/Include/Extender.{new}Tran
+  - src: revert.ent
+    dst: App_Data/Controllers/Include/Revert.{new}Tran.ent
+  - src: fields_grid.ent
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Grid.ent
+  - src: field.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}Field.txt
+  - src: view.txt
+    dst: App_Data/Controllers/Include/XML/Config/Fields/{new}View.txt
+  - src: extra_detail
+    dst: App_Data/Controllers/Include/Extra/Extra.{new}Detail
+  - src: gnedit_cmd.txt
+    dst: App_Data/Controllers/Include/Command/GNEditCheckTable{new}Tran.txt
+  - src: ref_fields.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceFields.txt
+  - src: ref_view.txt
+    dst: App_Data/Controllers/Include/XML/{new}ReferenceView.txt
+  - src: main_voucher.aspx
+    dst: Main/zc{new_lower}d.aspx
+  - src: voucher.sql
+    dst: RetrieveTemp/{new}_voucher.sql
+tokens:
+  "{{x}}": "{new}"
+  "{{xt}}": "{new_lower}"
+edit_guide: |
+  Template CHỨNG TỪ MỚI variant KHÔNG duyệt + KHÔNG ngoại tệ — skeleton
+  strip-tối-thiểu port từ STTran (FBISP2421). Mỗi file có comment TODO(…)
+  đánh dấu chỗ phải sửa theo nghiệp vụ.
+
+  new_name = MÃ CHỨNG TỪ 3 ký tự (vd PLH → Dir/PLHTran.xml, bảng mplh$,
+  aspx zcPLHd.aspx). KHÔNG truyền 'PLHTran'.
+
+  A. INPUT cần hỏi/trích từ user trước khi fill:
+  - {{x}} (đã = new_name), {{title_v}}, {{title_e}}, {{title_upper_v/e}}
+  - {{ma_kh_v/e}} — header field đối tượng chính (mặc định 'Mã khách'/'Customer',
+    đổi theo nghiệp vụ: Mã KH, Nhà cung cấp, Bộ phận…)
+  - {{status1_v/e}} — trạng thái 1 của phiếu (vd '1. Giao hàng'/'1. Deliver')
+  - {{ma_vt_v/e}} — header mã dòng detail (mặc định 'Mã hàng'/'Item Code')
+  - {{so_ct_v/e}}, {{ngay_lct_v/e}}, {{ten_gd1_v/e}} — tiêu đề số/ngày/mã GD 1
+  - {{ong_ba_v/e}} — tiêu đề ong_ba (Người nhận/Người lập…)
+  - menu: {{menu_dir}}, {{menu_list}}, {{menu_parent}} (id dạng xx.yy.zz)
+  - {{DB_SYS}}, {{DB_APP}} — tên db hệ thống + db dữ liệu của project đích
+  - {{mau_ctrl}} — controller mẫu cùng project để clone rows SQL (vd STTran)
+  - Quy ước bảng nếu KHÔNG phải m{x}$/d{x}$/c{x}$/i{x}$ (đổi toàn bộ file)
+
+  B. BƯỚC 0.5 — CAPABILITY-CHECK (chống conflict phiên bản — BẮT BUỘC):
+  Skeleton tham chiếu entity/file/include sau — kiểm tra TỒN TẠI trong project
+  đích (search_files / read_local_file trước khi paste hoặc ngay sau):
+  - Include: VoucherEndUpdated.ent, VoucherDeleteLog.ent, VoucherEditLog.ent,
+    Extender.ent, Revert.txt, Grid.ent, VoucherVisibleField.ent,
+    Filter.Voucher.ent, FlowMultiVoucher.ent
+  - Include/XML: WhenVoucherInit/Navigating/Closing.xml, GetVoucherNumber.xml,
+    VoucherBookAndNumberFields.txt, WhenInitExternalVoucherNumber.xml,
+    GetUOMConversion.xml, StandardVoucherToolbar.xml, StandardDetailToolbar.xml,
+    FlowFilterViews.txt…, XML/Config/Fields/{X}Grid.ent (template đã tạo)
+  - Include/Command: WhenVoucherLoading/BeforeEdit/BeforeDelete.txt,
+    RecordHasBeenChanged.txt, CheckVoucherHandleBefore*.txt,
+    CheckClosingDate.txt (nếu project chỉ có CheckLockedDate.txt → đổi tên
+    entity hoặc clone file), GetIdentityNumber.txt, GetVoucherNumber.txt,
+    SetVoucherNumber.txt, ShowWarningMessage.txt, QueryVoucherNumber.txt,
+    ScatterVoucherNumber.txt, SiteCheck.txt
+  - Include/Javascript: VoucherInit.txt, VoucherNumber.txt,
+    WhenVoucherNumberLoading/Scattering/Reading.txt, Query.txt,
+    QueryExecuteCommand.txt, QueryCss.txt, FilterInit.txt,
+    InsertRetrieveItems.txt, CheckGridAction.txt
+  - Include/HandleVoucherNumber.ent + biến thể .001/.002/.009 — skeleton đang
+    dùng .001; project chỉ có .002/.009 thì đổi %HandleVoucherNumber.Definition;
+    thiếu &HandleVoucherNumberUpdateGrandTable; → XÓA tham số đó khỏi
+    AfterUpdate (dòng UpdateGrandTable)
+  - Bảng/sys rows: dmkh, dmnvbh, dmvt, dmkho, dmmagd, dmttct, v20dmnk,
+    v20dmctnk, Dynamic$AddTable, FastBusiness$App$Voucher$*,
+    FastBusiness$App$IncreaseVoucherNumber
+  Thiếu file shared → clone lẻ từ project có nó (clone_things type=3 file đơn)
+  hoặc BỎ block + BÁO user. KHÔNG để entity trỏ file không tồn tại.
+  Lưới an toàn cuối: get_xml_entities checking từng file — undeclared_entities
+  phải = 0 (trừ %Extender.Include.{X}Tran; chỉ resolve sau khi đăng ký ở mục D).
+
+  C. SAU PASTE — sửa theo nghiệp vụ:
+  1. Fill unresolved_placeholders (mục A) trong MỌI file.
+  2. Dir/{X}Tran.xml: thêm field master nghiệp vụ (sau comment TODO), thêm tab
+     lưới → mỗi tab mới cần 1 file Grid/{X}{Tab}Detail.xml (copy grid_detail.xml
+     đổi controller/table/VisibleFieldController + hàm load$/dispose$) + bảng
+     d{x}{tab}$ + khai báo trong Inserting/Updating/Updated/Deleting (khối
+     #IF $d{x}.NewValue… lặp lại cho từng bảng detail) + 'Gather' thêm tên grid.
+  3. Grid/{X}Detail.xml: thêm field detail + response action (Item/UOM/Site
+     đang trả placeholder — viết SQL trả giá trị thật theo nghiệp vụ) + tính
+     chéo dòng trong onChange$GridVoucherDetail$.
+  4. Checking (Dir): viết validation JS/SQL theo UR.
+  5. Report/{X}Tran.xml: sửa query + fields mẫu in; file PDF reportFile là
+     Templates/Rpt — để user tự thiết kế.
+  6. voucher.sql: SCHEMA-CHECK từng bảng đích (query_database type=0) trước
+     khi viết INSERT; clone row mẫu {{mau_ctrl}} bằng clone_data/query_database
+     rồi đổi mã — KHÔNG viết INSERT mù.
+
+  D. CONFIG CHUNG — chỉ APPEND, không overwrite (file dùng chung toàn hệ thống):
+  - Include/Extender.ent: khai báo %Extender.Include.{X}Tran; CẢ nhánh List
+    lẫn Post (pattern copy dòng Extender.Include.{MauCT}Tran sửa tên) —
+    THIẾU → lỗi &ListTabChange;/&PostTabChange; undeclared
+  - Filter/Config/Initialize.xml: append <controller name="{X}Tran"
+    group="Aggregation.Voucher"/> — clone cạnh dòng của mẫu
+  - Grid/Config/Aggregation.v: append <controller name="{X}Tran"
+    description="{title_e}"/> — thiếu → list không có aggregation/group
+  - Grid/Config/Include/Voucher.Controller.00x: file ĐÁNH SỐ .001-.006 —
+    append <controller name="{X}Tran" group="00x"/> vào ĐÚNG file chứa
+    controller mẫu (grep từng file tìm {mau_ctrl}; vd DDV ở .003)
+  - Query/{new}Tran.xml: block LocationID/LotID trong DOCTYPE +
+    &Query.LocationFields;/&Query.LotFields;/&Query.LocationFieldsName;/&Query.LotFieldsName;
+    la OPTIONAL — chi dung khi chi tiet co dims vi tri/lot (ma_vitri, ma_lo);
+    khong co thi XOA ca block + 4 entity ref (Query.ent mac dinh "")
+  - Include per-voucher (da ship skeleton):
+    Include/XML/Config/Fields/{X}Field.txt + {X}View.txt — cap nay duoc
+    {X}Grid.ent tro toi khi flag UserDefined.Fields ON (thiếu → loi entity);
+    skeleton mau field ma_vv AutoComplete + view — sua/xoa theo user-defined
+    fields thuc te. Include/Extra/Extra.{X}Detail — chi can khi
+    Grid/{X}Detail.xml khai %Extra.{X}Detail;+%Extra; va dung
+    &GridExtraToolbar*; (skeleton da strip → giu file cung khong hai).
+    Include/Command/GNEditCheckTable{X}Tran.txt — chi can khi dir_tran dung
+    %GNEdit; (skeleton da strip GNEdit); pattern select @cols into
+    #editmaster + #IF $d{x}.NewValue <> OldValue #THEN #editdetail.
+    Include/XML/{X}ReferenceFields.txt + {X}ReferenceView.txt — chi khi CT
+    co tracking ref nguon (fsdSttRecRef / stt_rec_ref); resolve theo ten
+    controller, khong khai entity tuong minh.
+  - sysfilterdeclares phải là m{X}$%Partition của CT mới — KHÔNG để mẫu cũ
+  - KHÔNG tạo Structure/App/*.xml — hệ thống tự sinh khi đăng ký bảng
+
+  E. VERIFY (bắt buộc trước khi báo xong):
+  - get_xml_entities checking TỪNG file XML — undeclared_entities = 0
+  - read_local_file read_option=3 — js.parse_status=ok, sql.parse_status=ok
+  - query_database query_type=3 PARSEONLY file voucher.sql (bỏ qua 1059)
+  - search literal mã mẫu còn sót ('ST', 'd67', 'm67'…) trong file {X}
+  - Nhắc user: F5 chạy voucher.sql → khai quyển số trong v20dmctnk →
+    phân quyền (sysrelativeright nếu có popup/flow) → test UI

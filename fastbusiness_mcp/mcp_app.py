@@ -723,7 +723,7 @@ def clone_things_tool(
     object: Annotated[
         str,
         Field(
-            description="type=0/1: tên SQL, danh sách tên SQL (phân cách ',' ';' hoặc newline — clone/paste nhiều object 1 call) hoặc đường dẫn file .xml controller để seed; type=3: đường dẫn relative, danh sách path, glob (*, ?), hoặc preset ('mail'); type=3 hỗ trợ mapping SRC->DST: DST literal = tên mới (không '/' -> cùng folder; có '/' -> relative target root; trailing '/' = folder đích); rl(s|e,N,V) / rl(FROM,TO) rename pattern trên tên không đuôi, rlx(...) trên full basename; suite:Old->New đổi tên cả bộ controller"
+            description="type=0/1: tên SQL, danh sách tên SQL (phân cách ',' ';' hoặc newline — clone/paste nhiều object 1 call) hoặc đường dẫn file .xml controller để seed; type=3: đường dẫn relative, danh sách path, glob (*, ?), hoặc preset ('mail'); type=3 hỗ trợ mapping SRC->DST: DST literal = tên mới (không '/' -> cùng folder; có '/' -> relative target root; trailing '/' = folder đích); rl(s|e,N,V) / rl(FROM,TO) rename pattern trên tên không đuôi, rlx(...) trên full basename; suite:Old->New đổi tên cả bộ controller; type=5: không bắt buộc (bỏ qua — tên file temp theo project); type=6: 'saveas:<ctrl|title>-><new_ctrl>' (vd saveas:zclctt->zcbcdt hoặc saveas:title:Báo cáo lưu chuyển tiền tệ->zcbcdt)"
         ),
     ],
     project_source: Annotated[
@@ -743,14 +743,14 @@ def clone_things_tool(
         int,
         Field(
             default=0,
-            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp), 2=clone data (DELETE FROM + INSERT INTO từng dòng của table theo where — cần table + where), 3=copy file bất kỳ từ project_source sang project_target",
+            description="Loại clone: 0=SQL clone giữa 2 project (mặc định), 1=paste-for-edit (xuất object từ source ra .sql dạng ALTER để chỉnh sửa trực tiếp), 2=clone data (DELETE FROM + INSERT INTO từng dòng của table theo where — cần table + where), 3=copy file bất kỳ từ project_source sang project_target, 5=tạo file .sql temp rỗng (UTF-8 BOM) trong sql_temp_folder để viết script tay — chỉ cần project_source, 6=save-as chức năng có sẵn: object='saveas:<ctrl|title>-><new_ctrl>' clone suite file + export proc ra .sql temp",
         ),
     ] = 0,
     path_to_pasted: Annotated[
         str,
         Field(
             default="",
-            description="Đường dẫn file .sql để append; để trống sẽ tự tạo file temp và mở lên editor",
+            description="Đường dẫn file .sql để append; để trống sẽ tự tạo file temp và mở lên editor. type=5: truyền để chỉ định file cụ thể thay vì auto-temp",
         ),
     ] = "",
     table: Annotated[
@@ -885,6 +885,15 @@ def clone_things_tool(
        - object='tên template' (vd 'category_1_key' — danh mục 1 khóa + import), object='?' để list.
        - new_name='tên controller mới' (bắt buộc khi paste) — đổi tên file + rewrite token bên trong (controller/table/view) theo manifest.
        - project_target = abs path project đích; execute=False (mặc định) = dry-run.
+    6) type=5 (new sql file — tạo .sql rỗng đúng chỗ để viết script tay):
+       - Chỉ cần project_source (abs path project); object không bắt buộc.
+       - Tạo file {project}.sql rỗng (UTF-8 BOM) trong clone_things.sql_temp_folder, suffix (2),(3) nếu trùng; mở editor.
+       - Dùng khi cần viết SQL ra file (proc/script mới cho user F5) — TUYỆT ĐỐI không tạo .sql trong workspace/project.
+    7) type=6 (save-as — clone chức năng có sẵn làm khung cho chức năng mới):
+       - object='saveas:<src>-><new_ctrl>'; src = ctrl:<tên controller> | title:<tiêu đề chức năng> | tên controller trần (vd 'saveas:zclctt->zcbcdt', 'saveas:title:Báo cáo lưu chuyển tiền tệ->zcbcdt').
+       - Title resolve qua Kuzu (title_v/title_e), fallback quét <title> trên disk; match nhiều controller → trả candidates để hỏi user, không auto-pick.
+       - Clone toàn bộ suite file (Filter/Grid/Dir/Report/Lookup/Query/Include/Main aspx...) đổi tên sang new_ctrl — delegate type=3 nên execute=False = dry-run mặc định, overwrite cần confirm_overwrite.
+       - Extract proc từ XML nguồn → export ALTER ra 1 file .sql temp; KHÔNG tự đổi tên object — agent đổi tên trong file theo tên user gửi, sửa <title v> + đăng ký menu, rồi mới sửa theo yêu cầu UR.
     """
     try:
         cfg = get_config()

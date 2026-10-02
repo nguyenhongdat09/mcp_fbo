@@ -1,0 +1,2 @@
+<!ENTITY GridExtraToolbarController "{{x}}Detail">
+<!ENTITY GridExtraDenyFields "['ma_vt', 'dvt']">

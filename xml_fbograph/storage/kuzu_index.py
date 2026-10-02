@@ -646,8 +646,8 @@ class KuzuIndexStore:
                 
                 writer.writerow([
                     self._sanitize_string(node.node_id),
-                    self._sanitize_string(node.file_path).replace('\\', '/'),
-                    self._sanitize_string(node.relative_path).replace('\\', '/'),
+                    self._sanitize_string(node.file_path),
+                    self._sanitize_string(node.relative_path),
                     self._sanitize_string(node.folder_type),
                     self._sanitize_string(node.folder_subtype),
                     self._sanitize_string(node.xml_root_tag),
@@ -661,9 +661,9 @@ class KuzuIndexStore:
                     float(node.last_modified or 0.0),
                     "true" if getattr(node, 'is_encrypted', False) else "false",
                     self._sanitize_string(getattr(node, 'source_extension', '.xml')),
-                    self._sanitize_string(getattr(node, 'paired_f_path', '')).replace('\\', '/'),
+                    self._sanitize_string(getattr(node, 'paired_f_path', '')),
                     "true" if getattr(node, 'needs_xml', False) else "false",
-                    self._sanitize_string(getattr(node, 'canonical_path', '')).replace('\\', '/'),
+                    self._sanitize_string(getattr(node, 'canonical_path', '')),
                     self._sanitize_string(getattr(node, 'alias_of', '')),
                     self._format_kuzu_list(fields_names),
                     self._format_kuzu_list(fields_headers),
@@ -1144,8 +1144,9 @@ class KuzuIndexStore:
                 if match and matching_kw:
                     for f_str in fields_json:
                         try:
-                            decoded = base64.b64decode(f_str.encode('utf-8')).decode('utf-8')
-                            field = json.loads(decoded)
+                            field = _decompress_b64(f_str)
+                            if not field:
+                                continue
                             fname = field.get('name', '')
                             hv = field.get('header_v', '')
                             he = field.get('header_e', '')

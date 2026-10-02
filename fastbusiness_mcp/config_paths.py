@@ -146,6 +146,11 @@ def load_machine_paths(path: Path | None = None) -> dict:
         if sql_val and str(sql_val).strip():
             result.setdefault("clone_things", {})["sql_temp_folder"] = str(sql_val).strip()
 
+        # user_name (top-level scalar — chữ ký dev khi sửa proc/func/view)
+        uname_val = data.get("user_name")
+        if uname_val and str(uname_val).strip():
+            result["user_name"] = str(uname_val).strip()
+
         return result
     except Exception as e:
         logger.warning(f"Không thể đọc hoặc parse {resolved}: {e}, dùng cấu hình mặc định.")
@@ -170,6 +175,8 @@ def merge_config_with_machine_paths(cfg: dict, machine: dict | None = None) -> d
             for k, v in keys.items():
                 if v is not None and str(v).strip():
                     sec_dict[k] = v
+        elif keys is not None and str(keys).strip():
+            merged[section] = keys
 
     return merged
 
