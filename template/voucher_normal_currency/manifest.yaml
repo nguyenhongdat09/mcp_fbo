@@ -56,6 +56,9 @@ edit_guide: |
 
   A. INPUT cần hỏi/trích từ user trước khi fill:
   - {{x}} (đã = new_name), {{title_v}}, {{title_e}}, {{title_upper_v/e}}
+  - ASPX: ReadOnly="true" = list grid chỉ đọc (sửa qua form CT) — đúng
+    cho chứng từ; KHÔNG đặt FilterMode (chứng từ/danh mục = false = vào
+    thẳng grid; chỉ báo cáo dùng FilterMode="true" = hiện filter trước)
   - {{ma_kh_v/e}} — header field đối tượng chính (mặc định 'Mã khách'/'Customer')
   - {{status1_v/e}} — trạng thái 1 của phiếu
   - {{ma_vt_v/e}} — header mã dòng detail (mặc định 'Mã hàng'/'Item Code')

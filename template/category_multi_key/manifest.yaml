@@ -18,10 +18,17 @@ tokens:
   "{{controller}}": "{new}"
   "{{table}}": "{new}"
   "{{importform}}": "{new}ImportForm"
-  "{{title_v}}": "{new}"
-  "{{title_e}}": "{new}"
+  # title_v/e cố tình KHÔNG auto-fill — phải là tiêu đề thật,
+  # TUYỆT ĐỐI không được = mã controller (xem TITLE trong edit_guide)
 edit_guide: |
   Sau khi clone_things type=4:
+  TITLE (bắt buộc — KHÔNG auto-fill, nằm trong unresolved_placeholders):
+  {{title_v}} = tiêu đề TIẾNG VIỆT, {{title_e}} = tiếng Anh của danh mục —
+  lấy từ UR hoặc hỏi user, TUYỆT ĐỐI không để = mã {new}. Vị trí:
+  v=/e= ở Main/{new}.aspx + <title> ở master/grid/upload.
+  ASPX ATTR: ReadOnly="true" = mọi cột grid readonly (list chỉ xem, sửa
+  qua form danh mục); FilterMode="false" = vào thẳng grid (danh mục/
+  chứng từ = "false"; báo cáo = "true" = hiện filter trước).
   1. Đổi PK placeholder name_date_1 + name_string_1 thành cột khóa thật —
      khớp code/order của <dir>/<grid>, exists-check trong Inserting/
      Updating, và PK của bảng {new}. 3+ khóa: thêm field + nối vào mọi chỗ.

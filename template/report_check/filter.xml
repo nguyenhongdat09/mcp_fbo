@@ -26,6 +26,7 @@
 
   <!ENTITY GetReportFormLimitRight SYSTEM "..\Include\Command\GetReportFormLimitRight.f">
   <!ENTITY SetReportFormLimitRight SYSTEM "..\Include\Javascript\SetReportFormLimitRight.txt">
+  <!ENTITY JavascriptReportFilter SYSTEM "..\Include\Javascript\ReportFilter.txt">
 
   <!ENTITY XMLWhenFilterQuerying SYSTEM "..\Include\XML\WhenFilterQuerying.xml">
 
@@ -128,6 +129,7 @@ exec {{proc}} @tu_ngay, @den_ngay, @name_lookup_1, @name_string_1, @name_mask_1,
       &OutlineEntry;
       &ScriptQueryFilterString;
       &SetReportFormLimitRight;
+      &JavascriptReportFilter;
       <![CDATA[/* <flatten type="Javascript"> */
 function onChange$VoucherFilter$Tab(f, e) {f.parentForm.focusWhenTabChanged(['name_string_1', 'name_mask_1']);}
 function active$VoucherFilter$(f) {

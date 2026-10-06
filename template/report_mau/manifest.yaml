@@ -13,12 +13,21 @@ files:
 tokens:
   "{{controller}}": "{new}"
   "{{proc}}": "rs_{new}"
-  "{{title_v}}": "{new}"
-  "{{title_e}}": "{new}"
-  "{{title_v_upper}}": "{new}"
-  "{{title_e_upper}}": "{new}"
+  # title_v/e(+_upper) cố tình KHÔNG auto-fill — phải là tiêu đề thật,
+  # TUYỆT ĐỐI không được = mã controller (xem TITLE trong edit_guide)
 edit_guide: |
   Sau khi clone_things type=4:
+  TITLE (bắt buộc — KHÔNG auto-fill, nằm trong unresolved_placeholders):
+  {{title_v}} = tiêu đề TIẾNG VIỆT, {{title_e}} = tiếng Anh của báo cáo —
+  lấy từ UR hoặc hỏi user, TUYỆT ĐỐI không để = mã {new}. Vị trí:
+  v=/e= ở Main/{new}.aspx, <title> ở Filter+Grid, header ở report.xml.
+  {{title_v_upper}}/{{title_e_upper}} = cùng tiêu đề viết HOA
+  (header report.xml).
+  ASPX ATTR: ReadOnly="true" = mọi cột grid readonly (list chỉ xem, sửa
+  qua form); FilterMode="true" = F5 hiện Filter trước → bấm nút Filter
+  mới vào Grid. Báo cáo → FilterMode="true"; danh mục/chứng từ →
+  "false". ReadOnly="false" chỉ khi chức năng cho sửa trực tiếp trên
+  grid (vd màn phân bổ).
   1. {{ma_maubc}} trong filter.xml GIỮ NGUYÊN literal — agent sửa thành mã
      mẫu báo cáo thật (ma_maubc trong v20dmmaubc, vd 'V30GLTCTM') + literal
      'V30GLTCTMA ' trong SQL Showing nếu form table khác.

@@ -170,6 +170,7 @@ Tool description MCP phải nêu rõ hai mode và: script nằm trong file, khô
 - **type=0:** Gọi lại cùng `path_to_pasted` → **append thêm** (có blank line), không truncate file cũ. Object đã có trong `visited` trong **một** lần gọi → không xử lý lại.
 - **type=1:** Gọi lại cùng object đã có `CREATE`/`ALTER` trong file → `skipped_already_in_file`, **không** paste trùng.
 - `path_to_pasted=""` → tạo file **mới** (tên tăng `(2)`, `(3)`…) — parity `createSqlTempFile`.
+- Mọi file `.sql` output (auto-temp **và** `path_to_pasted`) được ghi vào manifest `.fbo_sql_temp_source.json` cạnh file (`{file_path.lower()}: {object_name, group_label, db_type, server, database, created_at}`) — extension fbo-autocomplete đọc manifest này để auto-switch DB trên status bar khi user click file.
 
 ## 8. Quyền / an toàn
 

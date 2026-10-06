@@ -257,6 +257,8 @@ def resolve_output_file(
     không theo seed_object / XML stem. File mới tạo (cả 2 nhánh) có UTF-8 BOM.
     Nếu clone_things.sql_temp_folder để rỗng, tự động tạo thư mục Scripts trong folder chứa mcp.
     Nếu IDE là Antigravity: chuyển hướng tạo file vào ~/.gemini/config/skills/<folder_name>.
+    Cả 2 nhánh đều ghi manifest nguồn (.fbo_sql_temp_source.json) để extension
+    fbo-autocomplete auto-switch DB khi user click file .sql.
     """
     raw_path = (path_to_pasted or "").strip()
     if raw_path:
@@ -267,7 +269,9 @@ def resolve_output_file(
             return "", "invalid_path_to_pasted"
         if not p.exists():
             p.write_text("\ufeff", encoding="utf-8")
-        return str(p.resolve()), None
+        abs_path = str(p.resolve())
+        _remember_source(abs_path, seed_object, project_target or project_source)
+        return abs_path, None
 
     # Parity NewSqlTemp: read config
     env_sql_folder = os.environ.get("CLONE_THINGS_SQL_TEMP_FOLDER", "").strip()
@@ -298,9 +302,21 @@ def resolve_output_file(
 
     try:
         new_file = create_sql_temp_file(naming_base, str(folder_p))
+        _remember_source(new_file, seed_object, target_project)
         return new_file, None
     except Exception:
         return "", "sql_temp_folder_not_configured"
+
+
+def _remember_source(file_path: str, object_name: str, project_path: str) -> None:
+    """Ghi manifest nguồn cho file .sql — lazy import, nuốt lỗi."""
+    if not project_path:
+        return
+    try:
+        from .sql_temp_source import remember_sql_temp_source
+        remember_sql_temp_source(file_path, object_name, project_path)
+    except Exception:
+        pass
 
 
 def _read_sql_file(file_path: str | Path) -> str:

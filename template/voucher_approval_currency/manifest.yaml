@@ -69,6 +69,9 @@ edit_guide: |
 
   A. INPUT cần hỏi/trích từ user trước khi fill:
   - {{x}} (đã = new_name), {{title_v}}, {{title_e}}, {{title_upper_v/e}}
+  - ASPX: ReadOnly="true" = list grid chỉ đọc (sửa qua form CT) — đúng
+    cho chứng từ; KHÔNG đặt FilterMode (chứng từ/danh mục = false = vào
+    thẳng grid; chỉ báo cáo dùng FilterMode="true" = hiện filter trước)
   - {{apv_type}} — MÃ KIỂU DUYỆT MỚI dạng 015xx — KHÔNG copy mã của mẫu:
     check gndmkieuduyet lấy mã còn trống
   - {{apv_title_v/e}} — tiêu đề trang duyệt

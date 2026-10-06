@@ -447,6 +447,11 @@ def execute_type1_flow(
                     )
                     Path(spill_path).write_text(out_script, encoding="utf-8")
                     definition_path = spill_path
+                    try:
+                        from .sql_temp_source import remember_sql_temp_source
+                        remember_sql_temp_source(spill_path, full_item_name, project_source)
+                    except Exception:
+                        pass
                 except Exception as e:
                     logger.warning("Failed to spill definition for %s: %s", full_item_name, e)
                 if max_full_chars > 0 and len(out_script) > max_full_chars:

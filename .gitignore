@@ -23,3 +23,4 @@ config_jev.xml
 scratch/key_backup.json
 nul
 .playwright-mcp/
+.fbo_sql_temp_source.json
