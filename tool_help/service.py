@@ -10,26 +10,99 @@ import logging
 import re
 
 from .cards import (REQUIREMENT_TYPE_CATALOG, REQUIREMENT_TYPES,
-                    TASK_TYPE_CATALOG, TASK_TYPES, TOOL_PARAM_EXAMPLES,
-                    card_for, template_block)
+                    TASK_TYPES, TOOL_PARAM_EXAMPLES,
+                    card_for, task_type_for_call, template_block)
 from .formatter import dumps
 from .keywords import keyword_route
+from .radar_templates import RADAR_RULES, RADAR_TEMPLATES
+from .hierarchical import as_flat_answer, build_hierarchical_questions
+from .plan_rules import lint_plan, linter_questions, step_flags
+from .skill_suggest import stage1_questions as skill_stage1_questions
+from .skill_suggest import suggest as skill_suggest
+from .request import AGENT_CONTEXT, build_jev_request, build_questions_v1
 
 logger = logging.getLogger(__name__)
 
 ALT_PROB_MIN = 0.2          # sàn tuyệt đối cho candidate
 NO_MATCH_PROB = 0.9         # no_match >=90% -> "agent tự xử lý step này"
 SECONDARY_PROB_MIN = 0.3    # requirement phụ (multi-intent)
+CONF_ACT_DEFAULT = 0.7      # confidence >= act → dùng luôn (config ghi đè)
+CONF_REVIEW_DEFAULT = 0.4   # review <= confidence < act → đối chiếu
 
-_AGENT_CONTEXT = (
-    "Agent on FastBusiness ERP. Code = XML controllers on UNC paths; "
-    "data = SQL Server. MCP tools available."
-)
+_AGENT_CONTEXT = AGENT_CONTEXT  # giữ tên cũ cho scratch scripts
 
 # Cache kết quả trong process: cùng (steps, task_requirement) -> cùng
 # response, khỏi gọi lại Jev (catalog immutable trong process).
 _RESULT_CACHE: dict = {}
 _RESULT_CACHE_MAX = 200
+
+
+ARGS_FIXABLE_MIN = 0.5
+
+
+def _failed_ctx(context: dict | None) -> dict | None:
+    """Chuẩn hóa context.failed = {tool, args, error_code, message} +
+    task_type suy từ (tool, args)."""
+    f = (context or {}).get("failed")
+    if not isinstance(f, dict) or not f.get("tool"):
+        return None
+    out = {"tool": str(f["tool"]),
+           "args": f.get("args") if isinstance(f.get("args"), dict) else {},
+           "error_code": str(f.get("error_code") or ""),
+           "message": str(f.get("message") or "")[:300]}
+    out["task_type"] = f.get("task_type") or task_type_for_call(
+        out["tool"], out["args"])
+    return out
+
+
+def _drop_option(ans: dict, option: str) -> dict:
+    """Bỏ 1 option khỏi answer (routing 2 tầng không lọc được criteria
+    trước như flat) và chọn lại top."""
+    probs = {k: v for k, v in (ans.get("probabilities") or {}).items()
+             if k != option}
+    if not probs or ans.get("choice") != option:
+        return {**ans, "probabilities": probs} if probs else ans
+    total = sum(probs.values()) or 1.0
+    probs = {k: v / total for k, v in probs.items()}
+    return {**ans, "choice": max(probs, key=probs.get),
+            "probabilities": probs}
+
+
+def _failure_result(failed: dict, step1: dict, fix_ans: dict | None) -> dict:
+    """decision fix_args (giữ tool, sửa param) | switch (task_type khác)."""
+    tt_failed = failed.get("task_type")
+    p = None
+    if isinstance(fix_ans, dict) and fix_ans.get("noul") is not None:
+        p = float(fix_ans["noul"])
+    if p is None:   # Jev tắt → luật đơn giản theo error_code
+        p = 0.0 if failed["error_code"] in {"symbol_not_found"} else 0.7
+    out: dict = {"failed": {"tool": failed["tool"], "task_type": tt_failed,
+                            "error_code": failed["error_code"] or None},
+                 "args_fixable": round(p, 3)}
+    if p >= ARGS_FIXABLE_MIN and tt_failed and card_for(tt_failed):
+        out["decision"] = "fix_args"
+        out["why"] = ("Lỗi do giá trị param — giữ tool/mode, sửa param theo "
+                      "message lỗi + khối recovery trong response lỗi")
+        out["next"] = {"task_type": tt_failed, **card_for(tt_failed)}
+    else:
+        out["decision"] = "switch"
+        out["why"] = ("Tool/mode vừa dùng không làm được việc này — dùng "
+                      "task_type khác (đã loại option vừa fail)")
+        nxt = step1.get("task_type")
+        if nxt and nxt != tt_failed and card_for(nxt):
+            out["next"] = {"task_type": nxt, **card_for(nxt)}
+    return out
+
+
+def _context_key(context: dict | None) -> str:
+    """Phần context ngoài task_requirement (path/ext/db/failed/done) vào
+    cache key — cùng steps nhưng context khác phải hỏi lại Jev."""
+    import json
+
+    rest = {k: v for k, v in (context or {}).items()
+            if k != "task_requirement"}
+    return json.dumps(rest, sort_keys=True, ensure_ascii=False,
+                      default=str) if rest else ""
 
 
 def _normalize_steps(steps: tuple) -> list[str]:
@@ -38,43 +111,11 @@ def _normalize_steps(steps: tuple) -> list[str]:
     return [str(s).strip() for s in steps if str(s).strip()]
 
 
-def _build_questions(steps: list[str],
-                     task_requirement: str = "") -> dict:
-    criteria = {k: None for k in TASK_TYPE_CATALOG}
-    questions = {
-        f"step{i}_tool": {
-            "type": "choice",
-            "instructions": (
-                f"task_type for step '{s}'? "
-                "meanings: state.task_type_catalog"
-            ),
-            "criteria": criteria,
-        }
-        for i, s in enumerate(steps, 1)
-    }
-    if task_requirement:
-        questions["requirement_type"] = {
-            "type": "choice",
-            "instructions": (
-                "Classify state.task_requirement into ONE "
-                "requirement_type. template types (category_*/report_*/"
-                "voucher) ONLY for create-from-scratch. EXCEPTION: "
-                "retrieve_flow_* also fits ADDING lay du lieu onto an "
-                "existing voucher (creates new {X}Filter/{X}MultiForm/"
-                "{X}MultiGrid/{X}Lookup). voucher_* by UR signals: "
-                "duyet/phe duyet/trinh duyet->approval; ngoai te/ma_nt/"
-                "ty gia/nguyen te->currency; both->voucher_approval_"
-                "currency; UR says khong/none->no_* variant; signals "
-                "unstated->'voucher'. edits/fixes/queries on existing "
-                "targets or ambiguous->'none' high probability. "
-                "meanings: state.requirement_type_catalog"
-            ),
-            "criteria": {k: None for k in REQUIREMENT_TYPE_CATALOG},
-        }
-    return questions
+# Tên cũ — scratch scripts (jev_ab*, dump_*) còn import.
+_build_questions = build_questions_v1
 
 
-def _requirement_result(answer: dict) -> dict:
+def _requirement_result(answer: dict, cfg: dict | None = None) -> dict:
     choice = str(answer.get("choice") or "")
     probs = answer.get("probabilities") or {}
     cands = [{"task_type": k, "confidence_to_use_top": i}
@@ -83,6 +124,15 @@ def _requirement_result(answer: dict) -> dict:
              if v > ALT_PROB_MIN and k in REQUIREMENT_TYPE_CATALOG]
     out = {"type": choice,
            "confidence_to_use_top": max(len(cands), 1)}
+    conf = answer.get("confidence")
+    decision = _decision(conf, cfg)
+    if decision:
+        out["confidence"] = round(float(conf), 3)
+        out["decision"] = decision
+        if decision != "act":
+            out["decision_note"] = (
+                "Jev chưa chắc loại yêu cầu — xem alternatives/"
+                "secondary_requirements, hỏi lại user nếu UR mơ hồ")
     tpl = template_block(choice)
     if tpl:
         out["template"] = tpl
@@ -227,6 +277,44 @@ def _candidates(probs: dict) -> list[dict]:
     return out
 
 
+def _decision(confidence, cfg: dict | None) -> str | None:
+    """3 vùng theo docs TypeSafe: act / review / fallback (None nếu Jev
+    không trả confidence)."""
+    if confidence is None:
+        return None
+    cfg = cfg or {}
+    act = float(cfg.get("confidence_act") or CONF_ACT_DEFAULT)
+    review = float(cfg.get("confidence_review") or CONF_REVIEW_DEFAULT)
+    c = float(confidence)
+    if c >= act:
+        return "act"
+    if c >= review:
+        return "review"
+    return "fallback"
+
+
+def _tool_level(probs: dict) -> dict | None:
+    """Gộp xác suất task_type theo tool — mức thô khi task_type không chắc
+    (nhiều task_type cùng tool chia nhau xác suất)."""
+    agg: dict[str, float] = {}
+    for k, v in probs.items():
+        tool = (TASK_TYPES.get(k) or {}).get("tool")
+        if tool:
+            agg[tool] = agg.get(tool, 0.0) + float(v)
+    if not agg:
+        return None
+    tool, p = max(agg.items(), key=lambda x: x[1])
+    return {"tool": tool, "probability": round(p, 3)}
+
+
+_DECISION_NOTES = {
+    "review": ("Jev chưa chắc task_type — đối chiếu pitfalls/required_params "
+               "của top-1 và alternatives trước khi gọi"),
+    "fallback": ("Jev không chắc task_type — chỉ tin mức tool (tool_level); "
+                 "tự chọn mode theo step, hoặc tách step rõ hơn rồi hỏi lại"),
+}
+
+
 def _step_result_jev(step: str, answer: dict, cfg: dict) -> dict:
     choice = str(answer.get("choice") or "")
     probs = answer.get("probabilities") or {}
@@ -235,6 +323,11 @@ def _step_result_jev(step: str, answer: dict, cfg: dict) -> dict:
     # top-N": 1 = dùng top-1 luôn; 2/3/... = xem thêm alternatives.
     base = {"step": step, "task_type": choice,
             "confidence_to_use_top": max(len(cands), 1)}
+    conf = answer.get("confidence")
+    decision = _decision(conf, cfg)
+    if decision:
+        base["confidence"] = round(float(conf), 3)
+        base["decision"] = decision
 
     if choice == "no_match" and probs.get("no_match", 0) >= NO_MATCH_PROB:
         base["note"] = ("không có tool phù hợp — agent tự xử lý step này "
@@ -263,7 +356,35 @@ def _step_result_jev(step: str, answer: dict, cfg: dict) -> dict:
         alts.append(alt)
     if alts:
         base["alternatives"] = alts
+    if decision in _DECISION_NOTES:
+        base["decision_note"] = _DECISION_NOTES[decision]
+        tl = _tool_level(probs)
+        if tl:
+            base["tool_level"] = tl
     return base
+
+
+def _radar_suggestion(answer: dict) -> dict | None:
+    """Kết quả câu hỏi phụ stepN_graph_tpl -> block gợi ý template.
+
+    None khi Jev không trả lời / choice lạ — step vẫn có catalog trong
+    payload.radar_templates để agent tự chọn.
+    """
+    choice = str(answer.get("choice") or "")
+    tpl = RADAR_TEMPLATES.get(choice)
+    if tpl is None:
+        return None
+    probs = answer.get("probabilities") or {}
+    alts = [{"id": k, "when": RADAR_TEMPLATES[k]["when"],
+             "probability": round(v, 3)}
+            for k, v in sorted(probs.items(), key=lambda x: -x[1])
+            if v > ALT_PROB_MIN and k in RADAR_TEMPLATES and k != choice]
+    out = {"id": choice, "when": tpl["when"], "cypher": tpl["cypher"],
+           "params": tpl["params"],
+           "confidence_to_use_top": max(len(alts) + 1, 1)}
+    if alts:
+        out["alternatives"] = alts
+    return out
 
 
 def _step_result_keyword(step: str) -> dict:
@@ -276,40 +397,72 @@ def _step_result_keyword(step: str) -> dict:
     return out
 
 
-def tool_help(*steps, context: dict | None = None,
-              jev_config: dict | None = None) -> str:
-    """Route các bước plan -> tool + call template + pitfalls."""
+def tool_help_with_meta(*steps, context: dict | None = None,
+                        jev_config: dict | None = None) -> tuple[str, dict]:
+    """Như ``tool_help`` nhưng trả thêm meta routing cho call log."""
     steps = _normalize_steps(steps)
     try:
         if not steps:
             return dumps({"router": "none", "steps": [],
                           "error": "steps rỗng — truyền các bước plan, "
-                                   "không truyền raw UR"})
+                                   "không truyền raw UR"}), {"router": "none"}
 
         task_requirement = ""
         if context and context.get("task_requirement"):
             task_requirement = context["task_requirement"]
 
-        cache_key = (tuple(steps), task_requirement, bool(jev_config))
+        cache_key = (tuple(steps), task_requirement, bool(jev_config),
+                     _context_key(context))
         cached = _RESULT_CACHE.get(cache_key)
         if cached is not None:
             return cached
 
-        state = {
-            "agent_context": _AGENT_CONTEXT,
-            "task_type_catalog": TASK_TYPE_CATALOG,
-            "steps": steps,
-        }
-        if task_requirement:
-            state["task_requirement"] = task_requirement
-            state["requirement_type_catalog"] = REQUIREMENT_TYPE_CATALOG
+        style = str((jev_config or {}).get("prompt_style") or "v1")
+        state, questions = build_jev_request(
+            steps, task_requirement, context, style=style)
+        hierarchical = (jev_config or {}).get("routing") == "hierarchical"
+        if hierarchical:
+            for i in range(1, len(steps) + 1):
+                questions.pop(f"step{i}_tool", None)
+            questions.update(build_hierarchical_questions(steps))
+        # Định tuyến lại sau lỗi: loại option vừa fail + hỏi "sửa param là
+        # đủ hay phải đổi tool" (step lỗi = steps[0])
+        failed = _failed_ctx(context)
+        if failed:
+            state["failure"] = {k: failed[k] for k in
+                                ("tool", "error_code", "message", "args")
+                                if failed.get(k)}
+            q1 = questions.get("step1_tool")
+            if q1 and failed.get("task_type"):
+                q1["criteria"] = {k: v for k, v in q1["criteria"].items()
+                                  if k != failed["task_type"]}
+            questions["failure_args_fixable"] = {
+                "type": "noul",
+                "instructions": {
+                    "question": "The previous tool call for this step "
+                                "failed. Would fixing parameter values "
+                                "(path, name, column, block...) while "
+                                "keeping the SAME tool and mode solve it?",
+                    "step": steps[0], "failure": state["failure"]},
+                "criteria": {
+                    "true": "lỗi do giá trị param sai: sai tên/đường "
+                            "dẫn/cột/bảng/block, thiếu param",
+                    "false": "tool/mode không làm được việc này: cần tool "
+                             "khác (vd symbol nằm ở file khác, cần tìm "
+                             "trước, cần query DB thay vì đọc file)"},
+            }
+        # Plan linter: Noul cờ per-step hỏi chung call (song song, ~0 latency)
+        questions.update(linter_questions(steps))
+        # Gợi ý skill stage 1 (gate + Choice skill) cũng chung call
+        skill_text = task_requirement or " ; ".join(steps)
+        if jev_config:
+            questions.update(skill_stage1_questions(skill_text))
 
         res = {"ok": False}
         if jev_config:
             try:
                 from jev import ask_jev
-                res = ask_jev(jev_config, state,
-                              _build_questions(steps, task_requirement))
+                res = ask_jev(jev_config, state, questions)
             except Exception as e:
                 res = {"ok": False, "error": "jev_exception",
                        "detail": str(e)}
@@ -320,8 +473,24 @@ def tool_help(*steps, context: dict | None = None,
 
         if res.get("ok"):
             for i, s in enumerate(steps, 1):
-                ans = answers.get(f"step{i}_tool") or {}
-                out_steps.append(_step_result_jev(s, ans, jev_config))
+                if hierarchical:
+                    ans = as_flat_answer(answers, i)
+                    if i == 1 and failed and failed.get("task_type"):
+                        ans = _drop_option(ans, failed["task_type"])
+                else:
+                    ans = answers.get(f"step{i}_tool") or {}
+                res_step = _step_result_jev(s, ans, jev_config)
+                # Gợi ý Cypher template khi step route sang query_radar.
+                # call dict từ card_for là reference vào TASK_TYPES —
+                # phải copy trước khi ghi cypher_query kẻo nhiễm catalog.
+                if res_step.get("tool") == "query_radar":
+                    sug = _radar_suggestion(
+                        answers.get(f"step{i}_graph_tpl") or {})
+                    if sug:
+                        res_step["radar_template"] = sug
+                        res_step["call"] = {**res_step["call"],
+                                            "cypher_query": sug["cypher"]}
+                out_steps.append(res_step)
             router = "jev"
         else:
             logger.warning(f"tool_help: Jev fail "
@@ -345,16 +514,29 @@ def tool_help(*steps, context: dict | None = None,
                             "to execute. Always try the recommended tool "
                             "first (step.tool + step.call). Only fall back to "
                             "step.alternatives or another tool if the "
-                            "recommended one fails or cannot fulfill the task."),
+                            "recommended one fails or cannot fulfill the task. "
+                            "confidence_to_use_top = số candidate Jev chấm "
+                            ">20% (đáp án nằm trong top-N) — KHÔNG phải xác "
+                            "suất đúng; luôn đối chiếu pitfalls và required_"
+                            "params trước khi call."),
             "steps": out_steps,
             "param_examples": param_examples,
             "jev_usage": usage}
+        # Catalog 14 Cypher template (1 lần, không lặp per-step) — agent
+        # đối chiếu khi radar_template suggestion thiếu hoặc nghi sai.
+        if any(s.get("tool") == "query_radar" for s in out_steps):
+            payload["radar_templates"] = {
+                "_rules": RADAR_RULES,
+                **{k: {"when": v["when"], "cypher": v["cypher"],
+                       "params": v["params"]}
+                   for k, v in RADAR_TEMPLATES.items()},
+            }
         if router != "jev":
             payload["router"] = router   # chỉ báo khi fallback/error
         req_ans = answers.get("requirement_type")
         req_type = None
         if task_requirement and res.get("ok") and req_ans:
-            payload["requirement"] = _requirement_result(req_ans)
+            payload["requirement"] = _requirement_result(req_ans, jev_config)
             req_type = payload["requirement"].get("type")
         from tool_help.notices import collect_notices
         used_tt = {s.get("task_type") for s in out_steps} - {None}
@@ -371,10 +553,17 @@ def tool_help(*steps, context: dict | None = None,
             hints = skill_hints(s.get("step") or "")
             if hints:
                 s["related_skills"] = hints
-        if task_requirement:
-            ur_hints = skill_hints(task_requirement)
-            if ur_hints:
-                payload["related_skills"] = ur_hints
+        ur_hints = skill_hints(task_requirement) if task_requirement else []
+        sug = (skill_suggest(jev_config, skill_text, answers)
+               if res.get("ok") else {})
+        jev_skills = [s["name"] for s in sug.get("skills") or []]
+        merged = jev_skills + [h for h in ur_hints if h not in jev_skills]
+        if merged:
+            payload["related_skills"] = merged
+            payload["related_skills_by"] = {
+                **{h: "regex" for h in ur_hints},
+                **{s["name"]: f"jev (fit {s['fit']})"
+                   for s in sug.get("skills") or []}}
         # ID dạng zcxxxx/rsxxxx trong UR → gợi ý tên proc chuẩn (chèn '_').
         id_hits = list(dict.fromkeys(re.findall(
             r"\b((?:zc|rs)(?!_)[a-z0-9]{3,})\b", ur_text)))
@@ -384,14 +573,65 @@ def tool_help(*steps, context: dict | None = None,
         warns = _consistency_warnings(out_steps, req_type)
         if warns:
             payload["warnings"] = warns
+        flags = step_flags(steps, out_steps,
+                           answers if res.get("ok") else None)
+        payload.update(lint_plan(steps, out_steps, flags, context))
+        if failed:
+            payload["recovery"] = _failure_result(
+                failed, out_steps[0] if out_steps else {},
+                answers.get("failure_args_fixable") if res.get("ok")
+                else None)
+        if res.get("model"):
+            payload["jev_model"] = res["model"]
         result = dumps(payload)
-        if len(_RESULT_CACHE) >= _RESULT_CACHE_MAX:
-            _RESULT_CACHE.pop(next(iter(_RESULT_CACHE)))
-        _RESULT_CACHE[cache_key] = result
-        return result
+        meta = _build_meta(payload, router)
+        # Chỉ cache kết quả Jev — fallback keyword do Jev lỗi tạm thời
+        # không được dính cache tới lúc restart.
+        if router == "jev":
+            if len(_RESULT_CACHE) >= _RESULT_CACHE_MAX:
+                _RESULT_CACHE.pop(next(iter(_RESULT_CACHE)))
+            _RESULT_CACHE[cache_key] = (result, meta)
+        return result, meta
     except Exception as e:  # tuyệt đối không crash
         logger.exception("tool_help error")
         return dumps({"router": "error", "steps": [
             {"step": s, "task_type": "no_match",
              "note": f"tool_help lỗi: {e} — agent tự xử lý"}
-            for s in steps]})
+            for s in steps]}), {"router": "error"}
+
+
+def _build_meta(payload: dict, router: str) -> dict:
+    """Meta gọn cho call log (không gửi agent) — đủ để ghép step↔call sau."""
+    import hashlib
+
+    routing = []
+    for i, s in enumerate(payload.get("steps") or [], 1):
+        routing.append({
+            "i": i, "step": s.get("step"), "task_type": s.get("task_type"),
+            "tool": s.get("tool"), "confidence": s.get("confidence"),
+            "decision": s.get("decision"),
+            "alts": [a.get("task_type") for a in s.get("alternatives") or []],
+        })
+    key = "|".join(r["step"] or "" for r in routing)
+    meta = {
+        "help_id": hashlib.sha1(key.encode("utf-8")).hexdigest()[:12],
+        "router": router,
+        "routing": routing,
+    }
+    if payload.get("jev_model"):
+        meta["jev_model"] = payload["jev_model"]
+    req = payload.get("requirement") or {}
+    if req.get("type"):
+        meta["requirement_type"] = req["type"]
+    if payload.get("plan_patch"):
+        meta["plan_patch_rules"] = [p.get("rule") for p in payload["plan_patch"]]
+    if payload.get("related_skills"):
+        meta["skills"] = payload["related_skills"]
+    return meta
+
+
+def tool_help(*steps, context: dict | None = None,
+              jev_config: dict | None = None) -> str:
+    """Route các bước plan -> tool + call template + pitfalls (JSON text)."""
+    return tool_help_with_meta(*steps, context=context,
+                               jev_config=jev_config)[0]

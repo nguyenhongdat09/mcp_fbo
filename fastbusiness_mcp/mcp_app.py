@@ -127,7 +127,7 @@ def _maybe_tool(name: str, **kwargs):
 def query_database_tool(
     file_path: Annotated[
         str,
-        Field(description="Path BẤT KỲ trong project FBO để resolve connection qua Web.config — abs file/dir (local/UNC) hoặc relative ('Grid/SOTran.xml', 'Web.config', project root). Relative tự resolve qua sticky project context sau call abs đầu tiên."),
+        Field(description="BẮT BUỘC cho mọi call (kể cả query thuần DB hay mode='search') — path BẤT KỲ trong project FBO để resolve connection qua Web.config — abs file/dir (local/UNC) hoặc relative ('Grid/SOTran.xml', 'Web.config', project root). Relative tự resolve qua sticky project context sau call abs đầu tiên."),
     ],
     query: Annotated[
         str,
@@ -176,7 +176,7 @@ def query_database_tool(
         str,
         Field(
             default="P,FN,IF,TF,V,TR",
-            description="mode='search': lọc loại object, CSV whitelist P,FN,IF,TF,V,TR (mặc định tất cả).",
+            description="mode='search': lọc loại object, CSV whitelist P,FN,IF,TF,V,TR,U (U=user TABLE — chỉ tìm theo tên, không có definition cho references; mặc định KHÔNG gồm bảng).",
         ),
     ] = "P,FN,IF,TF,V,TR",
     include_snippet: Annotated[
@@ -299,7 +299,7 @@ query_type:
 - 2: path file .sql — dùng cho script dài (tiết kiệm token)
 - 3: path file .sql — check syntax qua SET PARSEONLY (chỉ parse, KHÔNG execute — chạy trước khi deploy script; báo MỌI lỗi kèm line_start = dòng file gốc). Lưu ý: parse-only không check tên bảng/cột tồn tại.
 
-mode='search': tìm DB object (proc/view/func/trigger) theo tên hoặc theo nội dung — trả lời "object nào đang dùng bảng/field X" mà không cần tự viết query sys.sql_modules. Cần ít nhất object_name hoặc references; kết quả gồm objects[] (name/schema/type/modify_date/has_definition) + matched_lines[] (dòng chứa references). Xem tiếp object nào → dùng mode summary/snippet/full với query_type=0.
+mode='search': tìm DB object (proc/view/func/trigger; thêm bảng với object_types='U') theo tên hoặc theo nội dung — trả lời "object nào đang dùng bảng/field X" hoặc "bảng nào tên dạng m81$%" mà không cần tự viết query sys.objects/sys.sql_modules. Cần ít nhất object_name hoặc references; kết quả gồm objects[] (name/schema/type/modify_date/has_definition) + matched_lines[] (dòng chứa references). Xem tiếp object nào → dùng mode summary/snippet/full với query_type=0.
 
 db_type: app (mặc định) hoặc sys."""
     try:
@@ -1468,19 +1468,35 @@ if _JEV_CONFIG is not None:
             Optional[Dict[str, Any]],
             Field(
                 default=None,
-                description="Optional: {'task_requirement': '<UR nguyên văn>'} để Jev route chuẩn hơn.",
+                description=(
+                    "Optional: {'task_requirement': '<UR nguyên văn>'} để Jev route chuẩn hơn. "
+                    "Thêm khi cần: 'failed': {tool, args, error_code, message} — tool vừa lỗi "
+                    "(truyền step lỗi làm steps[0]) → nhận recovery {decision fix_args|switch, next}; "
+                    "'done': [task_type đã làm, vd 'paste_sql','db_object'] — linter không chèn lại; "
+                    "'path'/'ext'/'db' — ngữ cảnh file/DB đang làm."
+                ),
             ),
         ] = None,
     ) -> str:
         """Hỏi trước khi gọi tool thật: truyền các bước plan, nhận per-step
         {task_type, tool, call template, required_params, pitfalls,
-        confidence, alternatives(>20%)}. task_type=no_match -> step đó
-        không có tool phù hợp, agent tự xử lý. Dùng khi chưa chắc
-        tool/mode/param — tránh gọi sai tốn token."""
+        confidence, decision act|review|fallback, alternatives(>20%)}.
+        task_type=no_match -> step đó không có tool phù hợp, agent tự xử lý.
+        plan_patch/patched_plan = bước bắt buộc plan đang thiếu (clone proc
+        trước khi sửa, check schema, read_option=4/3 quanh Edit XML,
+        PARSEONLY trước F5, hỏi user trước deploy) — làm theo patched_plan.
+        Dùng khi chưa chắc tool/mode/param — tránh gọi sai tốn token; tool
+        lỗi mà khối recovery trong response chưa đủ → gọi lại kèm
+        context.failed."""
         try:
-            from tool_help import tool_help as _tool_help_service
-            return _tool_help_service(
+            from tool_help.service import tool_help_with_meta
+            from .utils import call_log as _call_log
+            text, meta = tool_help_with_meta(
                 *steps, context=context, jev_config=_JEV_CONFIG)
+            # routing từng step → call log (không gửi agent) để ghép
+            # step↔call sau này (scripts/jev_feedback)
+            _call_log.set_pending_extra("tool_help", meta)
+            return text
         except Exception as e:
             return format_execution_error("tool_help", e)
 
@@ -1530,6 +1546,15 @@ async def _logged_call_tool(name: str, arguments: dict, context=None):
         )
         raise
     text, is_error = call_log.extract_response_text(result)
+    # Lỗi có luật recovery → gắn "bước tiếp theo" (tool_help/recovery.py)
+    try:
+        from tool_help.recovery import attach_recovery, build_recovery
+
+        rec = build_recovery(name, arguments or {}, text)
+        if rec:
+            result, text = attach_recovery(result, text, rec)
+    except Exception:
+        pass
     cfg = get_config()
     guard_cfg = cfg.get("response_guard") or {}
     max_chars = guard_cfg.get("max_chars", response_guard._MAX_RESPONSE_CHARS)

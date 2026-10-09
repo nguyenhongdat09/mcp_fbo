@@ -143,12 +143,21 @@ edit_guide: |
   - Filter/Config/Initialize.xml: append 2 dòng — <controller
     name="{X}Tran" group="Aggregation.Voucher"/> + <controller
     name="{X}Approval" group="Aggregation.Approval"/> — clone cạnh mẫu
-  - Grid/Config/Aggregation.v: append <controller name="{X}Tran"
+  - Grid/Config/Aggregation.*: append <controller name="{X}Tran"
     description="{title_e}"/> + <controller name="{X}Approval"
-    description="{apv_title_e}"/>
-  - Grid/Config/Include/Voucher.Controller.00x: file ĐÁNH SỐ .001-.006 —
-    append <controller name="{X}Tran" group="00x"/> vào ĐÚNG file chứa
-    controller mẫu (grep từng file tìm {mau_ctrl}; vd DDV ở .003)
+    description="{apv_title_e}"/> — voucher thường là Aggregation.v nhưng
+    đuôi khác theo project (.v/.q/.xml) — grep {mau_ctrl} trong
+    Aggregation.* để chọn đúng file
+  - Grid/Config/Include/Voucher.Controller.*: file ĐÁNH SỐ (.001-.006,
+    có project thêm .0021/.0031…) — append <controller name="{X}Tran"
+    group="00x"/> vào ĐÚNG file chứa controller mẫu (grep từng file tìm
+    {mau_ctrl}; vd DDV ở .003)
+  - Post/Post.xml: grep {mau_ctrl} — nếu mẫu có <view> trong file này
+    (feed Post/comment trên phiếu) thì append <view controller="{X}Tran"
+    table="m{x}$000000" key="stt_rec" postPagingList="10,20,50"
+    defaultPostLoading="10" defaultCommentLoading="5"
+    commentPageShowing="5"><title v="{title_v}" e="{title_e}"/></view>
+    clone cạnh view của mẫu
   - Options/Message.xml: APPEND action {X}Approval — clone block action
     mẫu, đổi @voucherType='{{apv_type}}' + proc GN
     FastBusiness$APV$PostAuthorize/UnPostAuthorize (KHÔNG PU$/SO$)

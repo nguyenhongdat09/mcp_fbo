@@ -128,6 +128,57 @@ def test_ask_jev_http_error(monkeypatch):
     assert res["error"] == "unauthorized"
 
 
+def test_ask_jev_retry_429_then_ok(monkeypatch):
+    from jev import client
+    body = {"model": "jev-1.13.0", "answers": {}, "usage": {}}
+    calls, sleeps = [], []
+
+    def _urlopen(*a, **k):
+        calls.append(1)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError(
+                "u", 529 if len(calls) == 1 else 429, "busy",
+                {"retry-after": "9"} if len(calls) == 2 else {}, None)
+        return _Resp(body)
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen)
+    monkeypatch.setattr(client, "_sleep", sleeps.append)
+    res = jev.ask_jev({"api_key": "k", "base_url": "http://x"}, {}, {})
+    assert res["ok"] is True and res["model"] == "jev-1.13.0"
+    assert len(calls) == 3
+    assert sleeps == [0.5, 3.0]          # backoff, retry-after cap 3s
+
+
+def test_ask_jev_retry_exhausted(monkeypatch):
+    from jev import client
+    calls = []
+
+    def _raise(*a, **k):
+        calls.append(1)
+        raise urllib.error.HTTPError("u", 429, "rl", {}, None)
+    monkeypatch.setattr(urllib.request, "urlopen", _raise)
+    monkeypatch.setattr(client, "_sleep", lambda s: None)
+    res = jev.ask_jev({"api_key": "k", "base_url": "http://x"}, {}, {})
+    assert res == {"ok": False, "error": "rate_limited", "detail": "HTTP 429"}
+    assert len(calls) == 3               # 1 + 2 retry
+
+
+def test_ask_jev_no_retry_on_422(monkeypatch):
+    import io
+    from jev import client
+    calls = []
+
+    def _raise(*a, **k):
+        calls.append(1)
+        raise urllib.error.HTTPError("u", 422, "bad", {},
+                                     io.BytesIO(b'{"field":"questions"}'))
+    monkeypatch.setattr(urllib.request, "urlopen", _raise)
+    monkeypatch.setattr(client, "_sleep", lambda s: None)
+    res = jev.ask_jev({"api_key": "k", "base_url": "http://x"}, {}, {})
+    assert res["error"] == "invalid_request"
+    assert "questions" in res["detail"]
+    assert len(calls) == 1
+
+
 def test_ask_jev_url_error(monkeypatch):
     def _raise(*a, **k):
         raise urllib.error.URLError("no route")

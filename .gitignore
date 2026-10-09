@@ -24,3 +24,7 @@ scratch/key_backup.json
 nul
 .playwright-mcp/
 .fbo_sql_temp_source.json
+# Dữ liệu sinh từ call log thật (tên KH, MST, path nội bộ) — repo public
+scratch/jev_feedback_replay.jsonl
+scratch/jev_eval_cases_auto.jsonl
+docs/doc/tool_help/feedback/

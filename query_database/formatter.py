@@ -42,6 +42,8 @@ def format_query_result(result: dict[str, Any]) -> str:
             lines.append(f"Database: {result['database']}")
         for w in result.get("warnings") or []:
             lines.append(f"[WARNING] {w}")
+        if result.get("recovery"):
+            lines.extend(_format_recovery(result["recovery"]))
         return "\n".join(lines)
 
     query_type = result.get("query_type", 1)
@@ -145,6 +147,46 @@ def format_query_result(result: dict[str, Any]) -> str:
             lines.append(f"... ({len(rows) - 200} rows omitted in preview)")
 
     return "\n".join(lines)
+
+
+def _format_recovery(rec: dict[str, Any]) -> list[str]:
+    """Khối gợi ý sửa lỗi (Invalid column/object) nối sau lỗi gốc."""
+    if rec.get("rule") == "invalid_object":
+        return _format_object_recovery(rec)
+    lines = ["", f"[RECOVERY {rec.get('rule', '')}] "
+             f"Cột không tồn tại: {', '.join(rec.get('invalid_columns') or [])}"]
+    for bad, hits in (rec.get("did_you_mean") or {}).items():
+        sugg = []
+        for h in hits:
+            s = f"{h['table']}.{h['column']}"
+            if h.get("by") == "jev":
+                s += (f" (jev {h.get('confidence')}, chưa chắc)"
+                      if h.get("uncertain") else f" (jev {h.get('confidence')})")
+            sugg.append(s)
+        lines.append(f"Gợi ý: {bad} → {', '.join(sugg)}")
+    for table, cols in (rec.get("table_columns") or {}).items():
+        lines.append(f"Cột thật của {table} ({len(cols)}): {', '.join(cols)}")
+    if rec.get("unresolved_tables"):
+        lines.append("Không tìm thấy bảng: "
+                     + ", ".join(rec["unresolved_tables"]))
+    if rec.get("hint"):
+        lines.append(f"→ {rec['hint']}")
+    return lines
+
+
+def _format_object_recovery(rec: dict[str, Any]) -> list[str]:
+    objs = rec.get("objects") or {}
+    lines = ["", f"[RECOVERY invalid_object] Object không tồn tại: "
+                 f"{', '.join(objs)}"]
+    for name, d in objs.items():
+        lines.append(f"- {name}: {d.get('note', '')}")
+        if d.get("existing"):
+            lines.append(f"  Partition có thật: {', '.join(d['existing'])}")
+        if d.get("did_you_mean"):
+            lines.append(f"  Gợi ý: {', '.join(d['did_you_mean'])}")
+        if d.get("skill"):
+            lines.append(f"  Skill: {d['skill']}")
+    return lines
 
 
 def _format_parseonly_result(result: dict[str, Any]) -> str:

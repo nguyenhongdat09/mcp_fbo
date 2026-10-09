@@ -143,11 +143,22 @@ NOTICE_RULES = [
     },
     {
         "id": "voucher_append_config",
-        "text": "Config chung (Include/Extender.ent, Filter|Grid/Config/"
-                "Initialize.xml, Grid/Config/Aggregation.v, Options/"
-                "Message.xml) chỉ APPEND dòng/block mới — TUYỆT ĐỐI không "
-                "overwrite hay sửa entry của chứng từ khác",
-        "requirements": _VOUCHER_TYPES,
+        "text": "Nếu đối tượng là CHỨNG TỪ (voucher): file config chung "
+                "chỉ APPEND dòng/block mới — TUYỆT ĐỐI không overwrite "
+                "hay sửa entry chứng từ khác. Đủ bộ gồm: Include/"
+                "Extender.ent (CẢ nhánh List lẫn Post), Filter/Config/"
+                "Initialize.xml (<controller group=\"Aggregation."
+                "Voucher\">), Grid/Config/Aggregation.* (voucher thường "
+                ".v — grep tên controller mẫu trong Aggregation.* để "
+                "chọn đúng file/đuôi theo project), Grid/Config/Include/"
+                "Voucher.Controller.* (append vào ĐÚNG file .00x đang "
+                "chứa controller mẫu), Post/Post.xml (<view controller="
+                "\"{X}Tran\" table=\"m{x}$000000\" key=\"stt_rec\"/> — "
+                "thiếu thì phiếu không có feed Post/comment), Options/"
+                "Message.xml (nếu có duyệt). Save-as (type=6) KHÔNG tự "
+                "đăng ký mấy chỗ này — grep tên controller nguồn để "
+                "biết phải append ở đâu",
+        "requirements": _VOUCHER_TYPES | {"clone_existing"},
     },
     {
         "id": "voucher_gn_apv",
@@ -157,6 +168,21 @@ NOTICE_RULES = [
                 "UnPostAuthorize KHÔNG prefix — không dùng bộ PU$/SO$",
         "requirements": {"voucher_approval_no_currency",
                          "voucher_approval_currency"},
+    },
+    {
+        "id": "voucher_template_drift",
+        "text": "Nếu task này là tạo chứng từ mới từ template: template "
+                "chứng từ hiện tại là template mới nhất — có "
+                "thể không phù hợp một vài thứ so với dự án đang làm "
+                "(vd thiếu entity). Phải double check lại entity bằng "
+                "tool cho đến khi parse XML (vd hàm get_xml_entities), "
+                "và đối chiếu với các chứng từ *Tran khác như "
+                "Dir/SVTran.xml, Grid/SVTran.xml, Grid/SVDetail.xml để "
+                "soi lại 1 lần nữa. Sau đó clear hết các comment hướng "
+                "dẫn có sẵn trên các XML mà clone_things đã clone ra; "
+                "đồng thời double check các SQL liên quan đến phiên "
+                "bản này — rồi mới bàn giao cho user",
+        "requirements": _VOUCHER_TYPES,
     },
     {
         "id": "report_aggregation",

@@ -514,6 +514,28 @@ def test_ac_dbs_4_object_types_whitelist(patched_db, monkeypatch):
     assert "DROP" not in fake.calls[-1]["query"]
 
 
+def test_ac_dbs_4b_object_types_table(patched_db, monkeypatch):
+    """object_types='U' -> tìm bảng được; references trên U-only -> warning."""
+    import query_database.service as svc
+
+    fake = _FakeExec([_obj_row(1, "m81$log", typ="U", has_def=0)])
+    monkeypatch.setattr(svc, "execute_query", fake)
+    res = svc.query_database(
+        file_path="x.xml", query="", mode="search",
+        object_name="%$log", object_types="U",
+    )
+    assert res["success"] is True
+    assert "IN ('U')" in fake.calls[0]["query"]
+    assert res["objects"][0]["type"] == "U"
+
+    res2 = svc.query_database(
+        file_path="x.xml", query="", mode="search",
+        object_name="%$log", object_types="U", references="abc",
+    )
+    assert res2["success"] is True
+    assert any("definition" in w for w in res2.get("warnings", []))
+
+
 def test_ac_dbs_5_criteria_required_and_truncated(patched_db, monkeypatch):
     """AC-DBS-5: không criteria -> search_criteria_required; quá max_results -> truncated."""
     import query_database.service as svc

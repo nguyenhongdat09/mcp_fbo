@@ -189,7 +189,10 @@ def test_multi_step_single_jev_call(patch_jev):
     out = _parse(tool_help("step A", "step B", "step C",
                            jev_config=FAKE_CFG))
     assert len(calls) == 1                      # 1 HTTP call duy nhất
-    assert len(calls[0][1]) == 3                # 3 questions song song
+    qs = calls[0][1]
+    assert sum(k.endswith("_tool") for k in qs) == 3   # 3 choice routing
+    # + Noul cờ linter per step, vẫn trong cùng call
+    assert sum(k.startswith("step1_flag_") for k in qs) == 5
     assert len(out["steps"]) == 3
 
 
@@ -1009,3 +1012,456 @@ def test_notice_excel_pivot_template(patch_jev):
                            jev_config=FAKE_CFG))
     texts = list((out.get("notice") or {}).values())
     assert any("MissingItemsLimit" in t for t in texts)
+
+
+# ---------------- db_list_tables ----------------
+
+def test_keyword_list_tables():
+    """'liệt kê/tìm bảng theo pattern tên' → db_list_tables với object_types='U'."""
+    for step in ("Liệt kê bảng có tên kết thúc $log",
+                 "liệt kê các bảng trong db",
+                 "tìm những bảng tên bắt đầu m81",
+                 "danh sách bảng chứa log",
+                 "list tables like m81$%"):
+        out = _parse(tool_help(step, jev_config=None))
+        tt = out["steps"][0]["task_type"]
+        assert tt == "db_list_tables", f"{step} -> {tt}"
+        assert out["steps"][0]["call"]["object_types"] == "U"
+        assert out["steps"][0]["call"]["mode"] == "search"
+
+
+def test_list_tables_no_steal():
+    """Không nuốt 'xem bảng dmku' (db_object) / 'proc dùng bảng' (db_search)."""
+    out = _parse(tool_help("xem cấu trúc bảng dmku", jev_config=None))
+    assert out["steps"][0]["task_type"] == "db_object"
+    out = _parse(tool_help("proc nào dùng bảng c31 trong db",
+                           jev_config=None))
+    assert out["steps"][0]["task_type"] == "db_search"
+
+
+def test_list_tables_jev_card(patch_jev):
+    """Jev chọn db_list_tables → card có call object_types='U'."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "db_list_tables",
+                       "probabilities": {"db_list_tables": 0.9}}})
+    out = _parse(tool_help("Liệt kê bảng tên kết thúc $log",
+                           jev_config=FAKE_CFG))
+    s = out["steps"][0]
+    assert s["call"]["object_types"] == "U"
+    assert "file_path" in s["required_params"]
+
+
+def test_notice_voucher_config_full_list(patch_jev):
+    """voucher_* → notice liệt kê đủ config chung kể cả Post/Post.xml."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "clone_template",
+                       "probabilities": {"clone_template": 0.9}},
+        "requirement_type": {"type": "choice",
+                             "choice": "voucher_normal_no_currency",
+                             "probabilities": {
+                                 "voucher_normal_no_currency": 0.9}}})
+    out = _parse(tool_help("Clone chứng từ mẫu",
+                           context={"task_requirement": "Tạo chứng từ mới"},
+                           jev_config=FAKE_CFG))
+    texts = list((out.get("notice") or {}).values())
+    assert any("Post/Post.xml" in t for t in texts)
+    assert any("Voucher.Controller" in t for t in texts)
+
+
+def test_notice_clone_existing_voucher_config(patch_jev):
+    """save-as chứng từ (clone_existing) cũng được nhắc config chung."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "save_as_existing",
+                       "probabilities": {"save_as_existing": 0.9}},
+        "requirement_type": {"type": "choice", "choice": "clone_existing",
+                             "probabilities": {"clone_existing": 0.9}}})
+    out = _parse(tool_help("Save as chứng từ KPG thành KPG2",
+                           context={"task_requirement": "save as chứng từ"},
+                           jev_config=FAKE_CFG))
+    texts = list((out.get("notice") or {}).values())
+    assert any("Post/Post.xml" in t for t in texts)
+
+
+# ---------------- radar template routing ----------------
+
+def test_radar_tpl_question_gated(patch_jev):
+    """Câu stepN_graph_tpl chỉ sinh cho step có mùi graph."""
+    seen = {}
+
+    def _ask(cfg, state, questions):
+        seen["questions"] = questions
+        seen["state"] = state
+        return {"ok": True, "answers": {}, "usage": {}}
+    patch_jev["fn"] = _ask
+    tool_help("file nào gọi XTran", "Check syntax file .sql",
+              jev_config=FAKE_CFG)
+    qs = seen["questions"]
+    assert "step1_graph_tpl" in qs
+    assert "step2_graph_tpl" not in qs
+    assert "radar_template_catalog" in seen["state"]
+    assert len(qs["step1_graph_tpl"]["criteria"]) == 14
+
+
+def test_radar_tpl_no_graph_step(patch_jev):
+    """Không step nào graph → không câu phụ, không catalog trong state."""
+    seen = {}
+
+    def _ask(cfg, state, questions):
+        seen["questions"] = questions
+        seen["state"] = state
+        return {"ok": True, "answers": {}, "usage": {}}
+    patch_jev["fn"] = _ask
+    tool_help("đọc summary file", jev_config=FAKE_CFG)
+    assert not any(k.endswith("_graph_tpl") for k in seen["questions"])
+    assert "radar_template_catalog" not in seen["state"]
+
+
+def test_radar_suggestion_attached(patch_jev):
+    """Jev chọn graph_query + template_9 → step có radar_template +
+    call.cypher_query là skeleton T9."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "graph_query",
+                       "probabilities": {"graph_query": 0.9}},
+        "step1_graph_tpl": {"type": "choice", "choice": "template_9",
+                            "probabilities": {"template_9": 0.8,
+                                              "template_8": 0.5}}})
+    out = _parse(tool_help("file nào gọi CPTran, xem chuỗi quan hệ 2 bước",
+                           jev_config=FAKE_CFG))
+    s = out["steps"][0]
+    assert s["tool"] == "query_radar"
+    rt = s["radar_template"]
+    assert rt["id"] == "template_9"
+    assert "[r1:Rel]" in rt["cypher"] and "START_FILE" in rt["cypher"]
+    assert s["call"]["cypher_query"] == rt["cypher"]
+    assert rt["alternatives"][0]["id"] == "template_8"
+    # catalog top-level
+    assert len(out["radar_templates"]) == 15  # 14 + _rules
+    assert "_rules" in out["radar_templates"]
+
+
+def test_radar_card_not_mutated(patch_jev):
+    """Ghi cypher gợi ý vào call KHÔNG được nhiễm vào TASK_TYPES."""
+    from tool_help.cards import TASK_TYPES
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"type": "choice", "choice": "graph_query",
+                       "probabilities": {"graph_query": 0.9}},
+        "step1_graph_tpl": {"type": "choice", "choice": "template_8",
+                            "probabilities": {"template_8": 0.9}}})
+    tool_help("file nào gọi XTran", jev_config=FAKE_CFG)
+    assert "MATCH" not in TASK_TYPES["graph_query"]["call"]["cypher_query"]
+
+
+def test_radar_keyword_fallback_catalog():
+    """Jev down → keyword route graph_query vẫn có catalog, không
+    suggestion."""
+    out = _parse(tool_help("file nào gọi XTran"))   # no jev_config
+    s = out["steps"][0]
+    assert s["task_type"] == "graph_query"
+    assert "radar_template" not in s
+    assert "template_11" in out["radar_templates"]
+
+
+def test_radar_templates_integrity():
+    """Mọi params đều xuất hiện dạng <PARAM> trong cypher."""
+    from tool_help.radar_templates import RADAR_TEMPLATES
+    assert len(RADAR_TEMPLATES) == 14
+    for tid, t in RADAR_TEMPLATES.items():
+        for p in t["params"]:
+            assert f"<{p}>" in t["cypher"], f"{tid} thiếu <{p}>"
+        assert "LIMIT" in t["cypher"] or tid == "template_10"
+
+
+# ---------------- plan linter ----------------
+
+def _route_all(mapping: dict, flags: dict | None = None):
+    """ask_jev giả: step{i}_tool → task_type theo mapping; cờ Noul theo
+    flags {(i, name): noul}, còn lại 0.0."""
+    flags = flags or {}
+
+    def _ask(cfg, state, questions):
+        ans = {}
+        for k in questions:
+            if k.endswith("_tool"):
+                i = int(k[4:k.index("_")])
+                tt = mapping.get(i, "no_match")
+                ans[k] = {"choice": tt, "confidence": 0.9,
+                          "probabilities": {tt: 0.9}}
+            elif "_flag_" in k:
+                i = int(k[4:k.index("_")])
+                name = k.split("_flag_", 1)[1]
+                ans[k] = {"type": "noul", "noul": flags.get((i, name), 0.0)}
+        return {"ok": True, "answers": ans, "usage": {}}
+    return _ask
+
+
+def test_lint_clone_before_alter_and_parseonly(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "db_run_sql", 2: "no_match"},
+        {(1, "edits_db_object"): 0.95, (1, "produces_sql_file"): 0.9})
+    out = _parse(tool_help("Thêm cột so_hd vào proc rs_rptSales",
+                           "Báo user F5", jev_config=FAKE_CFG))
+    rules = [p["rule"] for p in out["plan_patch"]]
+    assert rules == ["clone_before_alter", "parseonly_before_f5"]
+    clone = out["plan_patch"][0]
+    assert clone["insert_before"] == 1
+    assert clone["tool"] == "clone_things" and clone["call"]["type"] == 1
+    assert out["plan_patch"][1]["insert_after"] == 1
+    assert out["patched_plan"][0].startswith("[+clone_before_alter]")
+    assert out["patched_plan"][2].startswith("[+parseonly_before_f5]")
+
+
+def test_lint_satisfied_by_existing_steps(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "paste_sql", 2: "no_match", 3: "db_check_syntax"},
+        {(2, "edits_db_object"): 0.9, (2, "produces_sql_file"): 0.9})
+    out = _parse(tool_help("Clone proc rs_x ra file .sql ALTER",
+                           "Sửa proc rs_x thêm cột",
+                           "Check syntax file .sql",
+                           jev_config=FAKE_CFG))
+    assert "plan_patch" not in out
+
+
+def test_lint_schema_check_before_write(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "db_run_sql"}, {(1, "writes_db_columns"): 0.9})
+    out = _parse(tool_help("UPDATE dmvt set ten_vt2 = ...",
+                           jev_config=FAKE_CFG))
+    (p,) = out["plan_patch"]
+    assert p["rule"] == "schema_check_before_write"
+    assert p["call"]["query_type"] == 0
+
+
+def test_lint_xml_edit_before_and_after(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "no_match"}, {(1, "edits_xml_controller"): 0.9})
+    out = _parse(tool_help("Ẩn field dept_id trong Dir/DDVTran.xml",
+                           jev_config=FAKE_CFG))
+    rules = {p["rule"]: p for p in out["plan_patch"]}
+    assert rules["suggest_edit_before_xml"]["call"]["read_option"] == 4
+    assert rules["parse_check_after_xml"]["call"]["read_option"] == 3
+    assert rules["parse_check_after_xml"]["insert_after"] == 1
+
+
+def test_lint_ask_before_deploy(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "db_check_syntax", 2: "db_run_file"},
+        {(2, "runs_sql_on_db"): 0.9})
+    out = _parse(tool_help("Check syntax file a.sql", "Chạy file a.sql",
+                           jev_config=FAKE_CFG))
+    (p,) = out["plan_patch"]
+    assert p["rule"] == "ask_before_deploy" and p["insert_before"] == 2
+
+
+def test_lint_context_done_skips_rule(patch_jev):
+    patch_jev["fn"] = _route_all(
+        {1: "db_run_sql"}, {(1, "writes_db_columns"): 0.9})
+    out = _parse(tool_help("UPDATE dmvt set ten_vt2 = ...",
+                           context={"done": ["db_object"]},
+                           jev_config=FAKE_CFG))
+    assert "plan_patch" not in out
+
+
+def test_lint_regex_fallback_when_jev_down():
+    # Jev tắt: keyword route step → paste_sql (= clone type=1, tự thỏa
+    # clone_before_alter); cờ produces_sql_file từ task_type → thiếu PARSEONLY
+    out = _parse(tool_help("Sửa proc rs_rptSales thêm cột so_hd"))
+    assert out["steps"][0]["task_type"] == "paste_sql"
+    rules = [p["rule"] for p in out["plan_patch"]]
+    assert rules == ["parseonly_before_f5"]
+    # regex cờ: step sửa XML không qua Jev vẫn bị bắt
+    out = _parse(tool_help("Ẩn field dept_id trong Dir/DDVTran.xml"))
+    assert {"suggest_edit_before_xml", "parse_check_after_xml"} <= {
+        p["rule"] for p in out["plan_patch"]}
+
+
+# ---------------- re-route khi tool lỗi (context.failed) ----------------
+
+def test_failed_excludes_option_and_switches(patch_jev):
+    seen = {}
+
+    def _ask(cfg, state, questions):
+        seen["state"], seen["q"] = state, questions
+        return {"ok": True, "usage": {}, "answers": {
+            "step1_tool": {"choice": "grep_content", "confidence": 0.8,
+                           "probabilities": {"grep_content": 0.8}},
+            "failure_args_fixable": {"noul": 0.1}}}
+    patch_jev["fn"] = _ask
+    out = _parse(tool_help(
+        "Đọc hàm registerClass trong j5.js",
+        context={"failed": {"tool": "read_local_file",
+                            "args": {"file_path": "j5.js",
+                                     "symbol": "registerClass"},
+                            "error_code": "symbol_not_found"}},
+        jev_config=FAKE_CFG))
+    # option vừa fail (read_snippet) bị loại khỏi criteria step lỗi
+    assert "read_snippet" not in seen["q"]["step1_tool"]["criteria"]
+    assert seen["state"]["failure"]["error_code"] == "symbol_not_found"
+    rec = out["recovery"]
+    assert rec["failed"]["task_type"] == "read_snippet"
+    assert rec["decision"] == "switch"
+    assert rec["next"]["task_type"] == "grep_content"
+    assert rec["next"]["tool"] == "search_files"
+
+
+def test_failed_args_fixable_keeps_tool(patch_jev):
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"choice": "db_object", "confidence": 0.8,
+                       "probabilities": {"db_object": 0.8}},
+        "failure_args_fixable": {"noul": 0.9}})
+    out = _parse(tool_help(
+        "Query dmvt lấy giá bán",
+        context={"failed": {"tool": "query_database",
+                            "args": {"query": "SELECT gia_ban FROM dmvt",
+                                     "query_type": "1"},
+                            "message": "Invalid column name 'gia_ban'"}},
+        jev_config=FAKE_CFG))
+    rec = out["recovery"]
+    assert rec["failed"]["task_type"] == "db_run_sql"
+    assert rec["decision"] == "fix_args"
+    assert rec["next"]["task_type"] == "db_run_sql"
+
+
+def test_failed_changes_cache_key(patch_jev):
+    calls = []
+
+    def _ask(cfg, state, questions):
+        calls.append(1)
+        return {"ok": True, "usage": {}, "answers": {
+            "step1_tool": {"choice": "grep_content", "confidence": 0.9,
+                           "probabilities": {"grep_content": 0.9}}}}
+    patch_jev["fn"] = _ask
+    tool_help("tìm x", jev_config=FAKE_CFG)
+    tool_help("tìm x", context={"failed": {"tool": "search_files"}},
+              jev_config=FAKE_CFG)
+    assert len(calls) == 2
+
+
+def test_task_type_for_call_mapping():
+    from tool_help.cards import task_type_for_call as f
+    assert f("read_local_file", {"read_option": "4"}) == "read_suggest_edit"
+    assert f("read_local_file", {"symbol": "x"}) == "read_snippet"
+    assert f("read_local_file", {"read_option": 1}) == "read_raw"
+    assert f("search_files", {"mode": "files_only"}) == "match_filename"
+    assert f("search_files", {}) == "grep_content"
+    assert f("query_database", {"query": "select 1"}) == "db_run_sql"
+    assert f("query_database", {"query_type": 0, "mode": "snippet"}) == \
+        "db_snippet"
+    assert f("query_database", {"mode": "search", "object_types": "U"}) == \
+        "db_list_tables"
+    assert f("query_database", {"query": "exec fsd_addFields 'a'"}) == \
+        "db_add_field"
+    assert f("clone_things", {"type": "1"}) == "paste_sql"
+    assert f("compare_things", {"kind": "folder", "inventory": True}) == \
+        "list_folder"
+    assert f("search_qlyc", {"fcode1": "YC1"}) == "ur_exact"
+    assert f("profiler", {}) is None
+
+
+# ---------------- routing 2 tầng (hierarchical) ----------------
+
+def test_hierarchical_resolve_beam():
+    from tool_help.hierarchical import resolve_hierarchical
+    ans = {
+        "step1_toolpick": {"confidence": 0.6, "probabilities": {
+            "read_local_file": 0.7, "search_files": 0.25,
+            "query_database": 0.05}},
+        "step1_tt_read_local_file": {"confidence": 0.8, "probabilities": {
+            "read_summary": 0.9, "read_flat": 0.1}},
+        "step1_tt_search_files": {"confidence": 0.9, "probabilities": {
+            "grep_content": 1.0}},
+    }
+    r = resolve_hierarchical(ans, 1)
+    assert r["task_type"] == "read_summary"           # 0.7 × 0.9
+    assert r["top3"][:2] == ["read_summary", "grep_content"]
+    assert r["confidence"] == 0.6                     # phán đoán yếu nhất
+
+
+def test_hierarchical_service_end_to_end(patch_jev):
+    seen = {}
+
+    def _ask(cfg, state, questions):
+        seen["q"] = questions
+        return {"ok": True, "usage": {}, "answers": {
+            "step1_toolpick": {"confidence": 0.9, "probabilities": {
+                "search_files": 0.95, "read_local_file": 0.05}},
+            "step1_tt_search_files": {"confidence": 0.9, "probabilities": {
+                "grep_content": 0.9, "match_filename": 0.1}}}}
+    patch_jev["fn"] = _ask
+    cfg = {**FAKE_CFG, "routing": "hierarchical"}
+    out = _parse(tool_help("tìm file chứa dmku", jev_config=cfg))
+    assert "step1_tool" not in seen["q"]
+    assert "step1_toolpick" in seen["q"]
+    s = out["steps"][0]
+    assert s["task_type"] == "grep_content" and s["tool"] == "search_files"
+    assert s["decision"] == "act"
+
+
+# ---------------- Phase 2: decision / cache / meta ----------------
+
+def test_decision_zones(patch_jev):
+    """confidence → act (>=0.7) / review (>=0.4) / fallback (<0.4)."""
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"choice": "grep_content", "confidence": 0.9,
+                       "probabilities": {"grep_content": 0.92}},
+        "step2_tool": {"choice": "match_filename", "confidence": 0.5,
+                       "probabilities": {"match_filename": 0.55,
+                                         "grep_content": 0.3}},
+        "step3_tool": {"choice": "read_snippet", "confidence": 0.2,
+                       "probabilities": {"read_snippet": 0.3,
+                                         "read_summary": 0.28,
+                                         "grep_content": 0.25}}})
+    out = _parse(tool_help("a", "b", "c", jev_config=FAKE_CFG))
+    s1, s2, s3 = out["steps"]
+    assert s1["decision"] == "act" and "decision_note" not in s1
+    assert s2["decision"] == "review" and s2["decision_note"]
+    assert s3["decision"] == "fallback"
+    # read_snippet + read_summary cùng read_local_file → mức tool chắc hơn
+    assert s3["tool_level"] == {"tool": "read_local_file",
+                                "probability": 0.58}
+
+
+def test_decision_absent_without_confidence(patch_jev):
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"choice": "grep_content",
+                       "probabilities": {"grep_content": 0.9}}})
+    s = _parse(tool_help("a", jev_config=FAKE_CFG))["steps"][0]
+    assert "decision" not in s
+
+
+def test_fallback_result_not_cached(patch_jev):
+    """Jev lỗi 1 lần → lần sau phải gọi lại Jev, không dính cache keyword."""
+    calls = []
+
+    def _flaky(cfg, state, questions):
+        calls.append(1)
+        if len(calls) == 1:
+            return {"ok": False, "error": "overloaded", "detail": "529"}
+        return {"ok": True, "model": "jev-1.13.0", "usage": {},
+                "answers": {"step1_tool": {
+                    "choice": "grep_content", "confidence": 0.9,
+                    "probabilities": {"grep_content": 0.9}}}}
+    patch_jev["fn"] = _flaky
+    a = _parse(tool_help("tìm file chứa dmku", jev_config=FAKE_CFG))
+    b = _parse(tool_help("tìm file chứa dmku", jev_config=FAKE_CFG))
+    c = _parse(tool_help("tìm file chứa dmku", jev_config=FAKE_CFG))
+    assert a["router"] == "keyword"
+    assert "router" not in b and b["jev_model"] == "jev-1.13.0"
+    assert len(calls) == 2                     # lần 3 lấy cache Jev
+    assert c == b
+
+
+def test_with_meta_routing(patch_jev):
+    from tool_help.service import tool_help_with_meta
+    patch_jev["fn"] = _fake_ask({
+        "step1_tool": {"choice": "match_filename", "confidence": 0.5,
+                       "probabilities": {"match_filename": 0.55,
+                                         "grep_content": 0.3}}})
+    text, meta = tool_help_with_meta("tìm file Dir/Grid",
+                                     jev_config=FAKE_CFG)
+    assert json.loads(text)["steps"][0]["task_type"] == "match_filename"
+    assert meta["router"] == "jev"
+    assert len(meta["help_id"]) == 12
+    assert meta["routing"] == [{
+        "i": 1, "step": "tìm file Dir/Grid", "task_type": "match_filename",
+        "tool": "search_files", "confidence": 0.5, "decision": "review",
+        "alts": ["grep_content"]}]

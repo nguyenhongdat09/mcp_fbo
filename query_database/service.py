@@ -18,7 +18,7 @@ from .query_resolver import (
 )
 from .bridges.summary_bridge import resolve_object_ref
 
-_SEARCH_OBJECT_TYPES = {"P", "FN", "IF", "TF", "V", "TR"}
+_SEARCH_OBJECT_TYPES = {"P", "FN", "IF", "TF", "V", "TR", "U"}
 _SEARCH_DEFAULT_TYPES = "P,FN,IF,TF,V,TR"
 
 
@@ -148,6 +148,9 @@ def query_database(
         query_result = execute_sql_batches(parsed, sql, max_rows=max_rows)
     else:
         query_result = execute_query(parsed, sql, max_rows=max_rows)
+    if qt in (1, 2) and not query_result.get("success"):
+        _attach_recovery(query_result, parsed, sql,
+                         file_path=file_path, db_type=db_type)
     return _attach_metadata(
         query_result,
         file_path=file_path,
@@ -401,10 +404,20 @@ def _search_objects(
         "object_count": len(objects),
         "truncated": truncated,
     }
+    warns: list[str] = []
     if dropped:
-        result["warnings"] = [
+        warns.append(
             f"object_types bỏ qua giá trị ngoài whitelist {_SEARCH_OBJECT_TYPES}: {dropped}"
-        ]
+        )
+    if references and set(types) == {"U"}:
+        warns.append(
+            "references chỉ quét sys.sql_modules.definition (proc/view/"
+            "func/trigger) — bảng (U) không có definition nên điều kiện "
+            "references loại hết kết quả; tìm bảng chỉ dùng object_name "
+            "hoặc bỏ references"
+        )
+    if warns:
+        result["warnings"] = warns
     return _attach_metadata(
         result,
         file_path=file_path,
@@ -414,6 +427,31 @@ def _search_objects(
         query_label="object_search",
         original_query=object_name or references,
     )
+
+
+def _attach_recovery(query_result: dict, parsed: dict, sql: str, *,
+                     file_path: str = "", db_type: str = "app") -> None:
+    """Lỗi Invalid column/object → gắn chẩn đoán + gợi ý (không đổi lỗi
+    gốc). Invalid object ưu tiên: SQL Server báo object trước column."""
+    from .column_hint import build_column_hint
+    from .executor import split_go_batches
+    from .object_hint import build_object_hint
+
+    error_text = str(query_result.get("error") or "")
+    low = error_text.lower()
+    hint = None
+    if "invalid object name" in low:
+        hint = build_object_hint(parsed, error_text, file_path=file_path,
+                                 db_type=db_type)
+    elif "invalid column name" in low:
+        failed_idx = query_result.get("failed_batch_index")
+        if failed_idx:
+            batches = split_go_batches(sql)
+            if 0 < failed_idx <= len(batches):
+                sql = batches[failed_idx - 1]
+        hint = build_column_hint(parsed, sql, error_text)
+    if hint:
+        query_result["recovery"] = hint
 
 
 def _attach_metadata(

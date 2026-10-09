@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import threading
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -54,6 +55,13 @@ _TEXT_ERROR_PREFIXES = (
     "Lỗi",
     "Error executing tool",
 )
+
+# Khối gợi ý sửa lỗi do tool tự gắn (vd query_database column_hint)
+_RECOVERY_RE = re.compile(r"\[RECOVERY (\w+)\]")
+
+SESSION_ID = uuid.uuid4().hex[:12]
+_seq = 0
+_pending_extra: dict = {}
 
 _lock = threading.Lock()
 _warned = False
@@ -106,13 +114,41 @@ def _warn_once(msg: str) -> None:
         pass
 
 
+def _next_seq() -> int:
+    global _seq
+    with _lock:
+        _seq += 1
+        return _seq
+
+
+def set_pending_extra(tool: str, extra: dict) -> None:
+    """Tool đặt meta (không gửi agent) để dòng log của call này kèm theo.
+
+    Dùng dict theo tên tool thay vì contextvar: tool sync có thể chạy trong
+    worker thread, contextvar set ở đó không về tới wrapper async.
+    """
+    with _lock:
+        _pending_extra[str(tool)] = dict(extra)
+
+
+def _pop_pending_extra(tool: str) -> Optional[dict]:
+    with _lock:
+        return _pending_extra.pop(str(tool), None)
+
+
 def _write_line(record: dict) -> None:
-    """Append 1 dòng JSONL. Mọi lỗi IO → warn stderr 1 lần, không raise."""
+    """Append 1 dòng JSONL. Mọi lỗi IO → warn stderr 1 lần, không raise.
+
+    Mọi dòng mang ``session_id`` (1 process MCP = 1 phiên agent) + ``seq``
+    tăng dần — nhiều process ghi chung file ngày vẫn tách được phiên.
+    """
+    record = {"session_id": SESSION_ID, "seq": _next_seq(), **record}
     try:
         line = json.dumps(record, ensure_ascii=False, default=str)
     except Exception:
         line = json.dumps(
-            {"ts": _now_ts(), "event": "log_serialize_error"}, ensure_ascii=False
+            {"session_id": SESSION_ID, "seq": record["seq"], "ts": _now_ts(),
+             "event": "log_serialize_error"}, ensure_ascii=False
         )
     try:
         log_dir = get_log_dir()
@@ -331,7 +367,18 @@ def log_tool_call(
             "text_preview": response_text[:_SUMMARY_SCALAR_CAP]
         }
 
+    rec = data.get("recovery") if data is not None else None
+    if isinstance(rec, dict) and rec.get("rule"):
+        record["recovery_rule"] = rec["rule"]
+    elif response_text:
+        m = _RECOVERY_RE.search(response_text)
+        if m:
+            record["recovery_rule"] = m.group(1)
+
     if extra and isinstance(extra, dict):
         record.update(extra)
+    pending = _pop_pending_extra(tool)
+    if pending:
+        record.update(pending)
 
     _write_line(record)

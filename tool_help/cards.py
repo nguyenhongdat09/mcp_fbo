@@ -316,6 +316,8 @@ TASK_TYPES = {
             "mode=full để đọc — đọc TOÀN BỘ proc để phân tích/sửa → "
             "clone_things type=1 (mode_read=3 trả JSON không ghi file, "
             "mode_read=0 ghi .sql ALTER)",
+            "file_path BẮT BUỘC dù chỉ query thuần DB — truyền path bất "
+            "kỳ trong project để resolve connection",
         ],
     },
     "db_snippet": {
@@ -344,7 +346,10 @@ TASK_TYPES = {
         "call": {"file_path": "<path trong project>",
                  "query": "<SQL inline>", "query_type": 1},
         "required": ["file_path", "query", "query_type"],
-        "pitfalls": [],
+        "pitfalls": [
+            "file_path BẮT BUỘC dù chỉ query thuần DB — truyền path bất "
+            "kỳ trong project để resolve connection",
+        ],
     },
     "db_run_file": {
         "desc": "Execute a .sql FILE (long script)",
@@ -409,8 +414,9 @@ TASK_TYPES = {
         ],
     },
     "db_search": {
-        "desc": "Search DB objects by name LIKE or by references ('which "
-                "proc uses table/field X')",
+        "desc": "Search DB code objects (proc/view/func/trigger) by name "
+                "LIKE or by references ('which proc uses table/field X'). "
+                "NOT for listing TABLES by name (that is db_list_tables)",
         "tool": "query_database",
         "call": {"file_path": "<path trong project>", "mode": "search",
                  "object_name|references": "<pattern>"},
@@ -418,6 +424,31 @@ TASK_TYPES = {
         "pitfalls": [
             "references = literal trong definition; object_name = LIKE "
             "pattern; cần ít nhất 1 trong 2",
+            "file_path BẮT BUỘC dù chỉ query thuần DB — truyền path bất "
+            "kỳ trong project để resolve connection",
+            "Whitelist mặc định KHÔNG có bảng — tìm bảng theo tên truyền "
+            "object_types='U' (hoặc route db_list_tables)",
+        ],
+    },
+    "db_list_tables": {
+        "desc": "List DB TABLES (type U) by name LIKE pattern - 'liệt kê "
+                "bảng tên kết thúc/bắt đầu/chứa X', 'những bảng nào dạng "
+                "m81$%', 'tìm bảng *log'. NOT for schema of ONE known "
+                "table (db_object), NOT for which proc uses a table "
+                "(db_search)",
+        "tool": "query_database",
+        "call": {"file_path": "<path trong project>", "mode": "search",
+                 "object_name": "<LIKE pattern vd %$log hoặc m81$%>",
+                 "object_types": "U"},
+        "required": ["file_path", "mode", "object_name", "object_types"],
+        "pitfalls": [
+            "Chỉ tìm theo TÊN trong sys.objects — tìm bảng CHỨA CỘT X → "
+            "db_run_sql query sys.columns/sys.tables",
+            "Bảng không có definition → đừng truyền references (sẽ rỗng)",
+            "object_name là LIKE pattern — phải tự thêm % (vd '%$log'), "
+            "không truyền trần 'log'",
+            "file_path BẮT BUỘC — path bất kỳ trong project để resolve "
+            "connection",
         ],
     },
     "db_add_field": {
@@ -485,11 +516,22 @@ TASK_TYPES = {
                 "Cypher templates",
         "tool": "query_radar",
         "call": {"reference_file": "<abs path file XML trong Controllers>",
-                 "mode": "query", "cypher_query": "<1 trong template>"},
+                 "mode": "query",
+                 "cypher_query": "<1 trong 14 template — xem "
+                                 "radar_template suggested / payload."
+                                 "radar_templates>"},
         "required": ["reference_file", "cypher_query"],
         "pitfalls": [
             "reference_file BẮT BUỘC absolute — relative bị reject",
-            "CẤM tự ghép Cypher — chỉ dùng template có sẵn",
+            "CẤM tự ghép Cypher — chỉ 1 trong 14 template "
+            "(payload.radar_templates); cấm ILIKE/LIKE, chỉ CONTAINS",
+            "path dùng ENDS WITH/CONTAINS — không = 'Grid\\X.xml'",
+            "CẤM RETURN node đầy đủ (js_text/sql_text tràn token) — chỉ "
+            "cột cần + luôn LIMIT",
+            "Edge chỉ có :Rel + r.edge_type — PHẢI filter edge_type "
+            "(SHARED_INCLUDE ~99% edges)",
+            "Chuỗi có nháy lồng → tách keyword ngắn + AND; T8 chỉ 1 hop — "
+            "cụm/xung quanh phải T11",
         ],
     },
     "find_by_title": {
@@ -660,8 +702,14 @@ _JEV_TASK_DESCS = {
                   "dau tu — incl. inside report/voucher procs; not:"
                   "one known object (db_object), generic check "
                   "(db_run_sql), fs_Post* posting",
-    "db_search": "search DB objects by name LIKE|references ('which "
-                 "proc uses table/field X')",
+    "db_search": "search DB code objects (proc/view/func/trigger) by "
+                 "name LIKE|references ('which proc uses table/field "
+                 "X'); not:list tables by name (db_list_tables)",
+    "db_list_tables": "list DB TABLES (type U) by name LIKE — signals: "
+                      "liet ke/danh sach/tim bang ten ket thuc|bat dau|"
+                      "chua X, nhung bang nao dang m81$%, tim bang *log; "
+                      "not:schema one known table (db_object), proc "
+                      "using table (db_search)",
     "db_add_field": "add column/field to existing table (them truong/"
                     "cot vao bang); also when step writes ALTER TABLE/"
                     "adds columns -> fsd_addFields, never raw ALTER",
@@ -672,7 +720,8 @@ _JEV_TASK_DESCS = {
                     "missing files",
     "graph_query": "query XML controller graph (Kuzu): which controller "
                    "calls/retrieves/uses lookup|table|file, master-"
-                   "detail, neighbors, clusters; fixed Cypher templates",
+                   "detail, neighbors, clusters; fixed Cypher template "
+                   "1..14 (radar_template suggested per intent)",
     "find_by_title": "find controller files by DISPLAY TITLE (tieu de "
                      "VN trong <title v=...>) — only when step names a "
                      "VN display title; find only, cloning="
@@ -884,6 +933,14 @@ REQUIREMENT_TYPES = {
             "menu/aspx nếu cần",
             "4. Sửa bản clone theo các yêu cầu phụ của UR (cột, cách "
             "tính, toolbar, đồ thị...)",
+            "4b. Save-as KHÔNG tự đăng ký config chung — grep tên "
+            "controller NGUỒN trong các file dùng chung rồi APPEND "
+            "dòng tương ứng đổi sang tên mới. Với chứng từ: "
+            "Post/Post.xml (<view controller table key stt_rec>), "
+            "Filter/Config/Initialize.xml, Grid/Config/Aggregation.* "
+            "(.v/.q — theo file chứa nguồn), Grid/Config/Include/"
+            "Voucher.Controller.* (đúng file .00x chứa nguồn), "
+            "Include/Extender.ent (cả nhánh List lẫn Post)",
             "5. Nếu chức năng nguồn/UR có nút Đồ thị: cần đủ bộ "
             "{X}Graph.xml (Filter/Grid) + entity Identification/GraphMa* "
             "+ aspx có LoadControl(\"Chart.ascx\") — thiếu → lỗi JS "
@@ -1019,8 +1076,21 @@ def template_block(req_type: str) -> dict | None:
         },
     }
 
-TASK_TYPE_CATALOG = {k: _JEV_TASK_DESCS.get(k) or v["desc"]
-                     for k, v in TASK_TYPES.items()}
+# Jev 1.13 thiên vị option đứng đầu (docs jaggedness #8). Đo
+# `jev_eval.py --steps-set --shuffle 2`: read_flat ở vị trí 2 thắng oan
+# read_summary ở 3/67 step → dời xuống sau các mode read_* khác.
+_CATALOG_DEFER_AFTER = {"read_flat": "read_suggest_edit"}
+
+
+def _catalog_order() -> list[str]:
+    keys = [k for k in TASK_TYPES if k not in _CATALOG_DEFER_AFTER]
+    for k, after in _CATALOG_DEFER_AFTER.items():
+        keys.insert(keys.index(after) + 1, k)
+    return keys
+
+
+TASK_TYPE_CATALOG = {k: _JEV_TASK_DESCS.get(k) or TASK_TYPES[k]["desc"]
+                     for k in _catalog_order()}
 
 # Ví dụ giá trị param theo TỪNG tool — cùng tên param (vd `query`,
 # `file_path`) mang nghĩa khác nhau giữa các tool nên ví dụ gắn theo tool,
@@ -1093,3 +1163,70 @@ def card_for(task_type: str) -> dict | None:
     if t["pitfalls"]:
         card["pitfalls"] = t["pitfalls"]
     return card
+
+
+def _int(v, default=None):
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def task_type_for_call(tool: str, args: dict | None) -> str | None:
+    """Ngược của card: 1 tool call thật (tool + args) → task_type.
+
+    Dùng cho context.failed (biết option nào vừa fail) và scripts/
+    jev_feedback (gán nhãn step↔call từ log). None nếu không xác định.
+    Args trong log có thể là string ("3") — ép int khi cần.
+    """
+    a = args or {}
+    mode = str(a.get("mode") or "").strip().lower()
+    if tool == "read_local_file":
+        ro = _int(a.get("read_option"))
+        if ro == 4:
+            return "read_suggest_edit"
+        if ro in (2, 3):
+            return {2: "read_flat", 3: "read_summary"}[ro]
+        if any(a.get(k) for k in ("symbol", "block", "start_line")):
+            return "read_snippet"
+        return "read_raw" if ro == 1 else "read_summary"
+    if tool == "search_files":
+        return {"definition": "find_definition",
+                "references": "find_references",
+                "files_only": "match_filename"}.get(mode, "grep_content")
+    if tool == "compare_things":
+        kind = str(a.get("kind") or "").lower()
+        if kind == "folder" and str(a.get("inventory")).lower() == "true":
+            return "list_folder"
+        return {"file": "diff_file", "folder": "diff_folder",
+                "xml": "diff_xml", "sql": "diff_sql_table",
+                "table": "diff_sql_table"}.get(kind)
+    if tool == "clone_things":
+        return {0: "clone_sql", 1: "paste_sql", 2: "clone_data",
+                3: "copy_files", 4: "clone_template", 5: "new_sql_file",
+                6: "save_as_existing"}.get(_int(a.get("type")))
+    if tool == "query_database":
+        if mode == "search":
+            if "U" in str(a.get("object_types") or "").upper().split(","):
+                return "db_list_tables"
+            if str(a.get("object_name") or "").lower().startswith(
+                    "fastbusiness$balance"):
+                return "db_balance"
+            return "db_search"
+        qt = _int(a.get("query_type"), 1)
+        if qt == 0:
+            return "db_snippet" if mode == "snippet" else "db_object"
+        if qt == 1 and "fsd_addfields" in str(a.get("query") or "").lower():
+            return "db_add_field"
+        return {1: "db_run_sql", 2: "db_run_file",
+                3: "db_check_syntax"}.get(qt)
+    if tool == "get_xml_entities":
+        return {"content": "entity_content", "path": "entity_path",
+                "list": "entity_list", "checking": "entity_check"}.get(mode)
+    if tool == "query_radar":
+        cy = str(a.get("cypher_query") or "").lower()
+        return "find_by_title" if "title_v" in cy else "graph_query"
+    if tool == "search_qlyc":
+        return "ur_exact" if (a.get("fcode1") or a.get("ma_da")) \
+            else "ur_semantic"
+    return None

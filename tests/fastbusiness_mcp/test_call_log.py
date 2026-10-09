@@ -328,3 +328,31 @@ def test_call_log_extra_merged(log_dir):
     assert r["result_file"] == "C:\\logs\\overflow.json"
     assert r["result_summary"]["files_n"] == 500
 
+
+def test_ac_log_9_session_id_and_seq(log_dir):
+    """Mọi dòng có session_id của process + seq tăng dần (tách phiên khi
+    nhiều process ghi chung file ngày)."""
+    for i in range(3):
+        call_log.log_tool_call("query_database", {"query": str(i)}, 1.0,
+                               response_text='{"success": true}')
+    recs = _call_records(log_dir)
+    assert {r["session_id"] for r in recs} == {call_log.SESSION_ID}
+    seqs = [r["seq"] for r in recs]
+    assert seqs == sorted(seqs) and len(set(seqs)) == 3
+
+
+def test_ac_log_10_pending_extra_attached_once(log_dir):
+    """tool_help đặt meta routing → chỉ dòng log kế tiếp của tool đó mang."""
+    meta = {"help_id": "abc", "routing": [{"i": 1, "task_type": "grep_content"}]}
+    call_log.set_pending_extra("tool_help", meta)
+    call_log.log_tool_call("search_files", {}, 1.0, response_text="{}")
+    call_log.log_tool_call("tool_help", {"steps": ["s"]}, 1.0,
+                           response_text='{"steps": []}')
+    call_log.log_tool_call("tool_help", {"steps": ["s"]}, 1.0,
+                           response_text='{"steps": []}')
+    other, first, second = _call_records(log_dir)
+    assert "help_id" not in other
+    assert first["help_id"] == "abc"
+    assert first["routing"][0]["task_type"] == "grep_content"
+    assert "help_id" not in second
+

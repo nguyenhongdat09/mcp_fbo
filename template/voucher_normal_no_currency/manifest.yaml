@@ -125,11 +125,20 @@ edit_guide: |
     THIẾU → lỗi &ListTabChange;/&PostTabChange; undeclared
   - Filter/Config/Initialize.xml: append <controller name="{X}Tran"
     group="Aggregation.Voucher"/> — clone cạnh dòng của mẫu
-  - Grid/Config/Aggregation.v: append <controller name="{X}Tran"
-    description="{title_e}"/> — thiếu → list không có aggregation/group
-  - Grid/Config/Include/Voucher.Controller.00x: file ĐÁNH SỐ .001-.006 —
-    append <controller name="{X}Tran" group="00x"/> vào ĐÚNG file chứa
-    controller mẫu (grep từng file tìm {mau_ctrl}; vd DDV ở .003)
+  - Grid/Config/Aggregation.*: append <controller name="{X}Tran"
+    description="{title_e}"/> — voucher thường là Aggregation.v nhưng đuôi
+    khác theo project (.v/.q/.xml) — grep {mau_ctrl} trong Aggregation.*
+    để chọn đúng file; thiếu → list không có aggregation/group
+  - Grid/Config/Include/Voucher.Controller.*: file ĐÁNH SỐ (.001-.006,
+    có project thêm .0021/.0031…) — append <controller name="{X}Tran"
+    group="00x"/> vào ĐÚNG file chứa controller mẫu (grep từng file tìm
+    {mau_ctrl}; vd DDV ở .003)
+  - Post/Post.xml: grep {mau_ctrl} — nếu mẫu có <view> trong file này
+    (feed Post/comment trên phiếu) thì append <view controller="{X}Tran"
+    table="m{x}$000000" key="stt_rec" postPagingList="10,20,50"
+    defaultPostLoading="10" defaultCommentLoading="5"
+    commentPageShowing="5"><title v="{title_v}" e="{title_e}"/></view>
+    clone cạnh view của mẫu
   - Query/{new}Tran.xml: block LocationID/LotID trong DOCTYPE +
     &Query.LocationFields;/&Query.LotFields;/&Query.LocationFieldsName;/&Query.LotFieldsName;
     la OPTIONAL — chi dung khi chi tiet co dims vi tri/lot (ma_vitri, ma_lo);

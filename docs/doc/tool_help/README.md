@@ -16,8 +16,49 @@ Kiến trúc (`tool_help/`):
 | `keywords.py` | Regex fallback khi Jev không khả dụng (thứ tự = ưu tiên) |
 | `notices.py` | Notice rules theo task_types/requirement_type/ur_pattern |
 | `skill_hints.py` | `SKILL_HINTS` (regex → skill FBO) → `related_skills` per-step + top-level theo UR |
-| `service.py` | Ghép Jev answers + cards + notices + skill hints + `proc_name_suggestions` + `_consistency_warnings` + `_RESULT_CACHE` |
+| `service.py` | Ghép Jev answers + cards + notices + skill hints + `proc_name_suggestions` + `_consistency_warnings` + `_RESULT_CACHE` (chỉ cache kết quả Jev) + `decision` act/review/fallback + `context.failed` → `recovery` |
+| `request.py` | **Nguồn duy nhất** dựng request Jev (`build_jev_request`) — style `v1` (catalog trong state) / `v2` (mô tả trong criteria object). Eval harness dùng chung |
+| `plan_rules.py` | Plan linter: Noul cờ per-step (cùng call) + regex fallback → `RULES` CLAUDE.md → `plan_patch`/`patched_plan` |
+| `skill_suggest.py` + `skill_catalog.json` | Gợi ý skill theo recipe TypeSafe: gate 3 Noul + Choice skill (cùng call) → rerank top-3 (call 2). Catalog sinh bằng `scripts/build_skill_catalog.py` |
+| `hierarchical.py` | Routing 2 tầng tool → task_type, beam K=3 (`routing: hierarchical`) |
+| `recovery.py` | Recovery tầng wrapper (`_logged_call_tool`): lỗi tool → `recovery.next` (call tiếp theo) |
 | `balance_catalog.py` | Catalog proc số-dư nội bộ (xem dưới) |
+| `radar_templates.py` | Catalog 14 Cypher template query_radar + `RADAR_RULES` (xem mục dưới) |
+
+Ngoài `tool_help/`: `query_database/column_hint.py` + `object_hint.py`
+(recovery cần DB: Invalid column → cột thật + difflib/Jev gợi ý; Invalid
+object → DB đúng app/sys, partition có thật, #temp, built-in mới, tên gần
+đúng), `jev/client.py` (retry 429/529/timeout), `fastbusiness_mcp/utils/
+call_log.py` (`session_id`/`seq` mọi dòng, `routing` của tool_help,
+`recovery_rule`), `scripts/jev_feedback/` (router tự học — xem dưới).
+
+### Cờ config Jev (`config_jev.yaml` → `jev:`)
+
+| Key | Mặc định | Ý nghĩa |
+|-----|----------|---------|
+| `confidence_act` / `confidence_review` | 0.7 / 0.4 | 3 vùng `decision` |
+| `prompt_style` | `v1` | `v2` = mô tả option trong criteria, state gọn |
+| `routing` | `flat` | `hierarchical` = 2 tầng tool → task_type |
+
+Đổi mặc định chỉ khi `scratch/jev_eval.py --steps-set` (67 step thật từ
+log) không tụt. Đo 2026-10-09 (jev-1.13.0): v1/flat top1 94% top3 99%;
+v2 91%/100%; hierarchical 94%/99% → giữ v1/flat. `--shuffle 2`: 3/67 step
+đổi winner theo thứ tự option, đều dính `read_flat` (option thứ 2) → dời
+`read_flat` sau `read_suggest_edit` (`cards._CATALOG_DEFER_AFTER`): v1/flat
+top1 96% top3 97% (±1 step = biên dao động giữa các lần chạy Jev).
+
+## Router tự học (`scripts/jev_feedback`)
+
+`python -X utf8 -m scripts.jev_feedback all [--since D] [--replay]`:
+đọc call log → tách phiên (`session_id`; log cũ tách theo `server_start`)
+→ gán nhãn từng step tool_help với call agent thực làm (`FOLLOWED`/`ALT`/
+`SWITCHED` × `_OK`/`_FAIL_FIXED`/`_FAILED`, `SKIPPED`) → harvest case eval
+(`scratch/jev_eval_cases_auto.jsonl`, `status: pending` → duyệt thành
+`approved` thì `jev_eval.py --steps-set` đọc thêm), bảng hiệu chỉnh ngưỡng,
+sức khỏe card, hiệu quả luật recovery, đề xuất regex `keywords.py`
+(chưng cất Jev — chỉ in, không tự sửa). Report:
+`docs/doc/tool_help/feedback/<ngày>.md`. `--replay` gọi Jev cho tool_help
+log cũ chưa có routing (cache `scratch/jev_feedback_replay.jsonl`).
 
 ### `_consistency_warnings` — coverage mở rộng
 
@@ -36,9 +77,9 @@ scan step-text:
 
 ## Nén token payload Jev (jev_desc)
 
-1 call `tool_help` gửi `state` (agent_context + `task_type_catalog` 38
+1 call `tool_help` gửi `state` (agent_context + `task_type_catalog` 39
 loại + steps + task_requirement + `requirement_type_catalog` 17 loại) +
-`questions` (per-step `criteria` = dict {38 key: null}, +1 câu
+`questions` (per-step `criteria` = dict {39 key: null}, +1 câu
 requirement_type). Trước nén ~5.7k input tokens/call.
 
 Nguyên tắc: **nén lossless-information** — giữ nguyên option set +
@@ -108,7 +149,7 @@ Proc `Balance$*` chạy dynamic SQL đổ vào temp table `#t` — **caller ph�
 gọi rồi chép call-site (schema #t + ngữ nghĩa @BalanceType/@ResultType/
 @DataType). Test tay: 1 batch `CREATE #t + EXEC + SELECT * FROM #t`.
 
-### Wiring
+### Wiring (db_balance)
 
 - `keywords.py`: `(tính|lấy|xác định|hạch toán) ... (số dư|tồn|công nợ|
   dư nợ|dư có)`, `(số dư|dư|tồn) (đầu|cuối) kỳ`, `tồn kho`, `đáo hạn`,
@@ -119,3 +160,33 @@ gọi rồi chép call-site (schema #t + ngữ nghĩa @BalanceType/@ResultType/
 - `service.py` `_consistency_warnings`: step text match balance regex
   nhưng route `db_run_sql`/`db_run_file`/`no_match` → warn (bắt Jev
   misroute; step route `db_object`/`db_snippet` inspect proc = hợp lệ).
+
+## radar_templates — Jev gợi ý Cypher template cho query_radar
+
+`query_radar` chỉ chấp nhận 1 trong **14 Cypher template cố định**
+(nguồn: skill `fbo-mcp-query-radar` → `reference-radar-templates.md`).
+Agent tự chọn dễ sai (đặc biệt cặp T8/T9/T11). `tool_help` giờ chọn hộ
+bằng câu hỏi phụ Jev + nhúng catalog để agent đối chiếu.
+
+### Flow
+
+- `_build_questions`: step nào `keyword_route == "graph_query"` → thêm câu
+  `step{i}_graph_tpl` (choice trên 14 `RADAR_TEMPLATE_CATALOG`) vào cùng
+  batch Jev — không tốn round-trip. `state.radar_template_catalog` chỉ gắn
+  khi có câu phụ.
+- Step route `query_radar` + Jev trả `stepN_graph_tpl` → step output có
+  `radar_template` = `{id, when, cypher, params, confidence_to_use_top,
+  alternatives}` và `call.cypher_query` được fill skeleton luôn (copy dict
+  — `card_for` trả reference vào `TASK_TYPES`, KHÔNG mutate trực tiếp).
+- Bất kỳ step nào `tool == "query_radar"` → payload top-level có
+  `radar_templates` = `{_rules: RADAR_RULES, template_1..14: {when,
+  cypher, params}}` — kể cả nhánh keyword fallback (Jev chết vẫn có
+  catalog, chỉ thiếu suggestion).
+
+### Cặp hay nhầm (đã nén vào jev_desc)
+
+| Hỏi | Template | Không phải |
+|-----|----------|-----------|
+| Hàng xóm 1 hop mọi hướng | T8 | cụm/anh em gián tiếp → T11 |
+| Chuỗi outbound 2 bước (a)→(b)→(c) | T9 | 1 hop → T8 |
+| "xung quanh"/"liên quan"/"cụm" depth-2 | T11 | T8 không đủ |

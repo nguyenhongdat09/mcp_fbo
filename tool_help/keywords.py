@@ -80,6 +80,10 @@ KEYWORD_RULES: list[tuple[str, str]] = [
     (r"(check|kiểm tra).*(syntax|cú pháp).*\.sql|parseonly",
      "db_check_syntax"),
     (r"(chạy|execute|run).*(file|script).*\.sql", "db_run_file"),
+    (r"(liệt kê|liet ke|list|danh sách|tất cả|những|bao nhiêu|có những|"
+     r"có mấy|tìm)\s+(các\s+|những\s+|mấy\s+)?(bảng|tables?)\b|"
+     r"(bảng|tables?)\s+(nào\s+)?(có\s+)?tên\s*(kết thúc|bắt đầu|chứa|"
+     r"như|like)", "db_list_tables"),
     (r"(proc|object|function).*(dùng|use|reference).*(bảng|table|field)|"
      r"tìm.*(proc|object).*(trong db|database)", "db_search"),
     (r"(trích|extract).*(block|đoạn|vùng).*(proc|code)|snippet.*proc",

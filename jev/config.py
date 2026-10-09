@@ -7,10 +7,11 @@ Hỗ trợ 2 dạng file, tìm theo thứ tự giống resolve_config_path_local
 
 File chấp nhận:
   - config_jev.xml : <jev enabled="true"><apiKey/><baseUrl/><model/>
-                     <timeoutSeconds/><confidenceAct/><confidenceReview/></jev>
+                     <timeoutSeconds/><confidenceAct/><confidenceReview/>
+                     <promptStyle/><routing/></jev>
   - config_jev.yaml: api_key: {jev: <key>} + optional jev: {base_url, model,
                      timeout_seconds, confidence_act, confidence_review,
-                     enabled}
+                     prompt_style, routing, enabled}
 
 Trả dict config chuẩn hoặc None (file thiếu / disabled / XML lỗi /
 thiếu apiKey) -> feature locked.
@@ -29,6 +30,11 @@ _DEFAULTS = {
     "timeout_seconds": 15,
     "confidence_act": 0.7,
     "confidence_review": 0.4,
+    # Cách hỏi Jev: v1 (catalog trong state) | v2 (mô tả trong criteria).
+    "prompt_style": "v1",
+    # Định tuyến step: flat (1 Choice 39 task_type) | hierarchical (tool →
+    # task_type, beam K=3).
+    "routing": "flat",
 }
 
 _CANDIDATE_NAMES = ("config_jev.xml", "config_jev.yaml")
@@ -105,6 +111,9 @@ def _parse_xml(path: Path) -> dict | None:
         child.get("confidenceact"), _DEFAULTS["confidence_act"])
     cfg["confidence_review"] = _to_float(
         child.get("confidencereview"), _DEFAULTS["confidence_review"])
+    for k, dk in (("promptstyle", "prompt_style"), ("routing", "routing")):
+        if child.get(k):
+            cfg[dk] = child[k]
     return cfg
 
 
@@ -128,6 +137,9 @@ def _parse_yaml(path: Path) -> dict | None:
         jev_sec.get("confidence_act"), _DEFAULTS["confidence_act"])
     cfg["confidence_review"] = _to_float(
         jev_sec.get("confidence_review"), _DEFAULTS["confidence_review"])
+    for k in ("prompt_style", "routing"):
+        if jev_sec.get(k):
+            cfg[k] = str(jev_sec[k]).strip()
     return cfg
 
 
