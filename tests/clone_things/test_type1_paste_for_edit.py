@@ -137,7 +137,7 @@ def test_tc_t1_03_append_script_block_line_range(tmp_path):
     assert l_start > 0
     assert l_end >= l_start
     block_lines = lines[l_start - 1 : l_end]
-    assert block_lines[0].startswith("-- clone_things type=1: dbo.zc_range")
+    assert block_lines[0].startswith("ALTER PROCEDURE dbo.zc_range")
     assert block_lines[-1].strip() == "GO"
 
 
@@ -497,10 +497,10 @@ def test_tc_c1_strip_old_clone_things_markers(tmp_path):
     )
 
     content = sql_file.read_text(encoding="utf-8")
-    assert content.count("-- clone_things type=1: dbo.zc_TestProc") == 1
-    assert content.count("-- clone_things") == 1
+    assert content.count("-- clone_things") == 0
+    assert content.count("ALTER PROCEDURE dbo.zc_TestProc") == 1
 
-    # Idempotent: paste lại cùng script đã chứa marker cũ → vẫn chỉ 1 marker
+    # Idempotent: paste lại cùng script đã chứa marker cũ → vẫn chỉ 1 block, không marker
     append_script_block(
         str(sql_file),
         baked_script,
@@ -512,8 +512,8 @@ def test_tc_c1_strip_old_clone_things_markers(tmp_path):
         header_tag="paste_edit",
     )
     content2 = sql_file.read_text(encoding="utf-8")
-    assert content2.count("-- clone_things type=1: dbo.zc_TestProc") == 1
-    assert content2.count("-- clone_things") == 1
+    assert content2.count("-- clone_things") == 0
+    assert content2.count("ALTER PROCEDURE dbo.zc_TestProc") == 1
 
 
 def test_tc_c2_lazy_sys_section_paste(tmp_path):

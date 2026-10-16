@@ -499,7 +499,8 @@ def append_script_block(
         body = f"{clean_script}\nGO"
 
     if header_tag in ("paste_edit", "type1", "type=1"):
-        header_line = f"-- clone_things type=1: {object_name} | {object_type} | paste-for-edit | from source"
+        # type=1 không ghi header: block được nhận diện qua CREATE/ALTER (object_already_in_sql_file)
+        header_line = ""
     elif header_tag == "data_clone":
         header_line = f"-- clone_things type=2: {object_name} | {object_type} | from source"
     elif header_tag == "clone_things":
@@ -507,7 +508,7 @@ def append_script_block(
     else:
         header_line = f"-- {header_tag}: {object_name} | {object_type} | from source"
 
-    block = f"{header_line}\n{body}"
+    block = f"{header_line}\n{body}" if header_line else body
 
     clean_sys = (sys_db_name or "").strip()
     sys_pat = rf"^\s*USE\s+\[?{re.escape(clean_sys)}\]?\s*;?\s*$" if clean_sys else None
@@ -516,6 +517,15 @@ def append_script_block(
     sys_match = re.search(sys_pat, content, flags=re.IGNORECASE | re.MULTILINE) if sys_pat else None
 
     clean_obj = object_name.strip()
+    if not header_line:
+        # Không có header → thay block cũ (nếu có) theo vị trí CREATE/ALTER của object
+        exists, ex_start, ex_end = object_already_in_sql_file(file_path, clean_obj)
+        if exists and ex_start and ex_end:
+            kept = content.splitlines()
+            content = "\n".join(kept[: ex_start - 1] + kept[ex_end:]) + "\n"
+            content = re.sub(r"\n{3,}", "\n\n", content)
+            if sys_pat:
+                sys_match = re.search(sys_pat, content, flags=re.IGNORECASE | re.MULTILINE)
     old_pat = rf"^[ \t]*--[ \t]*clone_things(?:\s+type=\d+)?:[ \t]*{re.escape(clean_obj)}[ \t]*\|[^\n]*\n.*?(?:^[ \t]*GO[ \t]*(?:;)?(?:\r?\n|$))"
     if re.search(old_pat, content, flags=re.DOTALL | re.MULTILINE | re.IGNORECASE):
         content = re.sub(old_pat, "", content, flags=re.DOTALL | re.MULTILINE | re.IGNORECASE)

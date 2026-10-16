@@ -189,7 +189,7 @@ def test_strip_utf8_bom_on_ensure_and_append(tmp_path):
     text_after = sql_file.read_text(encoding="utf-8")
     assert "\ufeff" not in text_after
     # No BOM between GO and -- clone_things
-    assert "GO\n\n-- clone_things type=1: dbo.zc_test" in text_after
+    assert "GO\n\nALTER PROCEDURE dbo.zc_test" in text_after
 
 
 # ============================================================================
