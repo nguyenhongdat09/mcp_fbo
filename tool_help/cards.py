@@ -508,32 +508,7 @@ TASK_TYPES = {
             "ở nguồn",
         ],
     },
-    # ---------------- query_radar ----------------
-    "graph_query": {
-        "desc": "Query the XML controller graph (Kuzu): which controller "
-                "calls/retrieves/uses a lookup, table or file; "
-                "master-detail relations, neighbors, clusters - via fixed "
-                "Cypher templates",
-        "tool": "query_radar",
-        "call": {"reference_file": "<abs path file XML trong Controllers>",
-                 "mode": "query",
-                 "cypher_query": "<1 trong 14 template — xem "
-                                 "radar_template suggested / payload."
-                                 "radar_templates>"},
-        "required": ["reference_file", "cypher_query"],
-        "pitfalls": [
-            "reference_file BẮT BUỘC absolute — relative bị reject",
-            "CẤM tự ghép Cypher — chỉ 1 trong 14 template "
-            "(payload.radar_templates); cấm ILIKE/LIKE, chỉ CONTAINS",
-            "path dùng ENDS WITH/CONTAINS — không = 'Grid\\X.xml'",
-            "CẤM RETURN node đầy đủ (js_text/sql_text tràn token) — chỉ "
-            "cột cần + luôn LIMIT",
-            "Edge chỉ có :Rel + r.edge_type — PHẢI filter edge_type "
-            "(SHARED_INCLUDE ~99% edges)",
-            "Chuỗi có nháy lồng → tách keyword ngắn + AND; T8 chỉ 1 hop — "
-            "cụm/xung quanh phải T11",
-        ],
-    },
+    # ---------------- find_by_title (search_files) ----------------
     "find_by_title": {
         "desc": "Locate WHICH controller files implement an existing "
                 "screen/report named by DISPLAY TITLE (tiêu đề tiếng "
@@ -541,21 +516,16 @@ TASK_TYPES = {
                 "tệ theo phương pháp trực tiếp') - when the step only "
                 "needs to FIND the source, not clone it yet (cloning = "
                 "save_as_existing)",
-        "tool": "query_radar",
-        "call": {"reference_file": "<abs path file XML trong project>",
-                 "mode": "query",
-                 "cypher_query": "MATCH (n:XmlFile) WHERE "
-                                 "toLower(coalesce(n.title_v,'')) CONTAINS "
-                                 "'<title lower>' RETURN n.relative_path, "
-                                 "n.title_v, n.folder_type"},
-        "required": ["reference_file", "cypher_query"],
+        "tool": "search_files",
+        "call": {"root": "<abs path>\\App_Data\\Controllers",
+                 "pattern": "<cụm title>", "mode": "content",
+                 "include_glob": "*.xml"},
+        "required": ["root", "pattern"],
         "pitfalls": [
-            "Kuzu chưa build / .xml vừa dán chưa kịp index / watcher "
-            "tắt (user_multi_db_yn=0) → fallback search_files "
-            "mode=content trên <project>\\App_Data\\Controllers với "
-            "pattern = cụm title",
-            "Vẫn không thấy → project có thể chỉ có .f (encrypted, "
-            "title không đọc được) — báo user hỏi file .xml nguồn",
+            "root rộng (~5k file) bị truncated max_files — ưu tiên thư "
+            "mục Dir/Report/Filter, pattern ngắn đặc trưng của title",
+            "Không thấy → project có thể chỉ có .f (encrypted, title "
+            "không đọc được) — báo user hỏi file .xml nguồn",
         ],
     },
     # ---------------- search_qlyc ----------------
@@ -718,10 +688,6 @@ _JEV_TASK_DESCS = {
     "entity_list": "list all entities declared in XML",
     "entity_check": "lint XML: undeclared &entity; used|SYSTEM entity->"
                     "missing files",
-    "graph_query": "query XML controller graph (Kuzu): which controller "
-                   "calls/retrieves/uses lookup|table|file, master-"
-                   "detail, neighbors, clusters; fixed Cypher template "
-                   "1..14 (radar_template suggested per intent)",
     "find_by_title": "find controller files by DISPLAY TITLE (tieu de "
                      "VN trong <title v=...>) — only when step names a "
                      "VN display title; find only, cloning="
@@ -1143,9 +1109,6 @@ TOOL_PARAM_EXAMPLES = {
         "entities": ["filter", "dmdt"],
         "source_roots": [_U],
     },
-    "query_radar": {
-        "reference_file": _CTR + "\\Dir\\zccntttdcd.xml  # BẮT BUỘC abs",
-    },
     "search_qlyc": {
         "query": "cập nhật tất toán TD CD",
         "fcode1": "YC.2024.00123",
@@ -1223,9 +1186,6 @@ def task_type_for_call(tool: str, args: dict | None) -> str | None:
     if tool == "get_xml_entities":
         return {"content": "entity_content", "path": "entity_path",
                 "list": "entity_list", "checking": "entity_check"}.get(mode)
-    if tool == "query_radar":
-        cy = str(a.get("cypher_query") or "").lower()
-        return "find_by_title" if "title_v" in cy else "graph_query"
     if tool == "search_qlyc":
         return "ur_exact" if (a.get("fcode1") or a.get("ma_da")) \
             else "ur_semantic"

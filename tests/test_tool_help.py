@@ -103,7 +103,7 @@ def test_low_conf_tier3_and_alts(patch_jev):
         "step1_tool": {"type": "choice", "choice": "list_folder",
                        "confidence": 0.26,
                        "probabilities": {"list_folder": 0.28,
-                                         "graph_query": 0.24,
+                                         "match_filename": 0.24,
                                          "grep_content": 0.22,
                                          "no_match": 0.14}}})
     out = _parse(tool_help("Tìm danh mục mẫu có import",
@@ -111,7 +111,7 @@ def test_low_conf_tier3_and_alts(patch_jev):
     s = out["steps"][0]
     assert s["confidence_to_use_top"] == 3
     alts = {a["task_type"] for a in s["alternatives"]}
-    assert alts == {"graph_query", "grep_content"}   # >20% đều liệt kê
+    assert alts == {"match_filename", "grep_content"}   # >20% đều liệt kê
 
 
 def test_tier_counts_all_over_20pct(patch_jev):
@@ -609,7 +609,7 @@ def test_find_by_title_keyword():
                            jev_config=None))
     s = out["steps"][0]
     assert s["task_type"] == "find_by_title"
-    assert s["tool"] == "query_radar"
+    assert s["tool"] == "search_files"
 
 
 def test_save_as_notice_on_task(patch_jev):
@@ -1082,10 +1082,17 @@ def test_notice_clone_existing_voucher_config(patch_jev):
     assert any("Post/Post.xml" in t for t in texts)
 
 
-# ---------------- radar template routing ----------------
+# ---------------- query_radar đã gỡ ----------------
 
-def test_radar_tpl_question_gated(patch_jev):
-    """Câu stepN_graph_tpl chỉ sinh cho step có mùi graph."""
+def test_no_radar_in_task_types():
+    """Không task_type nào route sang query_radar / graph_query."""
+    from tool_help.cards import TASK_TYPES
+    assert "graph_query" not in TASK_TYPES
+    assert all(v["tool"] != "query_radar" for v in TASK_TYPES.values())
+
+
+def test_no_graph_tpl_question(patch_jev):
+    """Step mùi graph không sinh câu phụ stepN_graph_tpl, không catalog."""
     seen = {}
 
     def _ask(cfg, state, questions):
@@ -1093,82 +1100,9 @@ def test_radar_tpl_question_gated(patch_jev):
         seen["state"] = state
         return {"ok": True, "answers": {}, "usage": {}}
     patch_jev["fn"] = _ask
-    tool_help("file nào gọi XTran", "Check syntax file .sql",
-              jev_config=FAKE_CFG)
-    qs = seen["questions"]
-    assert "step1_graph_tpl" in qs
-    assert "step2_graph_tpl" not in qs
-    assert "radar_template_catalog" in seen["state"]
-    assert len(qs["step1_graph_tpl"]["criteria"]) == 14
-
-
-def test_radar_tpl_no_graph_step(patch_jev):
-    """Không step nào graph → không câu phụ, không catalog trong state."""
-    seen = {}
-
-    def _ask(cfg, state, questions):
-        seen["questions"] = questions
-        seen["state"] = state
-        return {"ok": True, "answers": {}, "usage": {}}
-    patch_jev["fn"] = _ask
-    tool_help("đọc summary file", jev_config=FAKE_CFG)
+    tool_help("file nào gọi XTran", jev_config=FAKE_CFG)
     assert not any(k.endswith("_graph_tpl") for k in seen["questions"])
     assert "radar_template_catalog" not in seen["state"]
-
-
-def test_radar_suggestion_attached(patch_jev):
-    """Jev chọn graph_query + template_9 → step có radar_template +
-    call.cypher_query là skeleton T9."""
-    patch_jev["fn"] = _fake_ask({
-        "step1_tool": {"type": "choice", "choice": "graph_query",
-                       "probabilities": {"graph_query": 0.9}},
-        "step1_graph_tpl": {"type": "choice", "choice": "template_9",
-                            "probabilities": {"template_9": 0.8,
-                                              "template_8": 0.5}}})
-    out = _parse(tool_help("file nào gọi CPTran, xem chuỗi quan hệ 2 bước",
-                           jev_config=FAKE_CFG))
-    s = out["steps"][0]
-    assert s["tool"] == "query_radar"
-    rt = s["radar_template"]
-    assert rt["id"] == "template_9"
-    assert "[r1:Rel]" in rt["cypher"] and "START_FILE" in rt["cypher"]
-    assert s["call"]["cypher_query"] == rt["cypher"]
-    assert rt["alternatives"][0]["id"] == "template_8"
-    # catalog top-level
-    assert len(out["radar_templates"]) == 15  # 14 + _rules
-    assert "_rules" in out["radar_templates"]
-
-
-def test_radar_card_not_mutated(patch_jev):
-    """Ghi cypher gợi ý vào call KHÔNG được nhiễm vào TASK_TYPES."""
-    from tool_help.cards import TASK_TYPES
-    patch_jev["fn"] = _fake_ask({
-        "step1_tool": {"type": "choice", "choice": "graph_query",
-                       "probabilities": {"graph_query": 0.9}},
-        "step1_graph_tpl": {"type": "choice", "choice": "template_8",
-                            "probabilities": {"template_8": 0.9}}})
-    tool_help("file nào gọi XTran", jev_config=FAKE_CFG)
-    assert "MATCH" not in TASK_TYPES["graph_query"]["call"]["cypher_query"]
-
-
-def test_radar_keyword_fallback_catalog():
-    """Jev down → keyword route graph_query vẫn có catalog, không
-    suggestion."""
-    out = _parse(tool_help("file nào gọi XTran"))   # no jev_config
-    s = out["steps"][0]
-    assert s["task_type"] == "graph_query"
-    assert "radar_template" not in s
-    assert "template_11" in out["radar_templates"]
-
-
-def test_radar_templates_integrity():
-    """Mọi params đều xuất hiện dạng <PARAM> trong cypher."""
-    from tool_help.radar_templates import RADAR_TEMPLATES
-    assert len(RADAR_TEMPLATES) == 14
-    for tid, t in RADAR_TEMPLATES.items():
-        for p in t["params"]:
-            assert f"<{p}>" in t["cypher"], f"{tid} thiếu <{p}>"
-        assert "LIMIT" in t["cypher"] or tid == "template_10"
 
 
 # ---------------- plan linter ----------------

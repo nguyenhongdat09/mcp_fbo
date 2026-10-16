@@ -46,7 +46,7 @@ _SKIP_SUMMARY_KEYS = frozenset(
     }
 )
 # Error trả về dạng text (không phải JSON) — vd GENERAL_EXECUTION_ERROR_MSG,
-# QUERY_RADAR_ERROR_MSG, formatter "[ERROR] ...", mcp_tools "Loi doc file:..."
+# formatter "[ERROR] ...", mcp_tools "Loi doc file:..."
 _TEXT_ERROR_PREFIXES = (
     "[LỖI",
     "[LOI",

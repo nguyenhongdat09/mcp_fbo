@@ -14,7 +14,6 @@ from .cards import (REQUIREMENT_TYPE_CATALOG, REQUIREMENT_TYPES,
                     card_for, task_type_for_call, template_block)
 from .formatter import dumps
 from .keywords import keyword_route
-from .radar_templates import RADAR_RULES, RADAR_TEMPLATES
 from .hierarchical import as_flat_answer, build_hierarchical_questions
 from .plan_rules import lint_plan, linter_questions, step_flags
 from .skill_suggest import stage1_questions as skill_stage1_questions
@@ -364,29 +363,6 @@ def _step_result_jev(step: str, answer: dict, cfg: dict) -> dict:
     return base
 
 
-def _radar_suggestion(answer: dict) -> dict | None:
-    """Kết quả câu hỏi phụ stepN_graph_tpl -> block gợi ý template.
-
-    None khi Jev không trả lời / choice lạ — step vẫn có catalog trong
-    payload.radar_templates để agent tự chọn.
-    """
-    choice = str(answer.get("choice") or "")
-    tpl = RADAR_TEMPLATES.get(choice)
-    if tpl is None:
-        return None
-    probs = answer.get("probabilities") or {}
-    alts = [{"id": k, "when": RADAR_TEMPLATES[k]["when"],
-             "probability": round(v, 3)}
-            for k, v in sorted(probs.items(), key=lambda x: -x[1])
-            if v > ALT_PROB_MIN and k in RADAR_TEMPLATES and k != choice]
-    out = {"id": choice, "when": tpl["when"], "cypher": tpl["cypher"],
-           "params": tpl["params"],
-           "confidence_to_use_top": max(len(alts) + 1, 1)}
-    if alts:
-        out["alternatives"] = alts
-    return out
-
-
 def _step_result_keyword(step: str) -> dict:
     tt = keyword_route(step)
     if tt is None or card_for(tt) is None:
@@ -480,16 +456,6 @@ def tool_help_with_meta(*steps, context: dict | None = None,
                 else:
                     ans = answers.get(f"step{i}_tool") or {}
                 res_step = _step_result_jev(s, ans, jev_config)
-                # Gợi ý Cypher template khi step route sang query_radar.
-                # call dict từ card_for là reference vào TASK_TYPES —
-                # phải copy trước khi ghi cypher_query kẻo nhiễm catalog.
-                if res_step.get("tool") == "query_radar":
-                    sug = _radar_suggestion(
-                        answers.get(f"step{i}_graph_tpl") or {})
-                    if sug:
-                        res_step["radar_template"] = sug
-                        res_step["call"] = {**res_step["call"],
-                                            "cypher_query": sug["cypher"]}
                 out_steps.append(res_step)
             router = "jev"
         else:
@@ -522,15 +488,6 @@ def tool_help_with_meta(*steps, context: dict | None = None,
             "steps": out_steps,
             "param_examples": param_examples,
             "jev_usage": usage}
-        # Catalog 14 Cypher template (1 lần, không lặp per-step) — agent
-        # đối chiếu khi radar_template suggestion thiếu hoặc nghi sai.
-        if any(s.get("tool") == "query_radar" for s in out_steps):
-            payload["radar_templates"] = {
-                "_rules": RADAR_RULES,
-                **{k: {"when": v["when"], "cypher": v["cypher"],
-                       "params": v["params"]}
-                   for k, v in RADAR_TEMPLATES.items()},
-            }
         if router != "jev":
             payload["router"] = router   # chỉ báo khi fallback/error
         req_ans = answers.get("requirement_type")

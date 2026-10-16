@@ -15,7 +15,6 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from .utils.logger import setup_logger
-from .agent_messages import QUERY_RADAR_ERROR_MSG
 from .tool_errors import format_execution_error, format_validation_error_message
 
 from query_database import query_database
@@ -23,10 +22,7 @@ from query_database.formatter import format_query_result
 from find_entity_by_xml import get_xml_entities
 from find_entity_by_xml.formatter import format_entity_result
 
-from xml_fbograph.mcp_tools import (
-    mcp_query_radar,
-    mcp_read_local_file,
-)
+from xml_fbograph.mcp_tools import mcp_read_local_file
 from xml_fbograph.utils.any_path import (
     known_projects,
     project_switch_message,
@@ -418,119 +414,7 @@ CHÚ Ý QUAN TRỌNG: Nếu file XML cần đọc không tồn tại, KHÔNG Đ�
 
 
 # ============================================================================
-# TOOL 3: query_radar
-# ============================================================================
-def _format_query_radar_result(res: str) -> str:
-    """Chuyển đổi kết quả / lỗi từ mcp_query_radar sang message Agent-friendly."""
-    if not isinstance(res, str):
-        return str(res)
-
-    if res.startswith("Loi thuc thi Cypher:"):
-        return QUERY_RADAR_ERROR_MSG.format(error_detail=res)
-
-    stripped = res.lstrip()
-    if stripped.startswith("{"):
-        try:
-            data = json.loads(res)
-        except json.JSONDecodeError:
-            return res
-        if isinstance(data, dict):
-            err = data.get("error")
-            if err == "invalid_reference_file":
-                msg = data.get("message", "reference_file không hợp lệ")
-                ref = data.get("reference_file", "")
-                return (
-                    "[LỖI REFERENCE_FILE]\n"
-                    f"{msg}\n"
-                    f"reference_file đã nhận: '{ref}'\n"
-                    "Agent: BẮT BUỘC truyền đường dẫn ABSOLUTE tới file XML trong App_Data\\Controllers "
-                    "(VD: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml)."
-                )
-            if err or data.get("status") == "building":
-                return QUERY_RADAR_ERROR_MSG.format(
-                    error_detail=json.dumps(data, ensure_ascii=False)
-                )
-    return res
-
-
-@_maybe_tool(
-    "query_radar",
-    annotations=ToolAnnotations(readOnlyHint=True),
-)
-async def query_radar_tool(
-    reference_file: Annotated[
-        str,
-        Field(description="BẮT BUỘC đường dẫn ABSOLUTE tới 1 file XML trong project FBO để resolve Kuzu/project root.\nVí dụ đúng: E:\\FBO\\SP2263\\App_Data\\Controllers\\Dir\\SVTran.xml\nhoặc UNC: \\\\server\\CustomerPro\\FBO\\...\\App_Data\\Controllers\\Dir\\SVTran.xml\nCẤM path tương đối: Filter/x.xml, App_Data/Controllers/..., ./Dir/x.xml.\nThiếu hoặc relative sẽ bị reject; không dùng để build Kuzu."),
-    ],
-    cypher_query: Annotated[
-        str,
-        Field(default="", description="Cypher cần chạy; bắt buộc khi mode=query, có thể để rỗng khi mode=schema"),
-    ] = "",
-    mode: Annotated[
-        Literal["query", "schema"],
-        Field(default="query", description="query=chạy Cypher; schema=trả schema live + hướng dẫn"),
-    ] = "query",
-    ctx: Context = None,
-) -> str:
-    """Query hoặc đọc schema live của đồ thị Kùzu Graph DB (Radar tool).
-Đây là tool DUY NHẤT để truy vấn Graph (các hàm cũ đã bị ẩn).
-
-CHÚ Ý: Lược đồ đồ thị (Schema), 10 Template Cypher chuẩn và các nguyên tắc cú pháp nghiêm ngặt đã được cung cấp sẵn trong Rules hệ thống (KùzuDB Cypher Query Principles & FBOGraph Schema Guide). 
-Bạn BẮT BUỘC phải đọc và tuân thủ các quy tắc, chỉ chọn 1 trong 10 Template đó khi gọi cypher_query. Tuyệt đối KHÔNG tự sáng tác câu lệnh Cypher.
-
-mode:
-- query (mặc định): chạy cypher_query.
-- schema: trả schema live XmlFile/Rel (Agent chỉ gọi để check cấu trúc thực tế khi cần)."""
-    loop = asyncio.get_running_loop()
-
-    async def _safe_report_progress(progress: float, total: float | None = None, message: str | None = None) -> None:
-        if ctx is not None:
-            try:
-                await ctx.report_progress(progress=progress, total=total, message=message)
-            except Exception:
-                pass
-
-    def on_progress(done: int, total: int, msg: str = "") -> None:
-        if ctx is not None:
-            try:
-                asyncio.run_coroutine_threadsafe(
-                    _safe_report_progress(
-                        progress=float(done),
-                        total=float(total) if total else None,
-                        message=msg,
-                    ),
-                    loop,
-                )
-            except Exception:
-                pass
-
-    cfg = get_config()
-    timeout_sec = cfg.get("fbograph", {}).get("query_timeout_seconds", 1800)
-    try:
-        await _safe_report_progress(progress=0.0, total=100.0, message="Bắt đầu kiểm tra Kùzu Graph DB...")
-        res = await asyncio.wait_for(
-            asyncio.to_thread(
-                mcp_query_radar,
-                cypher_query,
-                reference_file,
-                mode,
-                on_progress,
-            ),
-            timeout=float(timeout_sec) if timeout_sec else 1800.0,
-        )
-        await _safe_report_progress(progress=100.0, total=100.0, message="Thực thi hoàn tất.")
-        return _format_query_radar_result(res)
-    except asyncio.TimeoutError:
-        err_msg = f"Truy vấn query_radar bị timeout sau {timeout_sec}s (30 phút)."
-        logger.error(err_msg)
-        return QUERY_RADAR_ERROR_MSG.format(error_detail=err_msg)
-    except Exception as e:
-        logger.error(f"query_radar error: {e}")
-        return QUERY_RADAR_ERROR_MSG.format(error_detail=str(e))
-
-
-# ============================================================================
-# TOOL 4: read_local_file
+# TOOL 3: read_local_file
 # ============================================================================
 @_maybe_tool(
     "read_local_file",

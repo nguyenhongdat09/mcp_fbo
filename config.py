@@ -15,7 +15,6 @@ Lưu ý:
 TOOLS_ENABLED = {
     "query_database": True,
     "get_xml_entities": True,
-    "query_radar": True,
     "read_local_file": True,
     "search_qlyc": True,
     "clone_things": True,

@@ -101,8 +101,8 @@ def test_ac_log_2_exception_logged(log_dir):
 def test_ac_log_2_text_error_detected(log_dir):
     """Response text non-JSON bắt đầu [LỖI → ok=false, error_response."""
     call_log.log_tool_call(
-        "query_radar", {"cypher_query": "MATCH..."}, 99,
-        response_text="\n[LỖI CÚ PHÁP CYPHER KUZUDB]\nchi tiết...",
+        "search_files", {"pattern": "abc"}, 99,
+        response_text="\n[LỖI THAM SỐ KHÔNG HỢP LỆ]\nchi tiết...",
     )
     (r,) = _call_records(log_dir)
     assert r["ok"] is False

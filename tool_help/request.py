@@ -17,8 +17,6 @@ from __future__ import annotations
 import re
 
 from .cards import (REQUIREMENT_TYPE_CATALOG, TASK_TYPE_CATALOG)
-from .keywords import keyword_route
-from .radar_templates import RADAR_TEMPLATE_CATALOG
 
 AGENT_CONTEXT = (
     "Agent on FastBusiness ERP. Code = XML controllers on UNC paths; "
@@ -55,8 +53,7 @@ _REQ_RULES_V2 = [
 # Step chỉ nói tới file .sql (không .xml) → loại các option chỉ dành cho
 # XML controller khỏi criteria của step đó (lọc bằng code, không hỏi Jev).
 _XML_ONLY_TYPES = ("entity_content", "entity_path", "entity_list",
-                   "entity_check", "diff_xml", "graph_query",
-                   "find_by_title")
+                   "entity_check", "diff_xml", "find_by_title")
 _SQL_FILE_RE = re.compile(r"\.sql\b", re.IGNORECASE)
 _XML_FILE_RE = re.compile(r"\.xml\b|controller|\bDir/|\bGrid/|\bFilter/",
                           re.IGNORECASE)
@@ -108,33 +105,6 @@ def step_criteria_v2(step: str) -> dict:
 
 
 # ------------------------------------------------------------------ builders
-def _graph_tpl_questions(steps: list[str], style: str) -> dict:
-    """Câu phụ chọn Cypher template — chỉ cho step có mùi graph."""
-    out = {}
-    for i, s in enumerate(steps, 1):
-        if keyword_route(s) != "graph_query":
-            continue
-        if style == "v2":
-            out[f"step{i}_graph_tpl"] = {
-                "type": "choice",
-                "instructions": {
-                    "question": "IF this step runs a query_radar graph "
-                                "query, which Cypher template fits?",
-                    "step": s},
-                "criteria": dict(RADAR_TEMPLATE_CATALOG),
-            }
-        else:
-            out[f"step{i}_graph_tpl"] = {
-                "type": "choice",
-                "instructions": (
-                    f"IF step '{s}' runs a query_radar graph query, which "
-                    "Cypher template fits the intent? "
-                    "meanings: state.radar_template_catalog"),
-                "criteria": {k: None for k in RADAR_TEMPLATE_CATALOG},
-            }
-    return out
-
-
 def build_questions_v1(steps: list[str], task_requirement: str = "") -> dict:
     criteria = {k: None for k in TASK_TYPE_CATALOG}
     questions = {
@@ -148,7 +118,6 @@ def build_questions_v1(steps: list[str], task_requirement: str = "") -> dict:
         }
         for i, s in enumerate(steps, 1)
     }
-    questions.update(_graph_tpl_questions(steps, "v1"))
     if task_requirement:
         questions["requirement_type"] = {
             "type": "choice",
@@ -171,7 +140,6 @@ def build_questions_v2(steps: list[str], task_requirement: str = "") -> dict:
         }
         for i, s in enumerate(steps, 1)
     }
-    questions.update(_graph_tpl_questions(steps, "v2"))
     if task_requirement:
         questions["requirement_type"] = {
             "type": "choice",
@@ -209,6 +177,4 @@ def build_jev_request(steps: list[str], task_requirement: str = "",
         state["task_requirement"] = task_requirement
         state["requirement_type_catalog"] = REQUIREMENT_TYPE_CATALOG
     questions = build_questions_v1(steps, task_requirement)
-    if any(k.endswith("_graph_tpl") for k in questions):
-        state["radar_template_catalog"] = RADAR_TEMPLATE_CATALOG
     return state, questions

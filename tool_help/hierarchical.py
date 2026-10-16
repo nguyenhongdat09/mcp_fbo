@@ -47,9 +47,6 @@ TOOL_CRITERIA = {
     "get_xml_entities": {
         "what": "XML DOCTYPE entities: list, content, where declared, check "
                 "undeclared/missing"},
-    "query_radar": {
-        "what": "graph of XML controllers: who calls/uses what, find "
-                "controller by Vietnamese display title"},
     "search_qlyc": {
         "what": "search past user requests/tickets (QLYC) by description "
                 "or ticket code"},
