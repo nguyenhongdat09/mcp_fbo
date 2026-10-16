@@ -640,7 +640,14 @@ def test_find_by_title_keyword():
                            jev_config=None))
     s = out["steps"][0]
     assert s["task_type"] == "find_by_title"
-    assert s["tool"] == "search_files"
+    assert s["tool"] == "query_database"
+    assert s["call"]["mode"] == "lookup"
+
+
+def test_find_by_title_keyword_ma_ct():
+    out = _parse(tool_help("Tìm controller của chức năng theo mã chứng từ DDV",
+                           jev_config=None))
+    assert out["steps"][0]["task_type"] == "find_by_title"
 
 
 def test_save_as_notice_on_task(patch_jev):

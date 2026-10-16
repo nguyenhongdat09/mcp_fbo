@@ -141,7 +141,8 @@ def test_ac_sf2_1_and_sf2_4_priority_candidate_sorting(tmp_path):
     assert res_true["files_candidate"] == 11
     assert res_true["files_scanned"] <= 3
 
-    # With prefer_name_match=False and max_files=3, scans alphabetically (Admin/AFile*) and misses
+    # prefer_name_match=False: 3 file đầu (Admin/AFile*) không có match → auto-extend
+    # quét tiếp tới khi gặp Grid/zccnslkdhtpnc.xml
     res_false = search_files(
         root=str(root),
         pattern="acceptSendMail",
@@ -149,13 +150,13 @@ def test_ac_sf2_1_and_sf2_4_priority_candidate_sorting(tmp_path):
         prefer_name_match=False,
     )
     assert res_false["success"] is True
-    assert len(res_false["matches"]) == 0
-    assert res_false["truncated"] is True
-    assert res_false["truncated_reason"] == "max_files"
+    assert res_false["auto_extended"] is True
+    assert any("Grid/zccnslkdhtpnc.xml" in m["path"] for m in res_false["matches"])
+    assert res_false["status"] == "found"
 
 
-def test_ac_sf2_2_files_candidate_and_truncated_warning(tmp_path):
-    """AC-SF2-2: Truncated rỗng -> files_candidate > files_scanned, reason=max_files, warning rõ ràng."""
+def test_ac_sf2_2_empty_auto_extends_to_all_candidates(tmp_path):
+    """AC-SF2-2: 0 match sau max_files → quét tiếp hết candidate, status=not_found."""
     root = tmp_path / "warn_proj"
     root.mkdir(parents=True, exist_ok=True)
     for i in range(5):
@@ -167,12 +168,39 @@ def test_ac_sf2_2_files_candidate_and_truncated_warning(tmp_path):
         max_files=2,
     )
     assert res["success"] is True
-    assert res["truncated"] is True
-    assert res["truncated_reason"] == "max_files"
+    assert res["truncated"] is False
+    assert res["auto_extended"] is True
     assert res["files_candidate"] == 5
-    assert res["files_scanned"] == 2
+    assert res["files_scanned"] == 5
     assert len(res["matches"]) == 0
-    assert any("candidates not opened" in w for w in res["warnings"])
+    assert res["status"] == "not_found"
+    assert any(w.startswith("auto_extended:") for w in res["warnings"])
+
+
+def _fake_clock(monkeypatch):
+    """Đồng hồ tăng 1s mỗi lần gọi — monotonic thật trên Windows nhảy ~15ms."""
+    import search_files.service as svc
+    tick = iter(range(10**6))
+    monkeypatch.setattr(svc.time, "monotonic", lambda: float(next(tick)))
+
+
+def test_empty_result_inconclusive_when_time_budget_hit(tmp_path, monkeypatch):
+    """0 match + hết time_budget trước khi quét hết → status=inconclusive."""
+    root = tmp_path / "budget_proj"
+    for d in ("a", "b", "c"):
+        (root / d).mkdir(parents=True, exist_ok=True)
+        (root / d / "x.xml").write_text("<root>content</root>", encoding="utf-8")
+
+    _fake_clock(monkeypatch)
+    res = search_files(
+        root=str(root),
+        pattern="nonexistent_pattern_123",
+        time_budget_seconds=0.5,
+    )
+    assert res["success"] is True
+    assert len(res["matches"]) == 0
+    assert res["status"] == "inconclusive"
+    assert any(w.startswith("inconclusive:") for w in res["warnings"])
 
 
 def test_ac_sf2_3_root_narrow_clientscript(search_dir):
@@ -225,17 +253,17 @@ def test_ac_nit_sf_1_to_3_warnings_format(tmp_path):
     assert any("6 candidates not opened (files_candidate=10)" in w for w in res_hit["warnings"])
     assert not any("not found" in w for w in res_hit["warnings"])
 
-    # No match + truncated: includes warning not to conclude not-found
+    # No match: auto-extend quét hết 10 file → not_found chắc chắn
     res_empty = search_files(
         root=str(root),
         pattern="missing_keyword",
         max_files=4,
     )
     assert res_empty["success"] is True
-    assert res_empty["truncated"] is True
+    assert res_empty["truncated"] is False
+    assert res_empty["files_scanned"] == 10
     assert len(res_empty["matches"]) == 0
-    assert any("6 candidates not opened (files_candidate=10)" in w for w in res_empty["warnings"])
-    assert any("do not conclude \"not found\"" in w for w in res_empty["warnings"])
+    assert res_empty["status"] == "not_found"
 
     # Not truncated: warnings is empty
     res_full = search_files(
@@ -305,8 +333,8 @@ def test_ac_def_2_usage_only_not_found(def_project):
     assert "usage" in res["usage_hint"]
 
 
-def test_ac_def_2b_truncated_not_concluded(tmp_path):
-    """AC-DEF-2b: definition_found=false + truncated -> warning không kết luận."""
+def test_ac_def_2b_empty_auto_extends(tmp_path):
+    """AC-DEF-2b: chưa thấy định nghĩa sau max_files → quét tiếp, status=not_found."""
     root = tmp_path / "trunc_proj"
     root.mkdir(parents=True, exist_ok=True)
     for i in range(6):
@@ -321,7 +349,29 @@ def test_ac_def_2b_truncated_not_concluded(tmp_path):
     )
     assert res["success"] is True
     assert res["definition_found"] is False
-    assert res["truncated"] is True
+    assert res["truncated"] is False
+    assert res["auto_extended"] is True
+    assert res["files_scanned"] == 6
+    assert res["status"] == "not_found"
+
+
+def test_ac_def_2c_truncated_not_concluded(tmp_path, monkeypatch):
+    """AC-DEF-2c: definition_found=false + hết time_budget → inconclusive + warning."""
+    root = tmp_path / "trunc_proj2"
+    for d in ("a", "b", "c"):
+        (root / d).mkdir(parents=True, exist_ok=True)
+        (root / d / "f.js").write_text("var x = 1;\n", encoding="utf-8")
+    _fake_clock(monkeypatch)
+    res = search_files(
+        root=str(root),
+        mode="definition",
+        symbol="Missing",
+        include_glob="*.js",
+        time_budget_seconds=0.5,
+    )
+    assert res["success"] is True
+    assert res["definition_found"] is False
+    assert res["status"] == "inconclusive"
     assert any("Không kết luận" in w for w in res["warnings"])
 
 
@@ -523,7 +573,7 @@ def test_tc_b1_narrow_hint_on_max_files(tmp_path):
     dir2.mkdir(parents=True, exist_ok=True)
 
     for i in range(5):
-        (dir1 / f"DDVTran_{i}.xml").write_text(f"<voucher>data {i}</voucher>", encoding="utf-8")
+        (dir1 / f"DDVTran_{i}.xml").write_text(f"<voucher>DDVTran {i}</voucher>", encoding="utf-8")
     for i in range(3):
         (dir2 / f"inc_{i}.xml").write_text(f"<inc>data {i}</inc>", encoding="utf-8")
 

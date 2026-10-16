@@ -95,7 +95,9 @@ KEYWORD_RULES: list[tuple[str, str]] = [
     (r"(chạy|run|select|query).*\b(sql|select|proc)\b", "db_run_sql"),
     # --- find_by_title ---
     (r"(tìm|find|search|xác định|locate).*(title|tiêu đề|tên hiển thị)|"
-     r"(theo|qua|bằng)\s*(title|tiêu đề|tên hiển thị)", "find_by_title"),
+     r"(theo|qua|bằng)\s*(title|tiêu đề|tên hiển thị)|"
+     r"(tìm|xác định|tra).*(controller|chức năng|menu).*(mã (ct|chứng từ)|"
+     r"tiêu đề|tên)", "find_by_title"),
     # --- search_files ---
     (r"tìm.*(file).*(tên|name)|files?.*(matching|theo tên)|"
      r"files_only|match.*filename", "match_filename"),

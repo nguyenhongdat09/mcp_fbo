@@ -7,7 +7,7 @@ from typing import Any
 
 
 def format_query_result(result: dict[str, Any]) -> str:
-    if result.get("mode") == "search":
+    if result.get("mode") in ("search", "lookup"):
         return json.dumps(result, ensure_ascii=False, indent=2)
 
     if result.get("check_mode") == "parseonly":

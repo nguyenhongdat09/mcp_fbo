@@ -507,24 +507,28 @@ TASK_TYPES = {
             "ở nguồn",
         ],
     },
-    # ---------------- find_by_title (search_files) ----------------
+    # ---------------- find_by_title (query_database mode=lookup) ----------
     "find_by_title": {
-        "desc": "Locate WHICH controller files implement an existing "
-                "screen/report named by DISPLAY TITLE (tiêu đề tiếng "
-                "Việt trong <title v=...>, vd 'Báo cáo lưu chuyển tiền "
-                "tệ theo phương pháp trực tiếp') - when the step only "
-                "needs to FIND the source, not clone it yet (cloning = "
-                "save_as_existing)",
-        "tool": "search_files",
-        "call": {"root": "<abs path>\\App_Data\\Controllers",
-                 "pattern": "<cụm title>", "mode": "content",
-                 "include_glob": "*.xml"},
-        "required": ["root", "pattern"],
+        "desc": "Locate WHICH function/controller an existing screen/"
+                "report/voucher is, by DISPLAY TITLE (tiêu đề menu, vd "
+                "'Hợp đồng dịch vụ'), voucher code ma_ct (DDV), "
+                "controller name or menu_id -> controller, ma_ct, menu "
+                "path, aspx page, controller files on disk, dmct tables "
+                "- when the step only needs to FIND it, not clone it yet "
+                "(cloning = save_as_existing)",
+        "tool": "query_database",
+        "call": {"file_path": "<path trong project>", "mode": "lookup",
+                 "query": "<ma_ct | controller | cụm tiêu đề>"},
+        "required": ["file_path", "mode", "query"],
         "pitfalls": [
-            "root rộng (~5k file) bị truncated max_files — ưu tiên thư "
-            "mục Dir/Report/Filter, pattern ngắn đặc trưng của title",
-            "Không thấy → project có thể chỉ có .f (encrypted, title "
-            "không đọc được) — báo user hỏi file .xml nguồn",
+            "KHÔNG tự SELECT command/wcommand/dmct/functions — tên cột "
+            "khác nhau giữa bản FBO (controller/url/ma_ct hay bị đoán sai)",
+            "Tiêu đề so khớp không dấu — truyền cụm ngắn đặc trưng",
+            "functions=[] → màn hình con/popup không có trong menu: "
+            "search_files mode=content include_glob='*.xml' pattern="
+            "'<cụm title>' root=App_Data/Controllers",
+            "encrypted_only (chỉ .f) → không sửa được, hỏi user file .xml "
+            "nguồn",
         ],
     },
     # ---------------- search_qlyc ----------------
@@ -687,9 +691,8 @@ _JEV_TASK_DESCS = {
     "entity_list": "list all entities declared in XML",
     "entity_check": "lint XML: undeclared &entity; used|SYSTEM entity->"
                     "missing files",
-    "find_by_title": "find controller files by DISPLAY TITLE (tieu de "
-                     "VN trong <title v=...>) — only when step names a "
-                     "VN display title; find only, cloning="
+    "find_by_title": "find function/controller by menu title|ma_ct|"
+                     "controller name; find only, cloning="
                      "save_as_existing",
     "ur_semantic": "semantic search past user requests/tickets by "
                    "description",
@@ -1213,6 +1216,8 @@ def task_type_for_call(tool: str, args: dict | None) -> str | None:
                 3: "copy_files", 4: "clone_template", 5: "new_sql_file",
                 6: "save_as_existing"}.get(_int(a.get("type")))
     if tool == "query_database":
+        if mode == "lookup":
+            return "find_by_title"
         if mode == "search":
             if "U" in str(a.get("object_types") or "").upper().split(","):
                 return "db_list_tables"

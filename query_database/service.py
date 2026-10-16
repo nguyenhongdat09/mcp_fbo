@@ -76,6 +76,12 @@ def query_database(
     if not file_path or not str(file_path).strip():
         return {"success": False, "error": "file_path is required"}
 
+    if (mode or "").strip().lower() == "lookup":
+        from .function_lookup import lookup_function
+
+        return lookup_function(file_path, query or object_name,
+                               max_results=min(int(max_results or 20), 20))
+
     if (mode or "").strip().lower() == "search":
         conn_result = get_connection_config(file_path, db_type)
         if not conn_result.get("success"):

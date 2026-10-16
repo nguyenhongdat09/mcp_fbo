@@ -147,10 +147,10 @@ def query_database_tool(
         Field(default=20000, description="Giới hạn số dòng trả về (default: 20000)"),
     ] = 20000,
     mode: Annotated[
-        Literal["summary", "snippet", "full", "search"],
+        Literal["summary", "snippet", "full", "search", "lookup"],
         Field(
             default="summary",
-            description="Chế độ phân tích khi query_type=0 với proc/view/function: 'summary'=JSON tóm tắt (params, tables, calls, signals); 'snippet'=trích xuất code theo keywords/zones; 'full'=trả full source code. 'search'=tìm DB object theo object_name (LIKE) hoặc references (literal trong definition — 'proc nào dùng bảng/field X'), bỏ qua query/query_type.",
+            description="Chế độ phân tích khi query_type=0 với proc/view/function: 'summary'=JSON tóm tắt (params, tables, calls, signals); 'snippet'=trích xuất code theo keywords/zones; 'full'=trả full source code. 'search'=tìm DB object theo object_name (LIKE) hoặc references (literal trong definition — 'proc nào dùng bảng/field X'), bỏ qua query/query_type. 'lookup'=tra CHỨC NĂNG theo query = mã CT (DDV) | controller (DDVTran) | menu_id | cụm tiêu đề menu (không dấu OK) → controller, ma_ct, menu_path, trang aspx, file controller trên đĩa, dmct (bảng PH/CT) — thay cho tự query command/wcommand/dmct.",
         ),
     ] = "summary",
     object_name: Annotated[
@@ -295,6 +295,8 @@ query_type:
 - 3: path file .sql — check syntax qua SET PARSEONLY (chỉ parse, KHÔNG execute — chạy trước khi deploy script; báo MỌI lỗi kèm line_start = dòng file gốc). Lưu ý: parse-only không check tên bảng/cột tồn tại.
 
 mode='search': tìm DB object (proc/view/func/trigger; thêm bảng với object_types='U') theo tên hoặc theo nội dung — trả lời "object nào đang dùng bảng/field X" hoặc "bảng nào tên dạng m81$%" mà không cần tự viết query sys.objects/sys.sql_modules. Cần ít nhất object_name hoặc references; kết quả gồm objects[] (name/schema/type/modify_date/has_definition) + matched_lines[] (dòng chứa references). Xem tiếp object nào → dùng mode summary/snippet/full với query_type=0.
+
+mode='lookup': tra chức năng/menu — query = mã CT | controller | menu_id | cụm tiêu đề (không dấu OK). Trả functions[] (controller, ma_ct, title, type, page, menu_path, files/encrypted_only trên đĩa) + vouchers[] (dmct: ten_ct, m_phdbf, m_ctdbf). KHÔNG tự viết SELECT trên command/wcommand/dmct/functions (hay sai tên cột). Tự đọc cả DB sys + app, bỏ qua db_type.
 
 db_type: app (mặc định) hoặc sys."""
     try:
@@ -1197,8 +1199,8 @@ async def search_files_tool(
     ] = False,
     max_files: Annotated[
         int,
-        Field(default=50, description="Số lượng file tối đa quét qua (mặc định 50)"),
-    ] = 50,
+        Field(default=500, description="Số file quét khi ĐÃ có kết quả (mặc định 500). Chưa có kết quả thì server tự quét tiếp tới hết time_budget. Output luôn bị chặn bởi max_total_matches, không phụ thuộc max_files."),
+    ] = 500,
     max_matches_per_file: Annotated[
         int,
         Field(default=5, description="Số lượng dòng khớp tối đa trên mỗi file (mặc định 5)"),
@@ -1260,6 +1262,7 @@ async def search_files_tool(
     - CẤM đọc file *.f mã hóa của FastBusiness và *.xsd (file schema/kiến trúc); tự động bỏ qua file nhị phân.
     - Hỗ trợ giải mã UTF-8 và Windows-1258 (CP1258).
     - Có chốt chặn số file và số kết quả để tránh làm tràn bộ nhớ/context.
+    - status: 'found' | 'not_found' (đã quét HẾT candidate) | 'inconclusive' (0 kết quả nhưng chưa quét hết — KHÔNG kết luận không có; hẹp root/include_glob rồi gọi lại). 0 kết quả sau max_files → server tự quét tiếp tới time_budget (auto_extended=true).
     - root nhận path BẤT KỲ: abs folder, abs file (search đúng file đó), hoặc relative — MCP tự resolve qua sticky project context.
     - mode='definition' + symbol: trả lời "symbol X có được định nghĩa ở đâu / có tồn tại không" (definitions[] + definition_found + usage_hint) thay vì list hàng trăm dòng usage. definition_found=false + truncated → KHÔNG kết luận chưa định nghĩa, hẹp root/include_glob.
     - mode='files_only': list candidate path sau glob + priority sort, không mở file nào.

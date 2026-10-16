@@ -172,6 +172,16 @@ def _narrow_hint(
     return msg
 
 
+def _result_status(found: int, truncated: bool, timed_out: bool,
+                   enum_capped: bool) -> str:
+    """found | not_found | inconclusive (0 kết quả nhưng chưa quét hết candidate)."""
+    if found:
+        return "found"
+    if truncated or timed_out or enum_capped:
+        return "inconclusive"
+    return "not_found"
+
+
 def search_files(
     root: str,
     pattern: str = "",
@@ -180,7 +190,7 @@ def search_files(
     exclude_glob: str = "**/*.f,**/*.xsd,**/*.dll,**/*.pdb,**/bin/**",
     recursive: bool = True,
     case_sensitive: bool = False,
-    max_files: int = 50,
+    max_files: int = 500,
     max_matches_per_file: int = 5,
     max_total_matches: int = 100,
     context_lines: int = 0,
@@ -491,11 +501,17 @@ def search_files(
         usage_files = 0
         files_scanned = 0
         truncated = False
+        auto_extended = False
 
         for rel_path, abs_file in candidates:
-            if files_scanned >= max_files or _deadline_hit():
+            if _deadline_hit():
                 truncated = True
                 break
+            if files_scanned >= max_files:
+                if definitions:
+                    truncated = True
+                    break
+                auto_extended = True
             try:
                 text = _read_text_file(abs_file)
                 if text is None:
@@ -542,10 +558,16 @@ def search_files(
             if hint:
                 warnings.append(hint)
         definition_found = bool(definitions)
-        if not definition_found and truncated:
+        if not definition_found and (truncated or timed_out or enum_capped
+                                     or _deadline_hit()):
             warnings.append(
                 f"Không kết luận symbol chưa định nghĩa — {not_opened} candidates chưa mở. "
                 "Hẹp root/include_glob."
+            )
+        if auto_extended:
+            warnings.append(
+                f"auto_extended: chưa thấy định nghĩa trong {max_files} file đầu → quét tiếp "
+                f"({files_scanned}/{files_candidate} file)."
             )
 
         return _ctx({
@@ -553,6 +575,9 @@ def search_files(
             "mode": "definition",
             "root": root_display,
             "symbol": sym,
+            "status": _result_status(len(definitions), truncated,
+                                     timed_out or _deadline_hit(), enum_capped),
+            "auto_extended": auto_extended,
             "definitions": definitions,
             "definition_found": definition_found,
             "usage_hint": f"{usage_lines} dòng usage ở {usage_files} file (mode='content' để xem)",
@@ -572,12 +597,16 @@ def search_files(
         files_scanned = 0
         truncated = False
         truncated_reason: str | None = None
+        auto_extended = False
 
         for rel_path, abs_file in candidates:
             if files_scanned >= max_files:
-                truncated = True
-                truncated_reason = "max_files"
-                break
+                if not (usages or definitions):
+                    auto_extended = True
+                else:
+                    truncated = True
+                    truncated_reason = "max_files"
+                    break
             if _deadline_hit():
                 truncated = True
                 truncated_reason = "time_budget"
@@ -648,12 +677,20 @@ def search_files(
             )
         elif truncated and truncated_reason == "max_total_matches":
             warnings.append(f"Reached max_total_matches limit ({max_total_matches})")
+        if auto_extended:
+            warnings.append(
+                f"auto_extended: 0 usage trong {max_files} file đầu → quét tiếp "
+                f"({files_scanned}/{files_candidate} file)."
+            )
 
         result: Dict[str, Any] = {
             "success": True,
             "mode": "references",
             "root": root_display,
             "symbol": sym,
+            "status": _result_status(len(usages) + len(definitions), truncated,
+                                     timed_out or _deadline_hit(), enum_capped),
+            "auto_extended": auto_extended,
             "usages": usages,
             "usage_count": len(usages),
             "definition_count": len(definitions),
@@ -673,13 +710,18 @@ def search_files(
     files_scanned = 0
     truncated = False
     truncated_reason: str | None = None
+    auto_extended = False
 
     # 3. Search contents
     for rel_path, abs_file in candidates:
         if files_scanned >= max_files:
-            truncated = True
-            truncated_reason = "max_files"
-            break
+            # Chưa có match nào → quét tiếp tới hết time_budget thay vì trả 0 sai
+            if not matches:
+                auto_extended = True
+            else:
+                truncated = True
+                truncated_reason = "max_files"
+                break
         if _deadline_hit():
             truncated = True
             truncated_reason = "time_budget"
@@ -764,17 +806,31 @@ def search_files(
         )
     elif truncated and truncated_reason == "max_total_matches":
         warnings.append(f"Reached max_total_matches limit ({max_total_matches})")
+    if auto_extended:
+        warnings.append(
+            f"auto_extended: 0 match trong {max_files} file đầu → quét tiếp "
+            f"({files_scanned}/{files_candidate} file)."
+        )
 
+    any_timeout = timed_out or _deadline_hit()
+    status = _result_status(len(matches), truncated, any_timeout, enum_capped)
+    if status == "inconclusive":
+        warnings.append(
+            f"inconclusive: 0 match nhưng mới quét {files_scanned}/{files_candidate} file "
+            "(hoặc liệt kê file chưa xong) — KHÔNG kết luận là không có; hẹp root/include_glob rồi gọi lại."
+        )
     return _ctx({
         "success": True,
         "root": str(root_path).replace("\\", "/"),
         "pattern": pattern,
+        "status": status,
         "matches": matches,
         "files_scanned": files_scanned,
         "files_candidate": files_candidate,
         "total_matches": len(matches),
         "truncated": truncated,
         "truncated_reason": truncated_reason,
-        "timed_out": timed_out or _deadline_hit(),
+        "auto_extended": auto_extended,
+        "timed_out": any_timeout,
         "warnings": warnings,
     })
