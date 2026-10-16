@@ -7,7 +7,7 @@
 ## 1. Bối cảnh & vấn đề
 
 FastBusiness MCP (`fastbusiness-mcp`) hiện có ~8 tool: `query_database`, `get_xml_entities`,
-`query_radar`, `read_local_file`, `search_qlyc`, `clone_things`, `compare_things`, `search_files`.
+`read_local_file`, `search_qlyc`, `clone_things`, `compare_things`, `search_files`.
 Trong thực tế sử dụng (session làm danh mục `zccntttdcd`), agent gặp các lỗi điển hình:
 
 | Vấn đề thực tế | Hệ quả |
@@ -122,7 +122,7 @@ bằng bảng tĩnh trong code:
 | `sql_execute` | `query_database`, `query_type=2` |
 | `sql_parseonly` | `query_database`, `query_type=3` |
 | `xml_entities` | `get_xml_entities` |
-| `lint_entity` | `query_radar` |
+| `lint_entity` | `get_xml_entities` |
 | `search_qlyc` | `search_qlyc` |
 | `no_match` | fallback — không tool nào phù hợp |
 

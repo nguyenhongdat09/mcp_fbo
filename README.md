@@ -11,7 +11,7 @@ pip install -r requirements.txt
 ## Entry points
 
 - **`python -m fastbusiness_mcp.server`** — server chính (packaged, có license check), dùng cho Cursor/VS Code/exe.
-- **`run_server.py`** — entry point cho PyInstaller build (build/rebuild KuzuDB + chạy MCP).
+- **`run_server.py`** — entry point cho PyInstaller build (chạy MCP).
 
 ## Cấu hình MCP (Cursor/VS Code)
 
@@ -27,13 +27,14 @@ pip install -r requirements.txt
 }
 ```
 
-## MCP Tools (7 tools)
+## MCP Tools (8 tools)
 
 | Tool | Mô tả |
 |---|---|
 | `query_database` | Chạy SQL & Phân tích Schema/Proc (tự động tra cứu DDL Table hoặc tóm tắt AST Proc/View/Function với ANTLR4) |
 | `get_xml_entities` | Đọc entity XML (`content` / `path` / `list`) |
-| `query_radar` | Truy vấn Kùzu Graph DB theo Template Cypher chuẩn |
+| `search_files` | Tìm chuỗi / tên file / định nghĩa symbol trong project FBO (local hoặc UNC) |
+| `tool_help` | Hỏi route tool/mode/param trước khi gọi tool thật (Jev) |
 | `read_local_file` | Đọc file controller FBO từ ổ cứng (`read_option=1`: raw, `2`: flat, `3`: summary_xml JSON gọn) |
 | `search_qlyc` | Tra cứu lịch sử ticket / yêu cầu đã thực hiện |
 | `clone_things` | Clone object SQL (table, proc, func, view) từ project nguồn sang project đích (Target-first, recursive deps, xuất file .sql) |

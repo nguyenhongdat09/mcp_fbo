@@ -23,7 +23,6 @@ Kiến trúc (`tool_help/`):
 | `hierarchical.py` | Routing 2 tầng tool → task_type, beam K=3 (`routing: hierarchical`) |
 | `recovery.py` | Recovery tầng wrapper (`_logged_call_tool`): lỗi tool → `recovery.next` (call tiếp theo) |
 | `balance_catalog.py` | Catalog proc số-dư nội bộ (xem dưới) |
-| `radar_templates.py` | Catalog 14 Cypher template query_radar + `RADAR_RULES` (xem mục dưới) |
 
 Ngoài `tool_help/`: `query_database/column_hint.py` + `object_hint.py`
 (recovery cần DB: Invalid column → cột thật + difflib/Jev gợi ý; Invalid
@@ -161,32 +160,9 @@ gọi rồi chép call-site (schema #t + ngữ nghĩa @BalanceType/@ResultType/
   nhưng route `db_run_sql`/`db_run_file`/`no_match` → warn (bắt Jev
   misroute; step route `db_object`/`db_snippet` inspect proc = hợp lệ).
 
-## radar_templates — Jev gợi ý Cypher template cho query_radar
+## query_radar đã gỡ
 
-`query_radar` chỉ chấp nhận 1 trong **14 Cypher template cố định**
-(nguồn: skill `fbo-mcp-query-radar` → `reference-radar-templates.md`).
-Agent tự chọn dễ sai (đặc biệt cặp T8/T9/T11). `tool_help` giờ chọn hộ
-bằng câu hỏi phụ Jev + nhúng catalog để agent đối chiếu.
-
-### Flow
-
-- `_build_questions`: step nào `keyword_route == "graph_query"` → thêm câu
-  `step{i}_graph_tpl` (choice trên 14 `RADAR_TEMPLATE_CATALOG`) vào cùng
-  batch Jev — không tốn round-trip. `state.radar_template_catalog` chỉ gắn
-  khi có câu phụ.
-- Step route `query_radar` + Jev trả `stepN_graph_tpl` → step output có
-  `radar_template` = `{id, when, cypher, params, confidence_to_use_top,
-  alternatives}` và `call.cypher_query` được fill skeleton luôn (copy dict
-  — `card_for` trả reference vào `TASK_TYPES`, KHÔNG mutate trực tiếp).
-- Bất kỳ step nào `tool == "query_radar"` → payload top-level có
-  `radar_templates` = `{_rules: RADAR_RULES, template_1..14: {when,
-  cypher, params}}` — kể cả nhánh keyword fallback (Jev chết vẫn có
-  catalog, chỉ thiếu suggestion).
-
-### Cặp hay nhầm (đã nén vào jev_desc)
-
-| Hỏi | Template | Không phải |
-|-----|----------|-----------|
-| Hàng xóm 1 hop mọi hướng | T8 | cụm/anh em gián tiếp → T11 |
-| Chuỗi outbound 2 bước (a)→(b)→(c) | T9 | 1 hop → T8 |
-| "xung quanh"/"liên quan"/"cụm" depth-2 | T11 | T8 không đủ |
+Tool `query_radar` (Kuzu graph) và task_type `graph_query` đã bị xóa khỏi
+dự án (ít dùng, index tốn dung lượng). `find_by_title` route sang
+`search_files mode=content`. Jev không còn được hỏi nhãn `graph_query` và
+không còn câu phụ chọn Cypher template.

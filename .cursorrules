@@ -18,8 +18,8 @@ alwaysApply: true
 3. `clone_things` - Clone SQL thiếu (type=0), paste-for-edit ALTER (type=1), copy file bất kỳ giữa 2 project (type=3, default dry-run, không đè trừ khi user confirm).
 4. `compare_things` - So sánh đa loại (`sql`, `table`, `xml`, `file`, `folder`) giữa 2 project hoặc 2 path đĩa/UNC → JSON agent-actionable (hunks line ranges, signals, next_actions). READ-ONLY: không clone, không ALTER, không deploy.
 
-### FBOGraph (XML index Kuzu)
-5. `query_radar` - Cypher ad-hoc (chỉ khi cần)
+### Đọc / tìm file XML
+5. `search_files` - Tìm chuỗi / tên file / định nghĩa symbol trong project (mode=content | files_only | definition)
 6. `read_local_file` - Đọc file XML trong project
 
 ## CẤM Shell FBO trên UNC — BẮT BUỘC dùng MCP
@@ -50,24 +50,18 @@ Agent **phải** gọi `clone_things` khi user nói / ý nghĩa gần với:
 
 ## Agent habit
 - So sánh / tìm khác biệt giữa 2 project / 2 bin UNC → **`compare_things` trước** để biết chi tiết lệch / thiếu và khoảng dòng, rồi mới gọi `clone_things` nếu cần mang sang hoặc paste ALTER để sửa.
-- Chưa biết file → query_radar (Template 1 / 5 / 11), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
+- Chưa biết file → `search_files` (mode=files_only để tìm theo tên, mode=content để tìm theo nội dung; thu hẹp root/include_glob để tránh truncated), KHÔNG gọi search_nodes / get_related_nodes / query_node_details (đã ẩn).
 - Đọc file controller FBO: MẶC ĐỊNH dùng `read_local_file(..., read_option=3)` (hoặc không truyền `read_option`) để nhận JSON summary siêu gọn (~29ms, tiết kiệm 95% token). CHỈ gọi `read_option=2` khi cần đọc full flat để sửa code.
 - Clone SQL giữa 2 project / thiếu proc sau khi copy XML → **`clone_things` trước**, rồi mới đọc file `.sql` tại `path_to_pasted` để review.
 
 - Entity Include → get_xml_entities; schema DB → query_database
 - Thấy needs_xml / .f → đừng cố đọc XML mã hóa
-- Keyword search qua query_radar: ưu tiên KHÔNG DẤU
-  - giay bao no → CPTran | phieu chi → CDTran
-  - dien giai → dien_giai | ten hang hoa → ten_vt | gia ban → gia2
 
-
-## FBOGraph reference_file (BẮT BUỘC)
-- Tool live: query_radar, read_local_file
-  phải truyền reference_file = ABSOLUTE path XML trong project đang làm
-  (vd E:\FBO\SP2263\App_Data\Controllers\Filter\SVInvoiceFilter.xml).
-- CẤM relative / basename. Nếu user đang mở file trong IDE → lấy full path file đó.
+## Đường dẫn project (BẮT BUỘC)
+- `read_local_file`, `search_files` cần biết project đang làm: truyền ABSOLUTE path XML trong project
+  (vd E:\FBO\SP2263\App_Data\Controllers\Filter\SVInvoiceFilter.xml) ở lần gọi đầu hoặc qua `reference_file`.
+- CẤM relative / basename ở lần gọi đầu. Nếu user đang mở file trong IDE → lấy full path file đó.
 - Nếu tool trả invalid_reference_file → sửa path rồi gọi lại.
-- query_radar thiếu Kuzu: MCP tự sync-build rồi trả kết quả Cypher. Agent KHÔNG tự chạy fbograph / fastbusiness_mcp.exe build.
 
 ## Critical Rules
 - Partition: `@@prime$partition$current`, NEVER hardcode `d91$202501`

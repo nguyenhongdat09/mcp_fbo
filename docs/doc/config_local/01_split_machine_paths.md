@@ -26,7 +26,7 @@
 | `.gitignore` → `config_path.xml` | `.gitignore` → **`config_path.yaml`** |
 | Env `FASTBUSINESS_CONFIG_PATH_FILE` trỏ xml | Cùng env, trỏ **yaml** (hoặc giữ tên env, đổi nội dung file) |
 | Spec datas ship xml.example | Ship **yaml.example** |
-| `config.yaml` còn / từng để `kuzu_db_base: ""` | **Gỡ hẳn** 2 key path khỏi `config.yaml` |
+| `config.yaml` còn / từng để `sql_temp_folder: ""` | **Gỡ hẳn** key path khỏi `config.yaml` |
 
 **Migration ngắn khi FIX:**
 
@@ -41,10 +41,9 @@
 
 | Key path | Chỉ khai báo ở | Fallback nếu thiếu / rỗng |
 |----------|----------------|---------------------------|
-| `fbograph.kuzu_db_base` | `config_path.yaml` | `{MCP_BASE}/KuzuDB` |
 | `clone_things.sql_temp_folder` | `config_path.yaml` | `{MCP_BASE}/Scripts` |
 
-Options giữ trong `config.yaml`: `server`, `logging`, `extract_options`, `fbograph.user_multi_db_yn`, `access_log_retention_days`, `clone_things.open_*` / `max_objects` / `execute_clone`, `rag_qlyc.*`.
+Options giữ trong `config.yaml`: `server`, `logging`, `clone_things.open_*` / `max_objects` / `execute_clone`, `rag_qlyc.*`.
 
 ---
 
@@ -66,10 +65,6 @@ Thiếu file = hợp lệ.
 # Copy from config_path.yaml.example → config_path.yaml (một lần / máy).
 # Không commit file thật (gitignore).
 
-fbograph:
-  # Absolute path; rỗng hoặc omit = {MCP_BASE}/KuzuDB
-  kuzu_db_base: "C:/KuzuDB"
-
 clone_things:
   # Absolute path; rỗng hoặc omit = {MCP_BASE}/Scripts
   sql_temp_folder: "E:/SQL Temp"
@@ -89,25 +84,19 @@ Quy tắc:
 |------|---------|
 | `config_path.yaml.example` | **Có** |
 | `config_path.yaml` | **Không** (gitignore) |
-| `config.yaml` | Có — **không** có 2 key path |
+| `config.yaml` | Có — **không** có key path |
 
 `config_path.yaml.example`:
 
 ```yaml
 # Copy to config_path.yaml and edit once per machine.
-fbograph:
-  kuzu_db_base: ""
 clone_things:
   sql_temp_folder: ""
 ```
 
-### 2.4. `config.yaml` ship — CẤM 2 key path
+### 2.4. `config.yaml` ship — CẤM key path
 
 ```yaml
-fbograph:
-  user_multi_db_yn: 1
-  access_log_retention_days: 30
-
 clone_things:
   open_editor_cmd: "auto"
   max_objects: 50
@@ -117,7 +106,7 @@ clone_things:
 
 Comment trong yaml được phép trỏ: “path → `config_path.yaml`”.
 
-Compat code: nếu máy cũ còn sót key path trong `config.yaml`, loader vẫn đọc sau YAML path-file (precedence dưới). **Repo/ship không được để lại 2 key.**
+Compat code: nếu máy cũ còn sót key path trong `config.yaml`, loader vẫn đọc sau YAML path-file (precedence dưới). **Repo/ship không được để lại key path.**
 
 ---
 
@@ -125,10 +114,10 @@ Compat code: nếu máy cũ còn sót key path trong `config.yaml`, loader vẫn
 
 | Ưu tiên | Nguồn |
 |--------|--------|
-| 1 | Env: `FBOGRAPH_KUZU_BASE` / optional `CLONE_THINGS_SQL_TEMP_FOLDER` |
+| 1 | Env: `CLONE_THINGS_SQL_TEMP_FOLDER` |
 | 2 | `config_path.yaml` (non-empty) |
 | 3 | Legacy key trong `config.yaml` nếu còn |
-| 4 | `{MCP_BASE}/KuzuDB` hoặc `{MCP_BASE}/Scripts` |
+| 4 | `{MCP_BASE}/Scripts` |
 
 ---
 
@@ -140,12 +129,10 @@ Giữ API đã có, **đổi nguồn file**:
 def resolve_config_path_local(filename: str = "config_path.yaml") -> Path | None: ...
 def load_machine_paths(path: Path | None = None) -> dict:  # yaml.safe_load, không XML
 def merge_config_with_machine_paths(cfg: dict, machine: dict | None = None) -> dict: ...
-def get_effective_kuzu_db_base(cfg: dict | None = None) -> str: ...
 def get_effective_sql_temp_folder(cfg: dict | None = None) -> str: ...
 ```
 
 - `load_config`: sau load `config.yaml` → `load_machine_paths()` → merge.
-- `resolve_kuzu_db_base`: dùng effective API / `get_config()` đã merge; không dual-load lệch.
 - `resolve_output_file`: sql temp từ config đã merge; rỗng → Scripts.
 - PyInstaller: datas chỉ `config_path.yaml.example`.
 - Alias cũ `resolve_config_path_xml` → **xóa hoặc đổi tên** thành `resolve_config_path_local` (không giữ tên xml).
@@ -156,15 +143,15 @@ def get_effective_sql_temp_folder(cfg: dict | None = None) -> str: ...
 
 | ID | Given | Then |
 |----|--------|------|
-| AC-CP-01 | `config_path.yaml` có `kuzu_db_base=D:/MyKuzu` | `resolve_kuzu_db_base()` → đó |
+| AC-CP-01 | `config_path.yaml` có `sql_temp_folder=D:/MySql` | `get_effective_sql_temp_folder()` → đó |
 | AC-CP-02 | yaml local `sql_temp_folder` tồn tại; `path_to_pasted=""` | file `.sql` tạo trong folder đó |
-| AC-CP-03 | Không có `config_path.yaml`; `config.yaml` không còn 2 key | default MCP_BASE `KuzuDB` / `Scripts` |
+| AC-CP-03 | Không có `config_path.yaml`; `config.yaml` không còn key path | default MCP_BASE `Scripts` |
 | AC-CP-04 | Legacy còn key trong `config.yaml`, không có path yaml | vẫn dùng legacy |
 | AC-CP-05 | Cả path yaml + legacy | **path yaml thắng** |
-| AC-CP-06 | Env kuzu set | Env thắng |
+| AC-CP-06 | Env `CLONE_THINGS_SQL_TEMP_FOLDER` set | Env thắng |
 | AC-CP-07 | `config_path.yaml` malformed | warning + fallback, không crash |
 | AC-CP-08 | Repo không còn `config_path.xml` / parse XML path | |
-| AC-CP-09 | `config.yaml` không chứa `kuzu_db_base` / `sql_temp_folder` | |
+| AC-CP-09 | `config.yaml` không chứa `sql_temp_folder` | |
 
 ---
 
@@ -193,7 +180,7 @@ Xóa hoặc không maintain `test_config_path_xml.py`.
 - [ ] Xóa `config_path.xml.example`; thêm `config_path.yaml.example`
 - [ ] `.gitignore`: `config_path.yaml` (bỏ hoặc giữ tạm `config_path.xml` nếu muốn ignore rác cũ)
 - [ ] `fastbusiness_mcp.spec` datas → example yaml
-- [ ] Comment `config.yaml` trỏ `config_path.yaml`; xác nhận **không** còn 2 key path
+- [ ] Comment `config.yaml` trỏ `config_path.yaml`; xác nhận **không** còn key path
 - [ ] Đổi tên API/test khỏi chữ `xml`
 - [ ] Unit TC-CP-* pass
 - [ ] Không đổi business clone_things / mode_read
@@ -212,10 +199,10 @@ Lệch cần sửa:
 - Đúng: config_path.yaml (YAML, cùng kiểu config.yaml).
 
 Yêu cầu cứng:
-1) Path máy chỉ khai báo trong config_path.yaml: fbograph.kuzu_db_base, clone_things.sql_temp_folder.
-2) config.yaml KHÔNG còn 2 key đó (kể cả "").
+1) Path máy chỉ khai báo trong config_path.yaml: clone_things.sql_temp_folder.
+2) config.yaml KHÔNG còn key đó (kể cả "").
 3) Bỏ parse XML; dùng yaml.safe_load. Ship config_path.yaml.example; gitignore config_path.yaml.
-4) Precedence: Env > config_path.yaml > legacy key trong config.yaml (nếu còn) > {MCP_BASE}/KuzuDB|Scripts.
+4) Precedence: Env > config_path.yaml > legacy key trong config.yaml (nếu còn) > {MCP_BASE}/Scripts.
 5) Đổi test + tên API khỏi xml; update PyInstaller datas.
 6) Bad yaml → warning, không crash.
 7) Không đổi logic clone_things mode_read/type0/1 ngoài nguồn path.

@@ -14,8 +14,8 @@
 
 ## 1. Kết luận tổng
 
-- **MCP KHÔNG phải viết lại.** Engine lõi (XML parser, T-SQL engine, DB layer, Kuzu
-  graph, Jev routing) phụ thuộc **metadata XML + SQL** — 2 thứ FBO giữ nguyên.
+- **MCP KHÔNG phải viết lại.** Engine lõi (XML parser, T-SQL engine, DB layer,
+  Jev routing) phụ thuộc **metadata XML + SQL** — 2 thứ FBO giữ nguyên.
 - Thay đổi tập trung ở **"convention layer"**: danh sách file/thư mục/extension/attr
   theo quy ước FBO. Ước lượng ~10–15 chỗ sửa + template + skills/docs.
 - **Yêu cầu quan trọng nhất: hỗ trợ SONG SONG 2 convention** (cũ + mới) vì user quản
@@ -90,7 +90,7 @@ MCP không đụng toolkit. Chỉ ảnh hưởng gián tiếp qua `PRESETS` ở 
   (`kind=xml`) — chỉ đọc XML metadata, format không đổi.
 - `clone_things` type=1/2 (SQL object clone), type=3 core copy engine, `paste_sql`,
   `query_database`, `db_check_syntax` — tầng DB/file chung.
-- `xml_fbograph` (Kuzu) — index quan hệ từ XML; XML schema giữ → giữ nguyên.
+- `xml_fbograph` — chỉ còn resolve project (`path_helper`/`any_path`) và `read_local_file`; phần graph/Kuzu đã gỡ.
 - `tool_help` routing core + Jev — độc lập platform.
 - Deny `.f` mã hóa — chắc chắn vẫn tồn tại (định dạng nội bộ FBO).
 
