@@ -1,4 +1,4 @@
-name: category_1_key
+﻿name: category_1_key
 title_v: Danh mục 1 khóa (PK id identity tự tăng, không check trùng), có import
 jev_desc: "New master/category with single identity PK (id column), optional Excel import"
 files:

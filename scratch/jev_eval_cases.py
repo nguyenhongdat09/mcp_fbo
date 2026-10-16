@@ -66,6 +66,34 @@ CASES = [
     {"id": "F2",
      "ur": "Thêm chức năng lấy dữ liệu vào chứng từ DDV từ phiếu MR",
      "expected": "retrieve_flow_parition_table"},
+    # --- popup form nhúng vào Dir/Grid có sẵn ---
+    {"id": "P1",
+     "ur": "Trên chứng từ phụ lục hợp đồng PLH, thêm nút Chọn... cạnh field "
+           "mã hợp đồng, bấm vào bung form cho nhập ngày và số hợp đồng "
+           "(lookup hợp đồng DDV), bấm nhận thì gán ngược số hợp đồng về "
+           "form và load thông tin hợp đồng",
+     "expected": "popup_lookup_partition_table"},
+    {"id": "P2",
+     "ur": "Thêm nút trên grid chi tiết phiếu xuất, bung form chọn số đơn "
+           "hàng theo ngày rồi gán số đơn hàng về form",
+     "expected": "popup_lookup_partition_table"},
+    {"id": "P3",
+     "ur": "Thêm nút chọn số phiếu trên form, bung form nhập ngày + số phiếu "
+           "lookup từ bảng zcWIMO (bảng cố định không phân kỳ), bấm nhận gán "
+           "lại số phiếu về form",
+     "expected": "popup_lookup_single_table"},
+    {"id": "P4",
+     "ur": "Trên grid chi tiết hóa đơn bán hàng, user tick chọn các dòng rồi "
+           "bấm nút trên toolbar bung form nhập tỷ lệ chiết khấu, bấm nhận "
+           "thì cập nhật tỷ lệ cho các dòng đã tick",
+     "expected": "popup_input_form"},
+    {"id": "P5",
+     "ur": "Thêm nút trên form chứng từ, bấm vào hiện form nhập ngày hiệu "
+           "lực và mã kho, bấm nhận gán xuống các field trên form",
+     "expected": "popup_input_form"},
+    {"id": "P6",
+     "ur": "Sửa lỗi nút Chọn hợp đồng trên PLHTran bị mất dữ liệu grid",
+     "expected": "none"},
     # --- report ---
     {"id": "G1",
      "ur": "Tạo báo cáo danh sách phiếu nhập kho theo điều kiện lọc",

@@ -1,0 +1,90 @@
+﻿=====================================================================
+GLUE — gắn popup {{identity}}Filter vào chức năng CHA ({{parent_controller}})
+Chọn 1 trong 2 cách đặt nút (A: Dir footer field | B: Grid toolbar),
+rồi làm mục C (JS showForm/clear) và D (action server + ResponseComplete).
+QUY TẮC MEMVARS: trước g.showForm(...) LUÔN lưu
+    if (g && g._memvars) g._originMemvars = g._memvars;
+filter.xml tự khóa/trả _memvars (active$/close$/QueryComplete) — không xóa.
+=====================================================================
+
+---------------------------------------------------------------------
+A. DIR — nút "Chọn... / Xóa" ở footer của field (Dir/{{parent_controller}}.xml)
+---------------------------------------------------------------------
+A1. Trong <field name="{{dest_no_field}}"> thêm footer:
+
+      <footer v="&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;showForm${{parent_controller}}(this, '0');&quot;&gt;Chọn...&lt;/div&gt;&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;clear${{parent_controller}}(this, '0');&quot;&gt;Xóa&lt;/div&gt;" e="&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;showForm${{parent_controller}}(this, '0');&quot;&gt;Select...&lt;/div&gt;&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;clear${{parent_controller}}(this, '0');&quot;&gt;Clear&lt;/div&gt;"/>
+
+    Field {{dest_id_field}} (stt_rec nguồn) khai báo hidden nếu chưa có:
+      <field name="{{dest_id_field}}" readOnly="true" hidden="true"><header v="" e=""></header></field>
+
+A2. CSS trong <css> (hoặc khối style sẵn có) của Dir:
+
+      .divOriginal:hover{text-decoration:underline}
+      .divOriginal{cursor:pointer;position:relative;display:inline-block;width:48px!important;height:22px!important;overflow:hidden;color:#3171c6;font-family:verdana;font-size:11px;margin-right:4px;}
+
+---------------------------------------------------------------------
+B. GRID — nút trên toolbar (Grid/<grid cha>.xml)
+---------------------------------------------------------------------
+B1. Trong <toolbar>:
+
+      <button command="{{command}}">
+        <title v="{{button_title_v}}" e="{{button_title_e}}"></title>
+      </button>
+
+B2. Trong hàm on$...$ExecuteCommand(sender, e) của grid (switch (action)):
+
+      case '{{command}}':
+        if (f._action == 'View') break;
+        if (g && g._memvars) g._originMemvars = g._memvars;
+        g.showForm('{{identity}}Filter');
+        break;
+
+    (g = sender, f = g.get_element().parentForm)
+
+---------------------------------------------------------------------
+C. DIR — JS mở / xóa (trong <script> của Dir/{{parent_controller}}.xml)
+---------------------------------------------------------------------
+function showForm${{parent_controller}}(o, n) {
+  var f = document.body._form, g = f.grid;
+  if (f._action == 'View') return;
+  // AGENT: chặn điều kiện nghiệp vụ nếu cần (vd đã chọn chứng từ con thì không đổi)
+  if (g && g._memvars) g._originMemvars = g._memvars;
+  g.showForm('{{identity}}Filter');
+}
+function clear${{parent_controller}}(o, n) {
+  var f = document.body._form;
+  if (!f || f._action == 'View') return;
+  f.setItemValues('{{dest_id_field}}, {{dest_no_field}}', ['', '']);
+  // AGENT: xóa thêm các field/grid đã load theo chứng từ nguồn
+  f.focus('{{dest_no_field}}');
+}
+
+---------------------------------------------------------------------
+D. DIR — action server + xử lý response
+---------------------------------------------------------------------
+D1. Trong <response> của Dir:
+
+      <action id="{{action_id}}">
+        <text><![CDATA[
+exec {{proc_name}} @{{dest_id_field}}, @@unit
+return
+]]></text>
+      </action>
+
+    Proc trả 1 dòng 1 cột chuỗi JSON (vd fsd_ToJson) dạng {m: [...], d: [...]}.
+
+D2. Trong on$Voucher$ResponseComplete(sender, e) (switch (context)):
+
+      case '{{action_id}}':
+        var data = [], raw = result[0].Value, m = null;
+        try {if (raw && raw != '[]') data = eval('(' + raw + ')');} catch (ex) {}
+        if (data && data.m) {
+          m = data.m.length ? data.m[0] : data.m;
+          // AGENT: gán các field header từ chứng từ nguồn
+          if (m) f.setItemValues('<field1>, <field2>', [m.<field1> || '', m.<field2> || '']);
+        }
+        // AGENT: đổ data.d vào grid chi tiết nếu cần
+        break;
+
+    Nếu chỉ cần gán số CT, bỏ D và bỏ dòng w.request(...) trong
+    on$...Filter$QueryComplete của filter.xml.

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Grid kết quả báo cáo thường.
   * Cột phải khớp recordset mà {{proc}} đổ vào #$query.

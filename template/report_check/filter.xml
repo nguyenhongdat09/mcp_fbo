@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Filter báo cáo check-chọn (Filter + Grid tag + nút/in theo
   dòng đã tick). Token đã fill: {{controller}}, {{proc}} (= rs_{new} — đổi

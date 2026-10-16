@@ -1,0 +1,57 @@
+﻿name: popup_input_form
+title_v: Nút bấm bung form nhập tham số rồi bấm Nhận để gán ngược / xử lý các dòng đã tick
+jev_desc: "ADD a button (Grid toolbar command or Dir field footer) ONTO an
+  EXISTING Dir/Grid/Filter that pops up a small INPUT form {X}Filter (user
+  types parameters: date, lookup code, number, text), presses Nhan -> server
+  validates then either writes values BACK to the parent form / ticked grid
+  rows, or processes the ticked rows of the parent grid (keys). Keeps outer
+  grid _memvars. No voucher-number lookup (that is popup_lookup_*), no
+  MultiForm/MultiGrid (that is retrieve_flow_*)."
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}Filter.xml
+  - src: glue.txt
+    dst: PopupTemp/{new}_glue.txt
+tokens:
+  "{{identity}}": "{new}"
+edit_guide: |
+  Template "popup nhập tham số" — chức năng NHÚNG vào Dir/Grid/Filter có sẵn:
+  bấm nút → bung {new}Filter → nhập tham số → Nhận (command Inserting) →
+  (a) gán ngược giá trị về field form cha hoặc các dòng grid đã tick, hoặc
+  (b) xử lý server trên các dòng grid cha đã tick (field keys → #keys).
+
+  new_name = tên popup, vd UR "nút cập nhật tỷ lệ CK cho các dòng tick trên
+  SVDetail" → new_name=zcSVSetDiscount → Filter/zcSVSetDiscountFilter.xml.
+
+  A. FIELD PLACEHOLDER — đổi theo UR, khớp giữa <fields>, <views>, Inserting
+  (biến @name_*), script QueryComplete (thứ tự tham số) và JS:
+  name_date_1 (DateTime), name_lookup_1 (Lookup), name_decimal_1 (Decimal),
+  name_string_1 (String). Không dùng field nào thì xóa ở cả 5 chỗ.
+  Field ẩn mới: hidden="true" + thêm cột 0 cuối <item> widths và gắn [field]
+  vào cuối 1 dòng view (như [keys]) — không thêm dòng trống.
+
+  B. PLACEHOLDER {{...}} phải điền (xem unresolved_placeholders):
+  - {{title_filter_v/e}}, {{title_*_1_v/e}} nhãn field, {{required_message_v/e}}.
+  - {{form_table}}/{{form_code}}: bảng + cột khóa bất kỳ có thật (vd bảng của
+    chức năng cha) — popup không ghi bảng, chỉ để controller hợp lệ.
+  - {{lookup_controller_1}}: controller lookup cho name_lookup_1 (vd Item).
+  - {{tag_field}}/{{key_field}}: cột tick + cột khóa của grid cha (vd tag/stt_rec0);
+    không xử lý theo dòng tick thì xóa field keys + khối gom keys ở active$ + khối (b).
+  - {{dest_fields}} (field form cha nhận giá trị), {{dest_grid_field}} (cột grid
+    cha nhận giá trị) — xóa nhánh (a1)/(a2) không dùng.
+  - glue: {{parent_controller}}, {{command}}, {{button_title_v/e}}; mục D:
+    {{action_id}}, {{proc_name}}.
+
+  C. GLUE TRÊN CHỨC NĂNG CHA — PopupTemp/{new}_glue.txt: B (toolbar Grid, khi
+  xử lý dòng tick) HOẶC A (footer Dir), C (JS showForm), D (tuỳ chọn action).
+  File glue chỉ là nháp — KHÔNG deploy.
+
+  D. QUY TẮC MEMVARS (bắt buộc): glue lưu g._originMemvars trước showForm;
+  filter.xml active$ khóa _memvars (defineProperty); close$ + QueryComplete trả lại.
+
+  E. KHÁC: cần chọn số chứng từ (ngày + số CT + lookup) → popup_lookup_*;
+  lấy nhiều dòng chi tiết từ chứng từ nguồn → retrieve_flow_*.
+
+  F. Verify: read_local_file read_option=3 (js.parse_status) trên Filter mới
+  + Grid/Dir cha; SQL Inserting check bằng query_database query_type=3 (thay
+  @name_* bằng declare) trước khi nhờ user test.

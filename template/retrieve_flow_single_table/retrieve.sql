@@ -1,4 +1,4 @@
--- CHUA DEPLOY — file skeleton cho agent sua placeholder roi deploy TUNG PHAN.
+﻿-- CHUA DEPLOY — file skeleton cho agent sua placeholder roi deploy TUNG PHAN.
 -- Mode: SINGLE (bang nguon co dinh, khong phan ky — vd zcWIMO)
 -- Dien {{...}} theo UR; cac khoi trong /* */ la snippet de copy vao XML, KHONG chay.
 

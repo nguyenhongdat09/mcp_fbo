@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AGENT GUIDE — POPUP FORM chọn chứng từ (bảng nguồn PARTITION):
+  Nút trên Dir/Grid cha (xem PopupTemp/{new}_glue.txt) gọi g.showForm('{{identity}}Filter')
+  → user nhập ngày + số CT (AutoComplete {{identity}}Lookup) → bấm Nhận (command Inserting)
+  → server tìm chứng từ → script on$...Filter$QueryComplete gán ngược về form cha.
+  KHÔNG xóa khối memvars trong active$/close$/QueryComplete: popup dùng chung grid
+  ngoài cùng, mất _memvars thì grid cha load/lưu sai.
+-->
+<!DOCTYPE dir [
+  <!ENTITY XMLFlowFilterViews SYSTEM "..\Include\XML\FlowFilterViews.txt">
+  <!ENTITY XMLFlowFilterCommand SYSTEM "..\Include\XML\FlowFilterCommand.txt">
+  <!ENTITY ScriptFlowFilterCss SYSTEM "..\Include\Javascript\FlowFilterCss.txt">
+  <!ENTITY ScriptFlowFilterFunction SYSTEM "..\Include\Javascript\FlowFilterFunction.txt">
+
+  <!ENTITY Identity "{{identity}}">
+  <!ENTITY c11 "{{title_filter_date_v}}">
+  <!ENTITY c12 "{{title_filter_date_e}}">
+  <!ENTITY c21 "{{title_filter_so_v}}">
+  <!ENTITY c22 "{{title_filter_so_e}}">
+
+  <!ENTITY % FlowMultiVoucher SYSTEM "..\Include\FlowMultiVoucher.ent">
+  %FlowMultiVoucher;
+
+  <!ENTITY % CheckRelative SYSTEM "..\Include\CheckRelative.ent">
+  %CheckRelative;
+  <!ENTITY CheckRelativeParameter "'{{identity}}Filter', 'Filter', '{{parent_controller}}'">
+  <!ENTITY CheckRelativeQuery "
+    select 'so_ct' as field, @$none as message
+    return
+">
+]>
+<dir table="{{src_master_table}}" code="stt_rec" order="ngay_ct, so_ct" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="{{title_filter_v}}" e="{{title_filter_e}}"></title>
+  <fields>
+    &FlowMultiFilterFields;
+  </fields>
+
+  <views>
+    &XMLFlowFilterViews;
+  </views>
+
+  <commands>
+    <command event="Created">
+      <text>
+        <![CDATA[
+    select 'init$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+    <command event="Loading">
+      <text>
+        <![CDATA[
+    select 'this._unit = '@@unit'; active$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+    <command event="Closing">
+      <text>
+        <![CDATA[
+    select 'close$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+
+    <!-- Nhận: tìm chứng từ nguồn theo số CT (hoặc stt_rec_ct từ AutoComplete) trong khoảng ngày -->
+    <command event="Inserting">
+      <text>
+        <![CDATA[
+if @so_ct <> '' begin
+  declare @$none nvarchar(512), @u varchar(33), @stt_rec_out char(13), @so_ct_out varchar(32)
+  declare @q nvarchar(max), @Key nvarchar(max), @vcNumber varchar(32), @i int, @l int
+  select @$none = case when @@language = 'v' then N'{{none_message_v}}' else N'{{none_message_e}}' end
+  select @u = case when @ma_dvcs = '' then @@unit else @ma_dvcs end
+  select @stt_rec_out = '', @so_ct_out = '', @Key = '1 = 1', @q = ''
+  select @vcNumber = ltrim(rtrim(@so_ct))
+  select @i = len(@vcNumber), @l = character_maximum_length
+    from information_schema.columns
+    where table_name = '{{src_master_table}}' and column_name = 'so_ct'
+  if @l > @i select @vcNumber = space(@l - @i) + @vcNumber
+
+  ]]>&CheckRelativeProcess;<![CDATA[
+
+  select top 0 stt_rec, so_ct, ngay_ct into #m from {{src_master_table}}
+
+  if isnull(rtrim(@stt_rec_ct), '') <> '' begin
+    select @Key = @Key + ' and m.stt_rec = ''' + replace(rtrim(@stt_rec_ct), '''', '''''') + ''''
+  end else begin
+    select @Key = @Key + ' and m.so_ct = ''' + replace(@vcNumber, '''', '''''') + ''''
+  end
+  -- AGENT: điều kiện trạng thái/ma_ct nguồn, vd: and m.ma_ct = ''DDV'' and m.status in (''1'', ''2'')
+  select @Key = @Key + '{{src_status_clause}}'
+  select @Key = @Key + ' and (m.ma_dvcs = ''' + replace(rtrim(@u), '''', '''''') + ''' or m.ma_dvcs = '''')'
+  select @Key = dbo.FastBusiness$Function$System$GetCheckKey(@Key)
+
+  select @q = '
+insert into #m (stt_rec, so_ct, ngay_ct)
+  select m.stt_rec, m.so_ct, m.ngay_ct
+    from {{src_partition_prefix}}%Partition m with (nolock)
+    where %[' + @Key + ']%
+'
+  exec FastBusiness$Partition$Execute @q, null, 'm.ngay_ct', @ngay_ct1, @ngay_ct2, @@userID, @@admin
+
+  select top 1 @stt_rec_out = stt_rec, @so_ct_out = ltrim(rtrim(so_ct))
+    from #m
+    order by ngay_ct desc, so_ct desc
+
+  if isnull(rtrim(@stt_rec_out), '') = '' begin
+    select 'so_ct' as field, @$none as message
+    return
+  end
+
+  select '' as field, '' as message,
+    'on$]]>&Identity;<![CDATA[Filter$QueryComplete(this, "' + rtrim(@stt_rec_out) + '", "' + replace(replace(@so_ct_out, '\', '\\'), '"', '\"') + '");' as script
+  return
+end else begin
+  select 'so_ct' as field,
+    case when @@language = 'v' then N'{{required_message_v}}' else N'{{required_message_e}}' end as message
+  return
+end
+]]>
+      </text>
+    </command>
+  </commands>
+
+  <script>
+    <text>
+      <![CDATA[
+function init$]]>&Identity;<![CDATA[Filter$(f) {f.getItem('so_ct')._idle = 9;}
+function active$]]>&Identity;<![CDATA[Filter$(f) {
+  f._looking = f.getItem('so_ct')._controlBehavior;
+  f._looking.add_loading(on$]]>&Identity;<![CDATA[Filter$Before$Loading);
+
+  var g = f.grid, w = null;
+  try {w = g.get_element() && g.get_element().parentForm;} catch (ex) {}
+  if (!w || w === f) w = document.body._form;
+  if (w === f) w = null;
+  var d2 = w ? w.getItemValue('ngay_lct') : null, u = w ? w.getItemValue('ma_dvcs') : '';
+  f.setItemValues('ngay_ct2, ma_dvcs', [d2 || new Date(), u || f._unit || (g && g._$unit)]);
+
+  // GIỮ memvars của grid ngoài cùng: khóa _memvars trong lúc popup mở
+  if (g) {
+    if (!g._isPopupFilterActive && g._memvars) {
+      g._originMemvars = g._memvars;
+    }
+    g._isPopupFilterActive = true;
+    try {
+      Object.defineProperty(g, '_memvars', {
+        get: function() { return g._originMemvars; },
+        set: function(val) {
+          if (!g._isPopupFilterActive && val) {
+            g._originMemvars = val;
+          }
+        },
+        configurable: true,
+        enumerable: true
+      });
+    } catch (ex) {}
+  }
+}
+function close$]]>&Identity;<![CDATA[Filter$(f) {
+  try {f._looking.remove_loading(on$]]>&Identity;<![CDATA[Filter$Before$Loading);} catch (ex) {}
+  var g = f.grid;
+  if (g && g._originMemvars) {
+    try { g._memvars = g._originMemvars; } catch (ex) {}
+    setTimeout(function() { g._isPopupFilterActive = false; }, 300);
+  }
+  var w = document.body._form;
+  if (w) w.focus('{{dest_no_field}}');
+}
+function on$]]>&Identity;<![CDATA[Filter$Before$Loading(sender, e) {
+  var f = sender._element.parentForm;
+  if (!f || !f.validFields('ngay_ct1')) {
+    e.type.cancelEvent = true;
+    return;
+  }
+  sender.set_memvars([
+    {Name: 'ngay_ct1', Type: 'DateTime', Value: f.getItemValue('ngay_ct1')},
+    {Name: 'ngay_ct2', Type: 'DateTime', Value: f.getItemValue('ngay_ct2')},
+    {Name: 'ma_dvcs', Type: 'String', Value: f.getItemValue('ma_dvcs') || f._unit || ''}
+  ]);
+}
+function on$]]>&Identity;<![CDATA[Filter$QueryComplete(f, stt_rec, so_ct) {
+  var g = f.grid, w = (g && g.get_element() && g.get_element().parentForm) || document.body._form;
+  if (w) {
+    // AGENT: gán ngược field trên form cha + gọi action load dữ liệu (glue mục 4)
+    w.setItemValues('{{dest_id_field}}, {{dest_no_field}}', [stt_rec, so_ct]);
+    w.request('{{action_id}}', '{{action_id}}', [['{{dest_id_field}}', 'String', stt_rec]]);
+  }
+  if (g) {
+    if (!g._formScript) g._formScript = ' ';
+    if (g._originMemvars) {
+      try { g._memvars = g._originMemvars; } catch (ex) {}
+    }
+  }
+}
+]]>
+    </text>
+  </script>
+
+  &ScriptFlowFilterCss;
+</dir>

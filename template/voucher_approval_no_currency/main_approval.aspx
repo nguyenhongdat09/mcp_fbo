@@ -1,4 +1,4 @@
-<%@ Page AutoEventWireup="false" MasterPageFile="~/Main/MasterPage.master" Inherits="FastBusiness.ReportExtender.UI.Page" v="{{apv_title_v}}" e="{{apv_title_e}}"%>
+﻿<%@ Page AutoEventWireup="false" MasterPageFile="~/Main/MasterPage.master" Inherits="FastBusiness.ReportExtender.UI.Page" v="{{apv_title_v}}" e="{{apv_title_e}}"%>
 <asp:Content ID="headContent" ContentPlaceHolderID="head" runat="server"></asp:Content>
 <%@ Register Assembly="PostExtender" Namespace="PostExtender" TagPrefix="post" %>
 <%@ Register Assembly="Flow" Namespace="Flow" TagPrefix="flow" %>

@@ -1,4 +1,4 @@
-name: category_1_key_detail
+﻿name: category_1_key_detail
 title_v: Danh mục 1 khóa (id identity) + tab chi tiết (grid con), có import
 jev_desc: "New master/category with single identity PK plus a detail tab (embedded Grid controller, ForeignKey link), optional Excel import"
 files:

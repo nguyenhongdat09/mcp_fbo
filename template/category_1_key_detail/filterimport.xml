@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Form chọn file import (mở khi bấm nút ImportData trên Grid).
   Không cần sửa gì ngoài token đã fill sẵn; chỉnh 'Kiểu sao chép' nếu danh mục

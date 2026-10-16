@@ -1,4 +1,4 @@
-name: retrieve_flow_single_table
+﻿name: retrieve_flow_single_table
 title_v: Chức năng lấy dữ liệu từ chứng từ nguồn — bảng CỐ ĐỊNH (không phân kỳ)
 jev_desc: "ADD a data-retrieval (lay du lieu / Retrieve) flow ONTO an EXISTING
   voucher: creates a NEW controller suite {X}Filter/{X}MultiForm/{X}MultiGrid/

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Import XML (server-side xử lý file Excel upload, Import.ashx).
   * <fields>: map cột Excel -> cột bảng. id tự tăng = cast(stt)+@max.

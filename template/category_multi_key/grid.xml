@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--C-->
 <!-- AGENT GUIDE — Grid danh sách danh mục nhiều khóa.
      code/order PHẢI khớp bộ khóa trong master.xml và bảng {{table}}. -->

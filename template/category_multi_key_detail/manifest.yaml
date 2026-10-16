@@ -1,4 +1,4 @@
-name: category_multi_key_detail
+﻿name: category_multi_key_detail
 title_v: Danh mục nhiều khóa (PK composite) + 2 tab chi tiết (grid con), có import
 jev_desc: "New master/category with composite primary key plus detail tabs (embedded Grid controllers, ForeignKey link), optional Excel import"
 files:

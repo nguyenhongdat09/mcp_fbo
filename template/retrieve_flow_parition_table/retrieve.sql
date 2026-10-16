@@ -1,4 +1,4 @@
--- CHUA DEPLOY — file skeleton cho agent sua placeholder roi deploy TUNG PHAN.
+﻿-- CHUA DEPLOY — file skeleton cho agent sua placeholder roi deploy TUNG PHAN.
 -- Mode: PARTITIONED (bang nguon m/d/i{ext}$YYYYMM)
 -- Dien {{...}} theo UR; cac khoi trong /* */ la snippet de copy vao XML, KHONG chay.
 

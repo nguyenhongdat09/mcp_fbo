@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 
 <grid table="d{{xt}}$000000" code="stt_rec" order="stt_rec, line_nbr" type="Detail" freezeColumns="3" id="{{x}}" xmlns="urn:schemas-fast-com:data-grid">
   <title v="" e=""></title>

@@ -1,4 +1,4 @@
-name: report_check
+﻿name: report_check
 title_v: Báo cáo check-chọn dòng (tag) + nút xử lý / in theo dòng đã tick
 jev_desc: "Listing report whose Grid has a check-box 'tag' column to SELECT
   ROWS: toolbar buttons process checked rows (g.request + response.action

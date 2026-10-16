@@ -1,0 +1,55 @@
+﻿name: popup_lookup_single_table
+title_v: Nút bấm bung form chọn chứng từ (ngày + số CT + lookup) rồi gán ngược — bảng nguồn CỐ ĐỊNH
+jev_desc: "ADD a button (Dir field footer 'Chon.../Xoa' or Grid toolbar command)
+  ONTO an EXISTING Dir/Grid/Filter that pops up a small form {X}Filter: date +
+  voucher number (AutoComplete {X}Lookup) -> Nhan -> writes the found source
+  voucher stt_rec/so_ct BACK to the parent form. Keeps outer grid _memvars.
+  SOURCE voucher is a FIXED (non-partitioned) table, no $YYYYMM suffix. NOT
+  retrieve_flow (no MultiForm/MultiGrid, no detail lines, no taken-qty)."
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}Filter.xml
+  - src: lookup.xml
+    dst: App_Data/Controllers/Lookup/{new}Lookup.xml
+  - src: glue.txt
+    dst: PopupTemp/{new}_glue.txt
+tokens:
+  "{{identity}}": "{new}"
+edit_guide: |
+  Giống popup_lookup_partition_table nhưng chứng từ nguồn nằm trên bảng CỐ
+  ĐỊNH (không phân kỳ $YYYYMM): Inserting select thẳng {{src_master_table}},
+  Lookup gọi Finding với bảng cố định.
+
+  new_name = tên suite popup → Filter/{new}Filter.xml + Lookup/{new}Lookup.xml.
+
+  A. PLACEHOLDER {{...}} phải điền (xem unresolved_placeholders):
+  - Tiêu đề: {{title_filter_v/e}}, {{title_filter_date_v/e}}, {{title_filter_so_v/e}},
+    {{title_lookup_v/e}}, {{none_message_v/e}}, {{required_message_v/e}}.
+  - Nguồn: {{src_master_table}} = bảng master cố định; {{src_inquiry_table}} =
+    bảng inquiry (index/ngay_ct) cố định — không có thì dùng lại bảng master;
+    {{src_ma_ct}}; {{finding_status_arg}} (vd '1, 2'); {{lookup_prime_join}} ('' nếu không cần);
+    {{src_status_where}} = điều kiện SQL thường nối sau where, bắt đầu bằng
+    'and' (vd and m.status in ('1', '2')) — để trống nếu không lọc.
+  - Cha: {{parent_controller}}, {{dest_id_field}}, {{dest_no_field}}, {{action_id}}
+    (không cần load thì xóa dòng w.request(...) trong QueryComplete);
+    trong glue: {{proc_name}}, {{command}}, {{button_title_v/e}}.
+
+  B. INCLUDE ENTITIES — project đích PHẢI có sẵn (thiếu thì clone_things type=3):
+  Include/FlowMultiVoucher.ent (+ XML/FlowFilterFields.txt), Include/CheckRelative.ent,
+  Include/XML/FlowFilterViews.txt, FlowFilterCommand.txt,
+  Include/Javascript/FlowFilterCss.txt, FlowFilterFunction.txt,
+  Include/Filter.Lookup.ent, Include/FilterInitialize.xml.
+
+  C. GLUE TRÊN CHỨC NĂNG CHA — PopupTemp/{new}_glue.txt: A (footer Dir) HOẶC
+  B (toolbar Grid), rồi C (JS showForm/clear), D (action + ResponseComplete).
+  File glue chỉ là nháp — KHÔNG deploy.
+
+  D. QUY TẮC MEMVARS (bắt buộc): glue lưu g._originMemvars trước showForm;
+  filter.xml active$ khóa _memvars (defineProperty); close$ + QueryComplete trả lại.
+
+  E. Bảng nguồn partition → popup_lookup_partition_table; chỉ form nhập tham số
+  → popup_input_form; lấy nhiều dòng chi tiết → retrieve_flow_single_table.
+
+  F. Verify: read_local_file read_option=3 (js.parse_status) trên Filter mới
+  + Dir/Grid cha; get_xml_entities mode=checking; SQL Inserting check bằng
+  query_database query_type=3 sau khi thay placeholder.

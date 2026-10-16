@@ -1,4 +1,4 @@
-name: report_pivot
+﻿name: report_pivot
 title_v: Báo cáo xoay (Grid có <pivot rowField/columnField/dataFields>)
 jev_desc: "Pivot/crosstab report - Grid has <pivot rowField/columnField/dataFields>, proc returns rowField + sysColumn + dataFields"
 files:

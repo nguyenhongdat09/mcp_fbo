@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AGENT GUIDE — CREATE TABLE danh mục 1 khóa (identity PK).
 -- * {{table}} đã được clone_things fill = tên bảng; đổi name_* theo field
 --   thật trong master.xml/grid.xml (PHẢI khớp nhau).

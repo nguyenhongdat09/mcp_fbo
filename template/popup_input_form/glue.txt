@@ -1,0 +1,65 @@
+﻿=====================================================================
+GLUE — gắn popup nhập tham số {{identity}}Filter vào chức năng CHA ({{parent_controller}})
+Chọn 1 trong 2 cách đặt nút (A: Dir footer field | B: Grid toolbar),
+rồi làm mục C (JS showForm) và D nếu xử lý qua action của Dir cha.
+QUY TẮC MEMVARS: trước g.showForm(...) LUÔN lưu
+    if (g && g._memvars) g._originMemvars = g._memvars;
+filter.xml tự khóa/trả _memvars (active$/close$/QueryComplete) — không xóa.
+=====================================================================
+
+---------------------------------------------------------------------
+A. DIR — nút ở footer của field (Dir/{{parent_controller}}.xml)
+---------------------------------------------------------------------
+A1. Trong <field name="<field gắn nút>"> thêm footer:
+
+      <footer v="&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;showForm${{parent_controller}}(this, '0');&quot;&gt;{{button_title_v}}&lt;/div&gt;" e="&lt;div class=&quot;divOriginal&quot; align=&quot;center&quot; onclick=&quot;showForm${{parent_controller}}(this, '0');&quot;&gt;{{button_title_e}}&lt;/div&gt;"/>
+
+A2. CSS trong <css> (hoặc khối style sẵn có) của Dir:
+
+      .divOriginal:hover{text-decoration:underline}
+      .divOriginal{cursor:pointer;position:relative;display:inline-block;width:48px!important;height:22px!important;overflow:hidden;color:#3171c6;font-family:verdana;font-size:11px;margin-right:4px;}
+
+---------------------------------------------------------------------
+B. GRID — nút trên toolbar (Grid/<grid cha>.xml) — dùng khi xử lý các dòng tick
+---------------------------------------------------------------------
+B1. Trong <toolbar>:
+
+      <button command="{{command}}">
+        <title v="{{button_title_v}}" e="{{button_title_e}}"></title>
+      </button>
+
+B2. Trong hàm on$...$ExecuteCommand(sender, e) của grid (switch (action)):
+
+      case '{{command}}':
+        if (f._action == 'View') break;
+        // AGENT: bắt buộc tick ít nhất 1 dòng nếu xử lý theo dòng tick
+        if (g && g._memvars) g._originMemvars = g._memvars;
+        g.showForm('{{identity}}Filter');
+        break;
+
+    (g = sender, f = g.get_element().parentForm)
+    Grid cha cần cột tick {{tag_field}} (Boolean) + cột khóa {{key_field}}.
+
+---------------------------------------------------------------------
+C. DIR — JS mở form (trong <script> của Dir/{{parent_controller}}.xml)
+---------------------------------------------------------------------
+function showForm${{parent_controller}}(o, n) {
+  var f = document.body._form, g = f.grid;
+  if (f._action == 'View') return;
+  if (g && g._memvars) g._originMemvars = g._memvars;
+  g.showForm('{{identity}}Filter');
+}
+
+---------------------------------------------------------------------
+D. (tuỳ chọn) xử lý qua action của Dir cha thay vì trong Inserting của popup
+---------------------------------------------------------------------
+Trong on$...Filter$QueryComplete gọi:
+      w.request('{{action_id}}', '{{action_id}}', [['name_lookup_1', 'String', name_lookup_1], ['name_decimal_1', 'Decimal', name_decimal_1]]);
+Dir cha:
+      <action id="{{action_id}}">
+        <text><![CDATA[
+exec {{proc_name}} @name_lookup_1, @name_decimal_1, @@unit, @@userID
+return
+]]></text>
+      </action>
+và case '{{action_id}}': trong on$Voucher$ResponseComplete để xử lý kết quả.

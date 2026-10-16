@@ -1,4 +1,4 @@
-<field name="stt_rec_ref" readOnly="true" inactivate="true" hidden="true" allowContain="true">
+﻿<field name="stt_rec_ref" readOnly="true" inactivate="true" hidden="true" allowContain="true">
   <header v="" e=""></header>
 </field>
 <field name="stt_rec0ref" readOnly="true" inactivate="true" hidden="true" allowContain="true">

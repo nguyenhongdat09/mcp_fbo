@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Import XML danh mục nhiều khóa (composite PK).
   * fields: name_date_1 (col A) + name_string_1 (col B) là PK — đổi tên khớp

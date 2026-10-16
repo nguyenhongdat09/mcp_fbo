@@ -326,6 +326,37 @@ def test_requirement_retrieve_flow_has_template(patch_jev):
     assert any(f.endswith("_retrieve.sql") for f in files)
 
 
+@pytest.mark.parametrize("req_type,has_lookup", [
+    ("popup_lookup_partition_table", True),
+    ("popup_lookup_single_table", True),
+    ("popup_input_form", False),
+])
+def test_requirement_popup_has_template(patch_jev, req_type, has_lookup):
+    patch_jev["fn"] = _fake_ask({
+        "requirement_type": {"type": "choice", "choice": req_type,
+                             "confidence": 0.9,
+                             "probabilities": {req_type: 0.9}}})
+    out = _parse(tool_help("x",
+                           context={"task_requirement":
+                                    "nút bấm bung form rồi bấm nhận"},
+                           jev_config=FAKE_CFG))
+    req = out["requirement"]
+    assert req["type"] == req_type
+    assert req["template"]["dir"] == f"template/{req_type}"
+    assert req["template"]["clone_call"]["object"] == req_type
+    files = req["template"]["files"]
+    assert "App_Data/Controllers/Filter/{new}Filter.xml" in files
+    assert "PopupTemp/{new}_glue.txt" in files
+    assert any("Lookup/" in f for f in files) == has_lookup
+
+
+def test_popup_types_in_requirement_catalog():
+    from tool_help.cards import REQUIREMENT_TYPE_CATALOG
+    for k in ("popup_lookup_partition_table", "popup_lookup_single_table",
+              "popup_input_form"):
+        assert k in REQUIREMENT_TYPE_CATALOG
+
+
 def test_requirement_voucher_variants_have_template(patch_jev):
     """4 variant voucher_* → requirement block trả template + clone_call."""
     cases = {

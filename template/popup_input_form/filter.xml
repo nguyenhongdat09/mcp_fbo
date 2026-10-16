@@ -1,0 +1,177 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AGENT GUIDE — POPUP FORM nhập tham số (không lookup số chứng từ):
+  Nút trên Dir/Grid cha (xem PopupTemp/{new}_glue.txt) gọi g.showForm('{{identity}}Filter')
+  → user nhập tham số → bấm Nhận (command Inserting) → server validate rồi:
+    (a) trả script on$...Filter$QueryComplete(...) gán giá trị ngược về form cha / các dòng grid, hoặc
+    (b) xử lý server trên các dòng grid đã tick (field keys) rồi trả message.
+  Field name_date_1 / name_lookup_1 / name_decimal_1 / name_string_1 là PLACEHOLDER — đổi theo UR,
+  khớp nhau giữa <fields>, <views>, Inserting và JS.
+  KHÔNG xóa khối memvars trong active$/close$/QueryComplete.
+-->
+<!DOCTYPE dir [
+  <!ENTITY Identity "{{identity}}">
+]>
+<dir table="{{form_table}}" code="{{form_code}}" xmlns="urn:schemas-fast-com:data-dir">
+  <title v="{{title_filter_v}}" e="{{title_filter_e}}"></title>
+  <fields>
+    <field name="name_date_1" type="DateTime" dataFormatString="@datetimeFormat" align="left" allowNulls="false" defaultValue="new Date()">
+      <header v="{{title_date_1_v}}" e="{{title_date_1_e}}"></header>
+    </field>
+    <field name="name_lookup_1">
+      <header v="{{title_lookup_1_v}}" e="{{title_lookup_1_e}}"></header>
+      <items style="Lookup" controller="{{lookup_controller_1}}" key="status = '1'" check="1 = 1"/>
+    </field>
+    <field name="name_decimal_1" type="Decimal" dataFormatString="### ### ### ##0.00" align="right" defaultValue="0" clientDefault="0">
+      <header v="{{title_decimal_1_v}}" e="{{title_decimal_1_e}}"></header>
+      <items style="Numeric"/>
+    </field>
+    <field name="name_string_1">
+      <header v="{{title_string_1_v}}" e="{{title_string_1_e}}"></header>
+    </field>
+    <!-- Khóa các dòng grid cha đã tick, nối bằng dấu phẩy (set ở active$) — xóa nếu không xử lý theo dòng tick -->
+    <field name="keys" readOnly="true" defaultValue="''" hidden="true">
+      <header v="" e=""></header>
+    </field>
+  </fields>
+
+  <views>
+    <view id="Dir" height="120">
+      <item value="120, 230, 0"/>
+      <item value="11: [name_date_1].Label, [name_date_1]"/>
+      <item value="11: [name_lookup_1].Label, [name_lookup_1]"/>
+      <item value="11: [name_decimal_1].Label, [name_decimal_1]"/>
+      <item value="111: [name_string_1].Label, [name_string_1], [keys]"/>
+    </view>
+  </views>
+
+  <commands>
+    <command event="Created">
+      <text>
+        <![CDATA[
+    select 'init$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+    <command event="Loading">
+      <text>
+        <![CDATA[
+    select 'this._unit = '@@unit'; active$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+    <command event="Closing">
+      <text>
+        <![CDATA[
+    select 'close$]]>&Identity;<![CDATA[Filter$(this);' as message
+    return
+    ]]>
+      </text>
+    </command>
+
+    <!-- Nhận -->
+    <command event="Inserting">
+      <text>
+        <![CDATA[
+-- AGENT: validate tham số theo UR
+if isnull(rtrim(@name_lookup_1), '') = '' begin
+  select 'name_lookup_1' as field,
+    case when @@language = 'v' then N'{{required_message_v}}' else N'{{required_message_e}}' end as message
+  return
+end
+
+-- (b) Xử lý server theo các dòng grid cha đã tick — xóa khối này nếu chỉ gán ngược (a)
+if isnull(@keys, '') <> '' begin
+  select b.val as k
+    into #keys
+      from dbo.fsd_StringToTable(@keys) b
+  -- AGENT: update/insert/exec proc trên #keys, vd:
+  -- exec {{proc_name}} @keys, @name_date_1, @name_lookup_1, @name_decimal_1, @@unit, @@userID
+end
+
+-- (a) Gán ngược về form cha / dòng grid: truyền giá trị qua script
+select '' as field, '' as message,
+  'on$]]>&Identity;<![CDATA[Filter$QueryComplete(this, "' + convert(char(8), @name_date_1, 112) + '", "'
+    + replace(replace(rtrim(@name_lookup_1), '\', '\\'), '"', '\"') + '", '
+    + ltrim(str(isnull(@name_decimal_1, 0), 30, 6)) + ', "'
+    + replace(replace(rtrim(isnull(@name_string_1, '')), '\', '\\'), '"', '\"') + '");' as script
+return
+]]>
+      </text>
+    </command>
+  </commands>
+
+  <script>
+    <text>
+      <![CDATA[
+function init$]]>&Identity;<![CDATA[Filter$(f) {}
+function active$]]>&Identity;<![CDATA[Filter$(f) {
+  var g = f.grid, w = null;
+  try {w = g.get_element() && g.get_element().parentForm;} catch (ex) {}
+  if (!w || w === f) w = document.body._form;
+  if (w === f) w = null;
+
+  // Gom khóa các dòng grid cha đã tick (cột {{tag_field}}, khóa {{key_field}}) vào field keys
+  var a = [];
+  if (g && g._rowCount) {
+    var t = g._getColumnOrder('{{tag_field}}'), k = g._getColumnOrder('{{key_field}}');
+    for (var r = 1; r <= g._rowCount; r++) {
+      if (t > -1 && g._getItemValue(r, t)) a.push($func.trim(String(g._getItemValue(r, k) || '')));
+    }
+  }
+  f.setItemValue('keys', a.join(','));
+
+  // GIỮ memvars của grid ngoài cùng: khóa _memvars trong lúc popup mở
+  if (g) {
+    if (!g._isPopupFilterActive && g._memvars) {
+      g._originMemvars = g._memvars;
+    }
+    g._isPopupFilterActive = true;
+    try {
+      Object.defineProperty(g, '_memvars', {
+        get: function() { return g._originMemvars; },
+        set: function(val) {
+          if (!g._isPopupFilterActive && val) {
+            g._originMemvars = val;
+          }
+        },
+        configurable: true,
+        enumerable: true
+      });
+    } catch (ex) {}
+  }
+}
+function close$]]>&Identity;<![CDATA[Filter$(f) {
+  var g = f.grid;
+  if (g && g._originMemvars) {
+    try { g._memvars = g._originMemvars; } catch (ex) {}
+    setTimeout(function() { g._isPopupFilterActive = false; }, 300);
+  }
+}
+function on$]]>&Identity;<![CDATA[Filter$QueryComplete(f, name_date_1, name_lookup_1, name_decimal_1, name_string_1) {
+  var g = f.grid, w = (g && g.get_element() && g.get_element().parentForm) || document.body._form;
+  // AGENT: chọn 1 trong 2 cách gán ngược, xóa cách không dùng
+  // (a1) gán vào field header của form cha
+  if (w) {
+    w.setItemValues('{{dest_fields}}', [name_lookup_1, name_decimal_1]);
+  }
+  // (a2) gán vào các dòng grid cha đã tick
+  if (g && g._rowCount) {
+    var t = g._getColumnOrder('{{tag_field}}'), c = g._getColumnOrder('{{dest_grid_field}}');
+    for (var r = 1; r <= g._rowCount; r++) {
+      if (t > -1 && c > -1 && g._getItemValue(r, t)) g._setItemValue(r, c, name_decimal_1);
+    }
+  }
+  if (g) {
+    if (!g._formScript) g._formScript = ' ';
+    if (g._originMemvars) {
+      try { g._memvars = g._originMemvars; } catch (ex) {}
+    }
+  }
+}
+]]>
+    </text>
+  </script>
+</dir>

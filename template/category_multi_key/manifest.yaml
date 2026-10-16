@@ -1,4 +1,4 @@
-name: category_multi_key
+﻿name: category_multi_key
 title_v: Danh mục nhiều khóa chính (PK composite), có import + kiểu sao chép
 jev_desc: "New master/category with composite primary key (2+ key columns), optional Excel import with overwrite option"
 files:

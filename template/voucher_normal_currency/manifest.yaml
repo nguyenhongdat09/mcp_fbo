@@ -1,4 +1,4 @@
-name: voucher_normal_currency
+﻿name: voucher_normal_currency
 title_v: Chứng từ mới — KHÔNG duyệt, CÓ ngoại tệ (skeleton đầy đủ)
 jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) with NO
   approval flow but WITH foreign currency (ma_nt, ty_gia, _nt columns):

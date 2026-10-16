@@ -1,4 +1,4 @@
-name: voucher_normal_no_currency
+﻿name: voucher_normal_no_currency
 title_v: Chứng từ mới — KHÔNG duyệt, KHÔNG ngoại tệ (skeleton đầy đủ)
 jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) with NO
   approval flow and NO foreign currency: Dir/Grid/Filter/Query/Report/Detail

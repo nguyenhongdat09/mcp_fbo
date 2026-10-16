@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--C-->
 <!-- AGENT GUIDE — Grid danh sách master (danh mục 1 khóa + chi tiết).
      Field name_* khớp master.xml; grid chi tiết là file griddetail.xml. -->

@@ -1,0 +1,77 @@
+﻿name: popup_lookup_partition_table
+title_v: Nút bấm bung form chọn chứng từ (ngày + số CT + lookup) rồi gán ngược — bảng nguồn PARTITION
+jev_desc: "ADD a button (Dir field footer 'Chon.../Xoa' or Grid toolbar command)
+  ONTO an EXISTING Dir/Grid/Filter that pops up a small form {X}Filter: user
+  enters date range + voucher number (AutoComplete {X}Lookup), presses Nhan ->
+  server finds the source voucher and writes stt_rec/so_ct BACK to the parent
+  form (+ optional action to load its data). Keeps outer grid _memvars. SOURCE
+  voucher tables are PARTITIONED (m<ext>$YYYYMM). NOT retrieve_flow (no
+  MultiForm/MultiGrid, no taking detail lines, no taken-qty tracking)."
+files:
+  - src: filter.xml
+    dst: App_Data/Controllers/Filter/{new}Filter.xml
+  - src: lookup.xml
+    dst: App_Data/Controllers/Lookup/{new}Lookup.xml
+  - src: glue.txt
+    dst: PopupTemp/{new}_glue.txt
+tokens:
+  "{{identity}}": "{new}"
+edit_guide: |
+  Template "popup chọn chứng từ" — chức năng NHÚNG vào Dir/Grid/Filter có sẵn:
+  bấm nút → bung {new}Filter (ngày + số CT, AutoComplete {new}Lookup) → Nhận →
+  tìm chứng từ nguồn trên bảng PARTITION → gán stt_rec/so_ct ngược về form cha
+  (+ tuỳ chọn gọi action load dữ liệu). Mẫu gốc: PLHContractFilter/PLHAppendixFilter
+  + showForm$PLHTran (HAOHOA FBISP2421).
+
+  new_name = tên suite popup, vd UR "nút chọn hợp đồng trên PLH" → new_name=PLHContract
+  → Filter/PLHContractFilter.xml + Lookup/PLHContractLookup.xml.
+
+  A. PLACEHOLDER {{...}} phải điền (xem unresolved_placeholders):
+  - Tiêu đề: {{title_filter_v/e}}, {{title_filter_date_v/e}} (nhãn "Từ ngày"),
+    {{title_filter_so_v/e}} (nhãn "Số CT"), {{title_lookup_v/e}},
+    {{none_message_v/e}} (không tìm thấy), {{required_message_v/e}} (chưa nhập số).
+  - Nguồn: {{src_master_table}} = bảng master $000000 (vd mddv$000000);
+    {{src_partition_prefix}} = prefix partition master (vd mddv$);
+    {{src_inquiry_table}} = bảng inquiry $000000 (vd cddv$000000);
+    {{src_inquiry_prefix}} = prefix partition inquiry (vd iddv$);
+    {{src_ma_ct}} = ma_ct nguồn (vd DDV);
+    {{src_status_clause}} = điều kiện nối vào @Key, bắt đầu bằng ' and ...' và
+    nháy đơn nhân đôi (vd ' and m.ma_ct = ''DDV'' and m.status in (''1'', ''2'')');
+    {{finding_status_arg}} = danh sách status cho Finding (vd '1, 2');
+    {{lookup_prime_join}} = '' nếu không cần lọc thêm.
+  - Cha: {{parent_controller}} = controller cha (vd PLHTran);
+    {{dest_id_field}} = field nhận stt_rec nguồn (vd stt_rec_hd);
+    {{dest_no_field}} = field nhận số CT (vd ma_hd);
+    {{action_id}} = action load dữ liệu trên Dir cha (vd LoadContract) — không
+    cần thì xóa dòng w.request(...) trong QueryComplete;
+    {{proc_name}}, {{command}}, {{button_title_v/e}} trong glue.
+
+  B. INCLUDE ENTITIES — project đích PHẢI có sẵn (check trước, thiếu thì clone
+  từ project mẫu bằng clone_things type=3):
+  Include/FlowMultiVoucher.ent (+ XML/FlowFilterFields.txt), Include/CheckRelative.ent,
+  Include/XML/FlowFilterViews.txt, FlowFilterCommand.txt,
+  Include/Javascript/FlowFilterCss.txt, FlowFilterFunction.txt,
+  Include/Filter.Lookup.ent, Include/FilterInitialize.xml.
+
+  C. GLUE TRÊN CHỨC NĂNG CHA — làm theo PopupTemp/{new}_glue.txt:
+  chọn A (footer "Chọn.../Xóa" trên field Dir) HOẶC B (nút toolbar Grid:
+  <button command> + case trong on$...$ExecuteCommand), rồi C (JS showForm/clear),
+  D (action server + case trong on$Voucher$ResponseComplete) nếu cần load dữ liệu.
+  File glue chỉ là nháp — KHÔNG deploy, dán xong có thể xóa.
+
+  D. QUY TẮC MEMVARS (bắt buộc, không được bỏ):
+  1. Glue: trước g.showForm(...) phải có
+     if (g && g._memvars) g._originMemvars = g._memvars;
+  2. filter.xml active$: _isPopupFilterActive + Object.defineProperty(g, '_memvars')
+     khóa memvars grid ngoài cùng trong lúc popup mở.
+  3. filter.xml close$ + QueryComplete: trả g._memvars = g._originMemvars.
+  Bỏ 1 trong 3 chỗ → grid cha mất memvars (load/lưu sai tham số).
+
+  E. KHÁC retrieve_flow_*: popup chỉ gán ngược header/tham số (1 chứng từ),
+  không MultiForm/MultiGrid, không tick nhiều dòng chi tiết, không proc theo dõi
+  đã lấy. Cần lấy dòng chi tiết từ nhiều phiếu → dùng retrieve_flow_*.
+  Bảng nguồn cố định (không $YYYYMM) → popup_lookup_single_table.
+  Không cần lookup số CT, chỉ form nhập tham số → popup_input_form.
+
+  F. Verify: read_local_file read_option=3 (js.parse_status) trên Filter mới
+  + Dir/Grid cha sau khi dán glue; get_xml_entities mode=checking.

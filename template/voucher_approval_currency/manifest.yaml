@@ -1,4 +1,4 @@
-name: voucher_approval_currency
+﻿name: voucher_approval_currency
 title_v: Chứng từ mới — CÓ duyệt, CÓ ngoại tệ (skeleton đầy đủ)
 jev_desc: "CREATE a brand-new voucher suite (chung tu moi / voucher) WITH an
   approval flow (duyet/APV: Approval grid + filter + ApprovalItem + files +

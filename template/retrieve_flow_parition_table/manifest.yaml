@@ -1,4 +1,4 @@
-name: retrieve_flow_parition_table
+﻿name: retrieve_flow_parition_table
 title_v: Chức năng lấy dữ liệu từ chứng từ nguồn — bảng PHÂN KỲ (m/d/i{ext}$YYYYMM)
 jev_desc: "ADD a data-retrieval (lay du lieu / Retrieve) flow ONTO an EXISTING
   voucher: creates a NEW controller suite {X}Filter/{X}MultiForm/{X}MultiGrid/

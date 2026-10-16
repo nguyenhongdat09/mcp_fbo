@@ -1,4 +1,4 @@
-<![%Conditional.VoucherDeleteLog;[
+﻿<![%Conditional.VoucherDeleteLog;[
 
   <!ENTITY ListDeleted "">
   <!ENTITY PostDeleted "">

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- ============================================================================
   AGENT GUIDE — Import XML cho bảng MASTER {{table}} (id identity).
   Import chỉ nạp master — bảng chi tiết {{table_detail}} thường không import

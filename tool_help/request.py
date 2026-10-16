@@ -29,7 +29,10 @@ _REQ_RULES_V1 = (
     "voucher) ONLY for create-from-scratch. EXCEPTION: "
     "retrieve_flow_* also fits ADDING lay du lieu onto an "
     "existing voucher (creates new {X}Filter/{X}MultiForm/"
-    "{X}MultiGrid/{X}Lookup). voucher_* by UR signals: "
+    "{X}MultiGrid/{X}Lookup); popup_* fits ADDING a button popping "
+    "a {X}Filter form onto existing Dir/Grid (pick voucher -> "
+    "popup_lookup_*, input params -> popup_input_form). voucher_* "
+    "by UR signals: "
     "duyet/phe duyet/trinh duyet->approval; ngoai te/ma_nt/"
     "ty gia/nguyen te->currency; both->voucher_approval_"
     "currency; UR says khong/none->no_* variant; signals "
@@ -43,6 +46,9 @@ _REQ_RULES_V2 = [
     "new screen/report from scratch",
     "EXCEPTION: retrieve_flow_* also fits ADDING lay du lieu onto an "
     "existing voucher (new {X}Filter/{X}MultiForm/{X}MultiGrid/{X}Lookup)",
+    "EXCEPTION: popup_* fits ADDING a button popping a {X}Filter form "
+    "onto existing Dir/Grid: pick voucher -> popup_lookup_*, input "
+    "params -> popup_input_form",
     "voucher_* by signals: duyet/phe duyet/trinh duyet -> approval; "
     "ngoai te/ma_nt/ty gia/nguyen te -> currency; both -> "
     "voucher_approval_currency; UR says khong -> no_* variant; signals "

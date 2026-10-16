@@ -1,4 +1,4 @@
-<field name="ma_vv" width="80" clientDefault="Default">
+﻿<field name="ma_vv" width="80" clientDefault="Default">
   <header v="{{ma_vv_v}}" e="{{ma_vv_e}}"></header>
   <items style="AutoComplete" controller="Job" reference="ten_vv%l" key="status = '1'" check="1 = 1" information="ma_vv$dmvv.ten_vv%l" new="Default"/>
 </field>

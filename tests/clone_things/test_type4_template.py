@@ -12,7 +12,9 @@ ALL_TEMPLATES = {"category_1_key", "category_multi_key",
                  "retrieve_flow_single_table",
                  "voucher_normal_currency", "voucher_normal_no_currency",
                  "voucher_approval_currency",
-                 "voucher_approval_no_currency"}
+                 "voucher_approval_no_currency",
+                 "popup_lookup_partition_table",
+                 "popup_lookup_single_table", "popup_input_form"}
 
 
 def test_list_templates():
@@ -306,6 +308,40 @@ def test_voucher_approval_currency_writes(tmp_path):
     detail = (tmp_path / "App_Data/Controllers/Grid/PLHDetail.xml"
               ).read_text(encoding="utf-8")
     assert 'name="tien_nt"' in detail
+
+
+@pytest.mark.parametrize("tpl,n_files", [
+    ("popup_lookup_partition_table", 3),
+    ("popup_lookup_single_table", 3),
+    ("popup_input_form", 2),
+])
+def test_popup_template_writes(tmp_path, tpl, n_files):
+    """popup_* → {X}Filter (+ {X}Lookup) + glue; giữ khối bảo vệ memvars."""
+    res = run_type4_template(object=tpl, new_name="zcPOP",
+                             project_target=str(tmp_path), execute=True)
+    assert res["success"] is True and len(res["written"]) == n_files
+    dsts = {f["dst"] for f in res["files"]}
+    assert "App_Data/Controllers/Filter/zcPOPFilter.xml" in dsts
+    assert "PopupTemp/zcPOP_glue.txt" in dsts
+    assert ("App_Data/Controllers/Lookup/zcPOPLookup.xml" in dsts) == \
+        (n_files == 3)
+
+    flt = (tmp_path / "App_Data/Controllers/Filter/zcPOPFilter.xml"
+           ).read_text(encoding="utf-8")
+    assert '<!ENTITY Identity "zcPOP">' in flt
+    assert "{{identity}}" not in flt
+    assert "&Identity;" in flt
+    assert "_originMemvars" in flt and "defineProperty(g, '_memvars'" in flt
+    assert "_isPopupFilterActive" in flt
+
+    glue = (tmp_path / "PopupTemp/zcPOP_glue.txt").read_text(encoding="utf-8")
+    assert "g.showForm('zcPOPFilter')" in glue
+    assert "g._originMemvars = g._memvars" in glue
+    assert "<button command=" in glue
+
+    unresolved = set(res["unresolved_placeholders"])
+    assert "{{parent_controller}}" in unresolved
+    assert "{{identity}}" not in unresolved
 
 
 def test_no_binary_assets():

@@ -872,6 +872,39 @@ REQUIREMENT_TYPES = {
                 "examples": ["Chứng từ lấy dữ liệu từ phiếu nguồn bảng cố định không partition"],
         "template": "retrieve_flow_single_table",
     },
+    "popup_lookup_partition_table": {
+        "desc": "ADD a button ONTO an EXISTING Dir/Grid/Filter (Dir field "
+                "footer 'Chon.../Xoa' or Grid toolbar <button command>) "
+                "that pops up a small form {X}Filter to pick ONE source "
+                "voucher (date + so_ct, AutoComplete {X}Lookup), Nhan -> "
+                "writes stt_rec/so_ct BACK to the parent form (+ optional "
+                "action loading its data); keeps outer grid _memvars. "
+                "SOURCE tables PARTITIONED (m<ext>$YYYYMM). NOT "
+                "retrieve_flow (no MultiForm/MultiGrid, no detail lines, "
+                "no taken-qty)",
+        "examples": ["Thêm nút chọn số hợp đồng, bung form nhập ngày + "
+                     "số rồi gán lại form"],
+        "template": "popup_lookup_partition_table",
+    },
+    "popup_lookup_single_table": {
+        "desc": "Same as popup_lookup_partition_table (button pops up "
+                "form to pick ONE source voucher by date + so_ct, writes "
+                "back to parent form, keeps _memvars) but the SOURCE "
+                "voucher is a FIXED non-partitioned table (no $YYYYMM)",
+        "template": "popup_lookup_single_table",
+    },
+    "popup_input_form": {
+        "desc": "ADD a button ONTO an EXISTING Dir/Grid/Filter (Grid "
+                "toolbar command or Dir field footer) that pops up a small "
+                "INPUT form {X}Filter (user types parameters: date, lookup "
+                "code, number, text), Nhan -> writes values BACK to the "
+                "parent form / ticked grid rows, or processes the ticked "
+                "rows server-side; keeps outer grid _memvars. NO voucher-"
+                "number lookup (popup_lookup_*), NOT retrieve_flow",
+        "examples": ["Tick dòng grid, bấm nút bung form nhập tỷ lệ, "
+                     "nhận thì cập nhật dòng tick"],
+        "template": "popup_input_form",
+    },
     "clone_existing": {
         "desc": "CREATE a new screen/report/voucher by SAVE-AS / copying "
                 "an EXISTING named function - signals: 'save as', "
@@ -917,7 +950,9 @@ REQUIREMENT_TYPES = {
     "none": {
         "desc": "DEFAULT CHOICE for anything that is NOT creating a "
                 "screen/report from scratch, NOT adding a data-retrieval "
-                "(lay du lieu) suite onto an existing voucher, and NOT "
+                "(lay du lieu) suite onto an existing voucher, NOT adding "
+                "a popup form button (popup_*) onto an existing screen, "
+                "and NOT "
                 "save-as/copying a named existing function (that is "
                 "clone_existing): edit/modify/add fields to an EXISTING "
                 "controller, bug fix, data query, deploy, investigate - "
@@ -987,13 +1022,23 @@ _JEV_REQ_DESCS = {
     "retrieve_flow_single_table": "ADD retrieve flow ONTO existing "
         "voucher; SOURCE = FIXED non-partitioned table (no $YYYYMM "
         "suffix); same new suite as retrieve_flow_parition_table",
+    "popup_lookup_partition_table": "ADD button onto existing Dir/Grid -> "
+        "popup {X}Filter pick ONE voucher (ngay + so_ct lookup) -> Nhan "
+        "gan nguoc form cha; DEFAULT (partitioned); not:many detail "
+        "lines (retrieve_flow_*)",
+    "popup_lookup_single_table": "popup_lookup_* ONLY if UR says bang co "
+        "dinh/khong phan ky",
+    "popup_input_form": "ADD button onto existing Dir/Grid -> popup INPUT "
+        "form (nhap tham so) -> Nhan gan nguoc form/dong grid tick or "
+        "process ticked rows; no voucher lookup",
     "clone_existing": "new screen/report/voucher by save-as/copy of "
         "EXISTING named function; signals: save as, copy tu, clone tu, "
         "dua tren, giong/tuong tu chuc nang/bao cao X, or UR names "
         "existing feature by title; not:from-scratch (template types), "
         "plain edits (none)",
     "none": "DEFAULT: not creating from scratch, not retrieve-flow add-"
-            "on, not save-as (clone_existing) — edit/modify/add fields "
+            "on, not popup-form button add-on (popup_*), not save-as "
+            "(clone_existing) — edit/modify/add fields "
             "to EXISTING controller, bug fix, data query, deploy, "
             "investigate; pick when target exists or intent ambiguous",
 }

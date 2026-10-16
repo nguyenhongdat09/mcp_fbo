@@ -1,4 +1,4 @@
-name: report_normal
+﻿name: report_normal
 title_v: Báo cáo thường (Filter + Grid + Report, không pivot/dropdown mẫu)
 jev_desc: "Standard listing/detail report - Filter + Grid + Report controller, no pivot, no template-form dropdown"
 files:

@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AGENT GUIDE — CREATE TABLE danh mục composite PK + 2 bảng chi tiết.
 -- * {{table}} = master (PK name_date_1 + name_string_1),
 --   {{table_detail}}/{{table_detail2}} = chi tiết — FK name_string_1

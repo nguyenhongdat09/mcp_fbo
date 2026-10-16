@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AGENT GUIDE — CREATE TABLE danh mục nhiều khóa (composite PK).
 -- * {{table}} đã fill = tên bảng; PK = các cột name_* trùng isPrimaryKey
 --   trong master.xml/upload.xml — đổi tên + cập nhật CONSTRAINT cho khớp.

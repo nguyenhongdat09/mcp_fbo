@@ -1,4 +1,4 @@
-<!ENTITY % Conditional.UserDefined.Fields SYSTEM "Field.txt">
+﻿<!ENTITY % Conditional.UserDefined.Fields SYSTEM "Field.txt">
 
 <![%Conditional.UserDefined.Fields;[
   <!ENTITY XMLUserDefinedFields SYSTEM "{{x}}Field.txt">

@@ -1,4 +1,4 @@
-<%@ Page AutoEventWireup="false" MasterPageFile="~/Main/MasterPage.master" Inherits="FastBusiness.ReportExtender.UI.Page" v="{{title_v}}" e="{{title_e}}"%>
+﻿<%@ Page AutoEventWireup="false" MasterPageFile="~/Main/MasterPage.master" Inherits="FastBusiness.ReportExtender.UI.Page" v="{{title_v}}" e="{{title_e}}"%>
 <%@ Register Assembly="Flow" Namespace="Flow" TagPrefix="flow" %>
 <%@ Register Assembly="FastBusiness.QueryExtender" Namespace="FastBusiness.QueryExtender" TagPrefix="FastBusiness" %>
 

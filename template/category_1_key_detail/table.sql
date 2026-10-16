@@ -1,4 +1,4 @@
--- ============================================================================
+﻿-- ============================================================================
 -- AGENT GUIDE — CREATE TABLE danh mục 1 khóa + 1 bảng chi tiết.
 -- * {{table}} = master (PK id identity), {{table_detail}} = chi tiết
 --   (FK name_string_1 nối master + line_nbr làm PK detail — khớp code=
