@@ -37,7 +37,6 @@ async def test_mcp_wire():
             assert set(tools_list) == {
                 "query_database",
                 "get_xml_entities",
-                "query_radar",
                 "read_local_file",
                 "search_qlyc",
             }

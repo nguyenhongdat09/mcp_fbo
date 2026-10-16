@@ -27,7 +27,6 @@ async def test_tools_listing():
     expected_tools = {
         "query_database",
         "get_xml_entities",
-        "query_radar",
         "read_local_file",
         "search_qlyc",
     }
@@ -112,34 +111,7 @@ async def test_validation_errors():
 async def test_sample_executions():
     print("\n=== 3. TEST TOOL EXECUTIONS (SAFE CALLS) ===")
 
-    # 3.1 query_radar with invalid cypher -> returns error message, does not crash
-    radar_res = await server.call_tool(
-        "query_radar",
-        {
-            "reference_file": r"E:\FBO\SP2263\App_Data\Controllers\Dir\SVTran.xml",
-            "cypher_query": "INVALID CYPHER SYNTAX ???",
-            "mode": "query",
-        },
-    )
-    res_text = radar_res.content[0].text
-    print(f"query_radar Cypher error response preview:\n{res_text[:120]}...\n")
-    assert "[LỖI CÚ PHÁP CYPHER KUZUDB]" in res_text or "Kùzu" in res_text or "error" in res_text.lower() or "Lỗi" in res_text
-    print("✅ query_radar handles Cypher errors gracefully via custom error template.")
-
-    # 3.2 query_radar with non-existent / invalid reference file path -> returns [LỖI REFERENCE_FILE]
-    radar_ref_res = await server.call_tool(
-        "query_radar",
-        {
-            "reference_file": r"E:\nonexistent_project_path_12345\x.xml",
-            "mode": "schema",
-        },
-    )
-    radar_ref_text = radar_ref_res.content[0].text
-    print(f"query_radar invalid reference_file response:\n{radar_ref_text[:150]}...\n")
-    assert "[LỖI REFERENCE_FILE]" in radar_ref_text or "[LỖI CÚ PHÁP CYPHER" in radar_ref_text
-    print("✅ query_radar handles invalid reference_file gate errors properly.")
-
-    # 3.3 search_qlyc with mock config
+    # 3.1 search_qlyc with mock config
     set_config({"rag_qlyc": {"base_url": "http://invalid-host:9999", "api_key": "dummy", "bp_lt": "FSD"}})
     qlyc_res = await server.call_tool("search_qlyc", {"query": "test"})
     qlyc_text = qlyc_res.content[0].text

@@ -129,7 +129,7 @@ def test_type6_ctrl_execute_copies(tmp_path):
 # ---------------- title resolve ----------------
 
 def test_type6_title_disk_fallback(tmp_path):
-    """Kuzu không build cho tmp project → fallback quét <title> trên disk."""
+    """Title resolve bằng quét <title> trên disk."""
     proj = _mk_project(tmp_path)
     res = clone_things(
         type=6,

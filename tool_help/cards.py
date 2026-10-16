@@ -282,9 +282,8 @@ TASK_TYPES = {
             "src là title tiếng Việt → 'saveas:title:<tiêu đề>-><new>'; "
             "đã biết tên controller → 'saveas:ctrl:<tên>-><new>' (hoặc "
             "tên trần)",
-            "Kuzu có thể chưa index kịp .xml vừa dán (watcher tắt khi "
-            "user_multi_db_yn=0) → tool tự quét <title> trên disk; vẫn "
-            "không thấy → HỎI USER file nguồn, đừng đoán",
+            "tool tự quét <title> trên disk; không thấy → HỎI USER file "
+            "nguồn, đừng đoán",
             "Nhiều controller match cùng title → trả candidates, không "
             "auto-pick — hỏi user chọn rồi gọi lại bằng ctrl:",
             "Proc export ra .sql GIỮ NGUYÊN tên nguồn — agent tự đổi "

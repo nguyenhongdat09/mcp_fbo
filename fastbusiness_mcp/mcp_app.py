@@ -775,7 +775,7 @@ def clone_things_tool(
        - Dùng khi cần viết SQL ra file (proc/script mới cho user F5) — TUYỆT ĐỐI không tạo .sql trong workspace/project.
     7) type=6 (save-as — clone chức năng có sẵn làm khung cho chức năng mới):
        - object='saveas:<src>-><new_ctrl>'; src = ctrl:<tên controller> | title:<tiêu đề chức năng> | tên controller trần (vd 'saveas:zclctt->zcbcdt', 'saveas:title:Báo cáo lưu chuyển tiền tệ->zcbcdt').
-       - Title resolve qua Kuzu (title_v/title_e), fallback quét <title> trên disk; match nhiều controller → trả candidates để hỏi user, không auto-pick.
+       - Title resolve bằng cách quét <title v> trên disk; match nhiều controller → trả candidates để hỏi user, không auto-pick.
        - Clone toàn bộ suite file (Filter/Grid/Dir/Report/Lookup/Query/Include/Main aspx...) đổi tên sang new_ctrl — delegate type=3 nên execute=False = dry-run mặc định, overwrite cần confirm_overwrite.
        - Extract proc từ XML nguồn → export ALTER ra 1 file .sql temp; KHÔNG tự đổi tên object — agent đổi tên trong file theo tên user gửi, sửa <title v> + đăng ký menu, rồi mới sửa theo yêu cầu UR.
     """

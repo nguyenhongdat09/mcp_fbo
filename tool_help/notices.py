@@ -118,10 +118,8 @@ NOTICE_RULES = [
         "id": "save_as_flow",
         "text": "SAVE-AS chức năng có sẵn: clone_things type=6 "
                 "'saveas:title:<tiêu đề>-><new>' tự resolve controller + "
-                "clone suite + export proc; Kuzu có thể chưa index kịp "
-                ".xml vừa dán (watcher tắt khi user_multi_db_yn=0) → tool "
-                "tự quét <title> trên disk; vẫn không thấy → HỎI USER "
-                "file nguồn, đừng đoán. Proc export giữ NGUYÊN tên nguồn "
+                "clone suite + export proc; tool tự quét <title> trên "
+                "disk; không thấy → HỎI USER file nguồn, đừng đoán. Proc export giữ NGUYÊN tên nguồn "
                 "— đổi tên tay trong .sql + sửa <title v> + đăng ký "
                 "menu/aspx",
         "task_types": {"save_as_existing", "find_by_title"},

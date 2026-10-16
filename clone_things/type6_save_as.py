@@ -4,10 +4,8 @@ Grammar ``object``: ``saveas:<src>-><new_ctrl>``
 
   ``<src>``:
     - ``ctrl:zclctt``         → tên controller nguồn trực tiếp
-    - ``title:Báo cáo ...``   → tìm theo title_v/title_e (Kuzu trước,
-                              fallback quét <title v="..."> trên disk vì
-                              watcher có thể chưa kịp index / bị tắt khi
-                              user_multi_db_yn=0)
+    - ``title:Báo cáo ...``   → tìm theo <title v="..."> bằng cách quét
+                              .xml trên disk
     - ``zclctt``              → auto: chuỗi identifier → ctrl
     - ``Báo cáo ...``         → auto: có space/ký tự đặc biệt → title
     - ``zclctt.xml`` / ``Filter/zclctt.xml`` → lấy stem làm ctrl
@@ -118,7 +116,7 @@ def parse_saveas_spec(object_str: str) -> tuple[str, str, str, str | None]:
 
 
 def _scan_titles_on_disk(root_src_path: Path, term: str) -> list[dict[str, Any]]:
-    """Quét <title v="..."> trong App_Data/Controllers khi Kuzu không sẵn sàng.
+    """Quét <title v="..."> trong App_Data/Controllers.
 
     Chỉ đọc .xml trong các folder suite (TITLE_SCAN_DIRS), tối đa 64KB/file.
     """
@@ -158,57 +156,6 @@ def _scan_titles_on_disk(root_src_path: Path, term: str) -> list[dict[str, Any]]
     return hits
 
 
-def _scan_titles_via_kuzu(
-    root_src_path: Path, project_source: str, term: str, warnings: list[str]
-) -> list[dict[str, Any]]:
-    """Tìm theo title_v/title_e qua Kuzu graph. Trả [] khi DB chưa build / lỗi."""
-    try:
-        from xml_fbograph.utils.path_helper import ProjectPathHelper
-        from xml_fbograph.utils.kuzu_build_spawn import kuzu_db_ready
-
-        helper = ProjectPathHelper(project_source or str(root_src_path))
-        if not kuzu_db_ready(helper.get_kuzu_path()):
-            warnings.append(
-                "kuzu_not_built: Kuzu chưa build → quét <title> trên disk. "
-                "Nếu project chỉ có .f thì quét disk cũng không thấy title "
-                "(file mã hóa) — cần file .xml nguồn."
-            )
-            return []
-        from xml_fbograph.query.engine import xml_graph_query
-
-        res = xml_graph_query(
-            "search",
-            term,
-            str(root_src_path),
-            match_type="file",
-            folder_filter="filter,report,grid,dir,lookup,query,view",
-            limit=50,
-        )
-        out = []
-        term_l = term.lower()
-        for m in res.get("file_matches") or []:
-            rel = (m.get("relative_path") or "").replace(" [Encrypted]", "")
-            tv = m.get("title_v") or ""
-            te = m.get("title_e") or ""
-            # Chỉ nhận match mà title thật sự chứa term (loại match qua
-            # path/stem/synonym của engine)
-            if term_l and (term_l in tv.lower() or term_l in te.lower()):
-                out.append(
-                    {
-                        "relative_path": rel,
-                        "title_v": tv,
-                        "folder_type": m.get("folder_type") or "",
-                        "is_encrypted": bool(m.get("is_encrypted")),
-                        "needs_xml": bool(m.get("needs_xml")),
-                        "via": "kuzu",
-                    }
-                )
-        return out
-    except Exception as e:
-        warnings.append(f"kuzu_search_failed: {e} → quét <title> trên disk")
-        return []
-
-
 def resolve_source_by_title(
     root_src_path: Path, project_source: str, title: str, warnings: list[str]
 ) -> tuple[str | None, list[dict[str, Any]]]:
@@ -216,9 +163,12 @@ def resolve_source_by_title(
 
     ctrl_name=None + candidates rỗng = không tìm thấy; >1 candidate = ambiguous.
     """
-    hits = _scan_titles_via_kuzu(root_src_path, project_source, title, warnings)
+    hits = _scan_titles_on_disk(root_src_path, title)
     if not hits:
-        hits = _scan_titles_on_disk(root_src_path, title)
+        warnings.append(
+            "title_not_found_on_disk: nếu project chỉ có .f thì không đọc "
+            "được title (file mã hóa) — cần file .xml nguồn."
+        )
 
     # Group theo controller stem
     by_ctrl: dict[str, dict[str, Any]] = {}
@@ -469,8 +419,7 @@ def run_type6_save_as(
                 return _err(
                     "source_not_found",
                     f"Không tìm thấy chức năng nào có title chứa '{src_val}'. "
-                    "Kuzu có thể chưa index kịp .xml vừa dán (watcher tắt khi "
-                    "user_multi_db_yn=0) hoặc project chỉ có .f — hỏi user "
+                    "Project có thể chỉ có .f (mã hóa) — hỏi user "
                     "xác nhận file .xml nguồn hoặc gọi lại bằng "
                     "saveas:ctrl:<tên_controller>->...",
                     warnings,
