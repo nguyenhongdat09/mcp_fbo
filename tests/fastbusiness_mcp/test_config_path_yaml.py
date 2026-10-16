@@ -8,7 +8,6 @@ from fastbusiness_mcp.config_paths import (
     load_machine_paths,
     merge_config_with_machine_paths,
     resolve_config_path_local,
-    get_effective_kuzu_db_base,
     get_effective_sql_temp_folder,
 )
 
@@ -16,29 +15,23 @@ from fastbusiness_mcp.config_paths import (
 def test_tc_cp_01_parse_yaml_correctly(tmp_path):
     """TC-CP-01: Parse YAML -> dict đúng cấu trúc."""
     yaml_content = """# Machine paths
-fbograph:
-  kuzu_db_base: "D:/MyKuzuDB"
 clone_things:
   sql_temp_folder: "D:/MySqlTemp"
+user_name: "DATNH"
 """
     yaml_file = tmp_path / "config_path.yaml"
     yaml_file.write_text(yaml_content, encoding="utf-8")
 
     machine = load_machine_paths(yaml_file)
     assert machine == {
-        "fbograph": {"kuzu_db_base": "D:/MyKuzuDB"},
         "clone_things": {"sql_temp_folder": "D:/MySqlTemp"},
+        "user_name": "DATNH",
     }
 
 
 def test_tc_cp_02_merge_yaml_overrides_legacy_path():
     """TC-CP-02: Merge: YAML overrides legacy path; không đè open_file hay options khác."""
     yaml_cfg = {
-        "fbograph": {
-            "kuzu_db_base": "C:/OldKuzu",
-            "user_multi_db_yn": 1,
-            "access_log_retention_days": 30,
-        },
         "clone_things": {
             "sql_temp_folder": "C:/OldSqlTemp",
             "open_file": True,
@@ -47,19 +40,15 @@ def test_tc_cp_02_merge_yaml_overrides_legacy_path():
         },
     }
     machine = {
-        "fbograph": {"kuzu_db_base": "D:/NewKuzu"},
         "clone_things": {"sql_temp_folder": "D:/NewSqlTemp"},
     }
 
     merged = merge_config_with_machine_paths(yaml_cfg, machine)
 
     # Path keys are overridden by config_path.yaml
-    assert merged["fbograph"]["kuzu_db_base"] == "D:/NewKuzu"
     assert merged["clone_things"]["sql_temp_folder"] == "D:/NewSqlTemp"
 
     # Non-path keys remain intact
-    assert merged["fbograph"]["user_multi_db_yn"] == 1
-    assert merged["fbograph"]["access_log_retention_days"] == 30
     assert merged["clone_things"]["open_file"] is True
     assert merged["clone_things"]["max_objects"] == 50
     assert merged["clone_things"]["open_editor_cmd"] == "auto"
@@ -68,27 +57,21 @@ def test_tc_cp_02_merge_yaml_overrides_legacy_path():
 def test_tc_cp_03_missing_yaml_fallback_defaults(tmp_path):
     """TC-CP-03: Missing YAML -> fallback giá trị legacy YAML hoặc MCP_BASE default."""
     yaml_cfg_legacy = {
-        "fbograph": {"kuzu_db_base": "C:/LegacyKuzu"},
         "clone_things": {"sql_temp_folder": "C:/LegacySql"},
     }
     # No machine dict provided
     merged = merge_config_with_machine_paths(yaml_cfg_legacy, {})
-    assert merged["fbograph"]["kuzu_db_base"] == "C:/LegacyKuzu"
     assert merged["clone_things"]["sql_temp_folder"] == "C:/LegacySql"
 
     # Empty yaml cfg -> effective functions return defaults
-    empty_cfg = {"fbograph": {}, "clone_things": {}}
-    kuzu_eff = get_effective_kuzu_db_base(empty_cfg)
+    empty_cfg = {"clone_things": {}}
     sql_eff = get_effective_sql_temp_folder(empty_cfg)
-    assert kuzu_eff.endswith("KuzuDB")
     assert sql_eff.endswith("Scripts")
 
 
 def test_tc_cp_04_empty_keys_treat_as_unset(tmp_path):
     """TC-CP-04: Empty string keys -> treat as unset, do not override legacy config."""
     yaml_content = """
-fbograph:
-  kuzu_db_base: "   "
 clone_things:
   sql_temp_folder: ""
 """
@@ -99,27 +82,25 @@ clone_things:
     assert machine == {}
 
     yaml_cfg = {
-        "fbograph": {"kuzu_db_base": "C:/ExistingKuzu"},
         "clone_things": {"sql_temp_folder": "C:/ExistingSql"},
     }
     merged = merge_config_with_machine_paths(yaml_cfg, machine)
-    assert merged["fbograph"]["kuzu_db_base"] == "C:/ExistingKuzu"
     assert merged["clone_things"]["sql_temp_folder"] == "C:/ExistingSql"
 
 
-def test_tc_cp_05_env_kuzu_wins(monkeypatch):
-    """TC-CP-05: Env FBOGRAPH_KUZU_BASE wins over config_path.yaml and config.yaml."""
-    monkeypatch.setenv("FBOGRAPH_KUZU_BASE", "Z:/EnvKuzu")
+def test_tc_cp_05_env_sql_temp_wins(monkeypatch):
+    """TC-CP-05: Env CLONE_THINGS_SQL_TEMP_FOLDER wins over config."""
+    monkeypatch.setenv("CLONE_THINGS_SQL_TEMP_FOLDER", "Z:/EnvSql")
     cfg = {
-        "fbograph": {"kuzu_db_base": "D:/MachineKuzu"},
+        "clone_things": {"sql_temp_folder": "D:/MachineSql"},
     }
-    assert get_effective_kuzu_db_base(cfg) == "Z:/EnvKuzu"
+    assert get_effective_sql_temp_folder(cfg) == "Z:/EnvSql"
 
 
 def test_tc_cp_06_bad_yaml_no_throw(tmp_path):
     """TC-CP-06: Bad YAML -> empty machine dict + no throw."""
     bad_yaml = tmp_path / "broken_config_path.yaml"
-    bad_yaml.write_text("fbograph: [unclosed list", encoding="utf-8")
+    bad_yaml.write_text("clone_things: [unclosed list", encoding="utf-8")
 
     result = load_machine_paths(bad_yaml)
     assert result == {}
@@ -136,7 +117,7 @@ def test_tc_cp_07_resolve_config_path_local_next_to_config_yaml(tmp_path, monkey
     fake_yaml.write_text("server: {name: test}", encoding="utf-8")
 
     fake_local = tmp_path / "config_path.yaml"
-    fake_local.write_text("fbograph: {kuzu_db_base: ''}", encoding="utf-8")
+    fake_local.write_text("clone_things: {sql_temp_folder: ''}", encoding="utf-8")
 
     monkeypatch.setenv("FASTBUSINESS_CONFIG_PATH", str(fake_yaml))
     monkeypatch.delenv("FASTBUSINESS_CONFIG_PATH_FILE", raising=False)

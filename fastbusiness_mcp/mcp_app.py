@@ -82,9 +82,8 @@ def load_config(config_path: str = "config.yaml") -> dict:
         logger.info(f"Loaded machine paths: {list(machine.keys())}")
     cfg = merge_config_with_machine_paths(cfg, machine)
 
-    kuzu_path = cfg.get("fbograph", {}).get("kuzu_db_base", "")
     sql_path = cfg.get("clone_things", {}).get("sql_temp_folder", "")
-    logger.info(f"Effective paths: kuzu_db_base='{kuzu_path}', sql_temp_folder='{sql_path}'")
+    logger.info(f"Effective paths: sql_temp_folder='{sql_path}'")
 
     _CONFIG = cfg
     return _CONFIG

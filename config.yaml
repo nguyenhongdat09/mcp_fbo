@@ -8,17 +8,6 @@ logging:
   level: "INFO"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 
 
-# Tùy chọn khi extract/build graph
-extract_options:
-  shared_include: 0
-
-# Cấu hình Kuzu / graph (options). Path máy: config_path.yaml → fbograph.kuzu_db_base
-# (thiếu/rỗng → {MCP_BASE}/KuzuDB)
-fbograph:
-  user_multi_db_yn: 1
-  access_log_retention_days: 30
-  query_timeout_seconds: 1800  # 30 phút timeout cho truy vấn Kùzu DB
-
 # RAG QLYC Search API (MCP tool search_qlyc)
 rag_qlyc:
   # API RAG chạy trên máy/GPU nội bộ — khớp web_ui (không dùng localhost trừ khi uvicorn chạy cùng máy)

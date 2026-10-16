@@ -109,8 +109,8 @@ def load_machine_paths(path: Path | None = None) -> dict:
     Đọc cấu hình đường dẫn máy từ file YAML (mặc định config_path.yaml).
     Trả về dict lồng, ví dụ:
     {
-        "fbograph": {"kuzu_db_base": "C:/KuzuDB"},
-        "clone_things": {"sql_temp_folder": "E:/SQL Temp"}
+        "clone_things": {"sql_temp_folder": "E:/SQL Temp"},
+        "user_name": "DATNH"
     }
     Nếu YAML lỗi cú pháp hoặc thiếu file -> log warning, trả về dict rỗng không crash.
     """
@@ -135,11 +135,6 @@ def load_machine_paths(path: Path | None = None) -> dict:
             return {}
 
         result: dict = {}
-
-        # fbograph.kuzu_db_base
-        kuzu_val = data.get("fbograph", {}).get("kuzu_db_base") if isinstance(data.get("fbograph"), dict) else None
-        if kuzu_val and str(kuzu_val).strip():
-            result.setdefault("fbograph", {})["kuzu_db_base"] = str(kuzu_val).strip()
 
         # clone_things.sql_temp_folder
         sql_val = data.get("clone_things", {}).get("sql_temp_folder") if isinstance(data.get("clone_things"), dict) else None
@@ -179,29 +174,6 @@ def merge_config_with_machine_paths(cfg: dict, machine: dict | None = None) -> d
             merged[section] = keys
 
     return merged
-
-
-def get_effective_kuzu_db_base(cfg: dict | None = None) -> str:
-    """
-    Trả về đường dẫn kuzu_db_base hiệu lực (trước khi mkdir):
-    Env FBOGRAPH_KUZU_BASE > cfg kuzu_db_base > {MCP_BASE}/KuzuDB
-    """
-    env_base = os.environ.get("FBOGRAPH_KUZU_BASE", "").strip()
-    if env_base:
-        return env_base
-
-    if cfg is None:
-        try:
-            from fastbusiness_mcp.mcp_app import get_config
-            cfg = get_config()
-        except Exception:
-            cfg = {}
-
-    val = cfg.get("fbograph", {}).get("kuzu_db_base", "") if cfg else ""
-    if str(val).strip():
-        return str(val).strip()
-
-    return str(get_mcp_base_dir() / "KuzuDB")
 
 
 def get_effective_sql_temp_folder(cfg: dict | None = None) -> str:
