@@ -109,7 +109,19 @@ def _snippet_error(code: str, p: Path, project_root: Optional[Path], **extra) ->
 _PLAIN_SCRIPT_EXTS = {".aspx", ".html", ".htm", ".cshtml"}
 _MAX_LINE_CHARS_DEFAULT = 2000
 _DUMP_CAP_CHARS = 80_000
+# Page*.xml (program SP30+): mỗi dòng 1 <page>, file tới hàng trăm KB.
+_PAGE_REGISTRY_CAP_CHARS = 4_000
 _MINIFIED_WINDOW = 500
+
+
+def _is_page_registry(p: Path) -> bool:
+    """True nếu p là App_Data/Metadata/Page*.xml (danh sách khai báo trang)."""
+    parts = [x.lower() for x in p.parts]
+    return (
+        p.suffix.lower() == ".xml"
+        and p.name.lower().startswith("page")
+        and "metadata" in parts[:-1]
+    )
 
 
 def _symbol_snippet_plain(p: Path, project_root: Optional[Path], source_text: str,
@@ -531,22 +543,32 @@ def mcp_read_local_file(file_path: str, reference_file: str = "", read_option: i
         else:
             content = read_file_content(p)
         content = content or ""
-        if len(content) > _DUMP_CAP_CHARS:
+        dump_cap = _DUMP_CAP_CHARS
+        hint = (
+            "File quá dài — dùng start_line/end_line (đọc tiếp từ "
+            "dòng tiếp theo) hoặc symbol/block để lấy đúng vùng."
+        )
+        if _is_page_registry(p):
+            dump_cap = _PAGE_REGISTRY_CAP_CHARS
+            hint = (
+                "Page*.xml là danh sách <page> (mỗi dòng 1 trang, có file hàng "
+                "trăm KB) — KHÔNG đọc cả file. Tìm trang bằng search_files "
+                'pattern \'controller="<tên>"\' hoặc \'id="<id>"\' root '
+                "App_Data/Metadata, rồi đọc đúng dòng bằng start_line/end_line."
+            )
+        if len(content) > dump_cap:
             # Full-dump cap: head + footer JSON structured — agent dùng
             # start_line/end_line hoặc symbol/block để đọc tiếp đúng vùng.
             footer = {
                 "truncated": True,
                 "total_chars": len(content),
                 "total_lines": content.count("\n") + 1,
-                "returned_chars": _DUMP_CAP_CHARS,
-                "hint": (
-                    "File quá dài — dùng start_line/end_line (đọc tiếp từ "
-                    "dòng tiếp theo) hoặc symbol/block để lấy đúng vùng."
-                ),
+                "returned_chars": dump_cap,
+                "hint": hint,
             }
             return (
                 _ctx_header()
-                + content[:_DUMP_CAP_CHARS]
+                + content[:dump_cap]
                 + "\n\n[TRUNCATED] "
                 + json.dumps(footer, ensure_ascii=False)
             )

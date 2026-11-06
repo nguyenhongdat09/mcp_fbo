@@ -101,6 +101,7 @@ def remember_sql_temp_source(
             "db_type": dt,
             "server": server,
             "database": database,
+            "project_path": str(project_path or ""),
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 

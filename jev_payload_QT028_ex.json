@@ -1,0 +1,584 @@
+{
+ "model": "jev-latest",
+ "state": {
+  "agent_context": "Agent on FastBusiness ERP. Code = XML controllers on UNC paths; data = SQL Server. MCP tools available.",
+  "task_type_catalog": {
+   "read_summary": "whole known file overview map: JS funcs/SQL objects/fields when region unknown; not:named symbol/region (read_snippet)",
+   "read_raw": "raw content of one known file: non-controller .sql/.js/.ent/.aspx or XML outside Dir/Grid/Filter (Templates/Report)",
+   "read_snippet": "read around ONE named thing in known file: quanh/around field|action|JS func|line range — step already names the region",
+   "read_suggest_edit": "before editing XML/source file on disk: locate region -> exact old_string + diff_preview for str_replace; not:DB proc edit (paste_sql exports to .sql first)",
+   "read_flat": "full expanded content of one known XML (entities resolved), every line",
+   "grep_content": "which files contain string/keyword inside content (grep) or match criterion; target files unknown",
+   "find_definition": "where a JS symbol/function is defined",
+   "find_references": "all usage sites of a symbol (rename/refactor)",
+   "match_filename": "files by NAME/glob (Filter/*Import*, Templates/*.xml); does not read content",
+   "diff_file": "diff TWO known files line-by-line",
+   "diff_folder": "diff TWO folders/projects: missing|different",
+   "list_folder": "list children of ONE known folder (ls/dir); not:search by name/content",
+   "diff_xml": "diff XML controllers across projects by relative path|keyword seed",
+   "diff_sql_table": "diff SQL objects|table schemas across project DBs",
+   "clone_sql": "copy SQL objects (proc/func/view/table) project->project -> .sql of only MISSING objects; signals:mang/keo/copy/clone proc|object sang project/DB khac, check thieu object",
+   "paste_sql": "read WHOLE proc body or export proc/func/view -> .sql ALTER to edit; signals:xem/lay/sua/chinh/doc TOAN BO noi dung proc, dump proc ra file; mode_read=3 JSON-only for read, 0 writes .sql; not:summary-only (db_object), extract section (db_snippet)",
+   "new_sql_file": "create NEW EMPTY .sql (UTF-8 BOM) in sql_temp_folder to hand-write proc/deploy/test script; signals:tao/mo file .sql moi, can file .sql de viet script, viet proc/script ra file sql; not:export existing object (paste_sql), clone rows (clone_data), run existing file (db_run_file)",
+   "clone_data": "export table ROWS by condition -> DELETE+INSERT .sql script; signals:clone/copy/dump rows, tao du lieu mau/test data, move data DB->DB, viet du lieu vao file .sql",
+   "copy_files": "copy/rename files or whole controller suite between|within projects",
+   "register_page": "add SP30+ menu <page> line -> PageMetadata Customize block; signals:dang ky menu|trang moi",
+   "save_as_existing": "save-as/copy EXISTING named function -> new suite: resolve title|ctrl -> clone suite + export procs .sql temp; signals:save as, copy tu, clone tu, giong/tuong tu chuc nang X; not:from-scratch (clone_template), plain edits",
+   "db_object": "inspect ONE known DB object: table schema (CREATE TABLE)|proc/view/func summary (params, tables, calls); not:full body to edit (paste_sql)",
+   "db_snippet": "extract code blocks of a known proc by keywords|zones",
+   "db_run_sql": "run short inline SQL on DB: SELECT check, INSERT/UPDATE/DELETE rows, exec existing proc, small DDL; not:export proc source (paste_sql), clone rows/test data (clone_data), copy objects across projects (clone_sql), long .sql FILE (db_run_file), so du/ton kho/cong no (db_balance)",
+   "db_run_file": "execute a .sql FILE (long script)",
+   "db_check_syntax": "PARSEONLY syntax-check a .sql file; not execute",
+   "db_balance": "balances/stock via internal procs FastBusiness$Balance$<Dim>/$OpeningBalance$* INSTEAD of hand SUM/JOIN raw tables (r00$/cdtk$/cdkh/r70$/r90$/wrkgl/dmtk0); signals:tinh/lay so du, ton kho, du dau|cuoi ky, cong no, du no|du co, dao han/maturity, so du theo kho|lo|vi tri|TK|KH|hop dong|vu viec|NVBH|dau tu — incl. inside report/voucher procs; not:one known object (db_object), generic check (db_run_sql), fs_Post* posting",
+   "db_search": "search DB code objects (proc/view/func/trigger) by name LIKE|references ('which proc uses table/field X'); not:list tables by name (db_list_tables)",
+   "db_list_tables": "list DB TABLES (type U) by name LIKE — signals: liet ke/danh sach/tim bang ten ket thuc|bat dau|chua X, nhung bang nao dang m81$%, tim bang *log; not:schema one known table (db_object), proc using table (db_search)",
+   "db_add_field": "add column/field to existing table (them truong/cot vao bang); also when step writes ALTER TABLE/adds columns -> fsd_addFields, never raw ALTER",
+   "entity_content": "content of named DOCTYPE entities in XML",
+   "entity_path": "where (file:line) entities declared",
+   "entity_list": "list all entities declared in XML",
+   "entity_check": "lint XML: undeclared &entity; used|SYSTEM entity->missing files",
+   "find_by_title": "find function/controller by menu title|ma_ct|controller name; find only, cloning=save_as_existing",
+   "ur_semantic": "semantic search past user requests/tickets by description",
+   "ur_exact": "exact ticket(s) by fcode1 (YC)|ma_da; bypass semantic",
+   "clone_template": "paste bundled template suite into project (copy+rename+rewrite tokens); signals:tao moi bao cao/man hinh/danh muc/chuc nang/chung tu (controller suite moi), retrieve flow (Filter+MultiForm+MultiGrid+Lookup), voucher_* suite — new suites come from template not hand-written; not:save-as from existing (save_as_existing)",
+   "no_match": "no tool fits — manual work only: business reasoning, hand-writing content; not:any tool-backed task"
+  },
+  "steps": [
+   "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP",
+   "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS",
+   "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+  ],
+  "task_requirement": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS",
+  "requirement_type_catalog": {
+   "category_1_key": {
+    "desc": "new category screen: single identity PK, no detail tab, optional Excel import; only new-create, never edit",
+    "examples": [
+     "Thêm danh mục mới 1 khóa chính (mã)"
+    ]
+   },
+   "category_multi_key": {
+    "desc": "new category screen: composite PK (2+ key cols), no detail tab; only new-create",
+    "examples": [
+     "Thêm danh mục mới khóa ghép nhiều cột"
+    ]
+   },
+   "category_1_key_detail": {
+    "desc": "new category: single PK + DETAIL tab (embedded Grid, ForeignKey link); only new-create",
+    "examples": [
+     "Danh mục mới 1 khóa + tab chi tiết"
+    ]
+   },
+   "category_multi_key_detail": {
+    "desc": "new category: composite PK + DETAIL tab(s) (embedded Grids); only new-create",
+    "examples": [
+     "Danh mục khóa ghép + tab chi tiết"
+    ]
+   },
+   "report_normal": {
+    "desc": "new standard listing/detail report (Filter+Grid+Report; no pivot, no template-form); only new-create",
+    "examples": [
+     "Tạo báo cáo danh sách mới",
+     "Làm báo cáo chi tiết theo điều kiện lọc"
+    ]
+   },
+   "report_check": {
+    "desc": "new listing report with checkbox 'tag' column: toolbar buttons process checked rows (g.request+response.action server SQL) and/or print only checked (@$keys+fsd_StringToTable); pick OVER report_normal when UR mentions tick/check chon/tag dong + xu ly hoac in theo dong da chon; only new-create",
+    "examples": [
+     "Báo cáo có cột tick chọn dòng, nút duyệt/in theo dòng đã chọn"
+    ]
+   },
+   "report_mau": {
+    "desc": "new template-form report: Filter 'form' dropdown loads v20dmmaubc to pick layout dynamically; only new-create",
+    "examples": [
+     "Báo cáo tạo mẫu — dropdown chọn mẫu rồi render theo mẫu"
+    ]
+   },
+   "report_pivot": {
+    "desc": "new pivot/crosstab report (Grid <pivot> rowField/columnField/dataFields); only new-create",
+    "examples": [
+     "Tạo báo cáo pivot/crosstab theo chiều hàng-cột"
+    ]
+   },
+   "voucher": {
+    "desc": "generic new voucher (chung tu moi: stt_rec, master-detail) when approval/currency UNCLEAR — prefer voucher_* variants when UR says co/khong duyet or co/khong ma_nt/ngoai te; only new-create",
+    "examples": [
+     "Tạo chứng từ mới PLH",
+     "Tạo voucher mới cho nghiệp vụ ký gửi"
+    ]
+   },
+   "voucher_normal_no_currency": {
+    "desc": "new voucher suite: NO approval + NO currency; signals: tao chung tu/voucher moi WITHOUT duyet/phe duyet/trinh duyet AND WITHOUT ma_nt/ngoai te/ty gia/nguyen te, or UR says 'chung tu binh thuong/thuong/don gian, khong duyet, khong ngoai te'; not:editing existing (none)",
+    "examples": [
+     "Tạo chứng từ mới đơn giản, không duyệt không ngoại tệ",
+     "Chứng từ mới bình thường (không duyệt, không ngoại tệ)"
+    ]
+   },
+   "voucher_normal_currency": {
+    "desc": "new voucher suite: currency, NO approval; signals: ngoai te, ma_nt/ma ngoai te, ty gia/exchange rate, nguyen te, da tien te/multi-currency, _nt column pairs, USD/EUR, Currency JS; not:editing (none), duyet -> voucher_approval_currency",
+    "examples": [
+     "Voucher mới nhập theo nguyên tệ USD, không cần duyệt",
+     "Chứng từ mới có mã ngoại tệ và tỷ giá, không duyệt"
+    ]
+   },
+   "voucher_approval_no_currency": {
+    "desc": "new voucher suite: approval flow (duyet/phe duyet/trinh duyet/luong duyet/ky duyet/qua buoc duyet/APV/kieu duyet 015xx/{X}Approval+a{x}$ history) WITHOUT ngoai te/ma_nt/ty gia; not:editing existing (none)",
+    "examples": [
+     "Tạo chứng từ mới có chức năng phê duyệt, không cần ngoại tệ",
+     "Voucher mới có duyệt (kiểu duyệt 01501)"
+    ]
+   },
+   "voucher_approval_currency": {
+    "desc": "new voucher suite: approval (duyet/phe duyet/trinh duyet/APV+kieu duyet 015xx+a{x}$) AND currency (ngoai te/ma_nt/ty gia/nguyen te/_nt pairs/Currency JS) — full suite; not:editing existing (none)",
+    "examples": [
+     "Tạo chứng từ mới có duyệt và có mã ngoại tệ",
+     "Thêm voucher mới có luồng trình duyệt, hỗ trợ tỷ giá ngoại tệ",
+     "Chứng từ mới đa tiền tệ, cần phê duyệt nhiều cấp"
+    ]
+   },
+   "retrieve_flow_parition_table": {
+    "desc": "ADD retrieve (lay du lieu) flow ONTO existing voucher -> NEW suite {X}Filter/{X}MultiForm/{X}MultiGrid/{X}Lookup + taken-qty tracking proc; SOURCE tables PARTITIONED (m/d/i<ext>$YYYYMM); signals: chuc nang lay du lieu/retrieve tu chung tu nguon, theo doi da lay/con lai, phieu da lay het khong lay nua, lay nhieu phieu 1 lan",
+    "examples": [
+     "Thêm chức năng lấy dữ liệu vào chứng từ DDV từ phiếu MR",
+     "Chứng từ X lấy dữ liệu từ phiếu Y, theo dõi đã lấy/còn lại"
+    ]
+   },
+   "retrieve_flow_single_table": {
+    "desc": "ADD retrieve flow ONTO existing voucher; SOURCE = FIXED non-partitioned table (no $YYYYMM suffix); same new suite as retrieve_flow_parition_table",
+    "examples": [
+     "Chứng từ lấy dữ liệu từ phiếu nguồn bảng cố định không partition"
+    ]
+   },
+   "popup_lookup_partition_table": {
+    "desc": "ADD button onto existing Dir/Grid -> popup {X}Filter pick ONE voucher (ngay + so_ct lookup) -> Nhan gan nguoc form cha; DEFAULT (partitioned); not:many detail lines (retrieve_flow_*)",
+    "examples": [
+     "Thêm nút chọn số hợp đồng, bung form nhập ngày + số rồi gán lại form"
+    ]
+   },
+   "popup_lookup_single_table": "popup_lookup_* ONLY if UR says bang co dinh/khong phan ky",
+   "popup_input_form": {
+    "desc": "ADD button onto existing Dir/Grid -> popup INPUT form (nhap tham so) -> Nhan gan nguoc form/dong grid tick or process ticked rows; no voucher lookup",
+    "examples": [
+     "Tick dòng grid, bấm nút bung form nhập tỷ lệ, nhận thì cập nhật dòng tick"
+    ]
+   },
+   "clone_existing": {
+    "desc": "new screen/report/voucher by save-as/copy of EXISTING named function; signals: save as, copy tu, clone tu, dua tren, giong/tuong tu chuc nang/bao cao X, or UR names existing feature by title; not:from-scratch (template types), plain edits (none)",
+    "examples": [
+     "Thêm báo cáo dòng tiền save as từ Báo cáo lưu chuyển tiền tệ theo phương pháp trực tiếp",
+     "Tạo chứng từ mới copy từ phiếu X có sẵn"
+    ]
+   },
+   "none": "DEFAULT: not creating from scratch, not retrieve-flow add-on, not popup-form button add-on (popup_*), not save-as (clone_existing) — edit/modify/add fields to EXISTING controller, bug fix, data query, deploy, investigate; pick when target exists or intent ambiguous"
+  }
+ },
+ "questions": {
+  "step1_tool": {
+   "type": "choice",
+   "instructions": "task_type for step 'Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP'? meanings: state.task_type_catalog",
+   "criteria": {
+    "read_summary": null,
+    "read_raw": null,
+    "read_snippet": null,
+    "read_suggest_edit": null,
+    "read_flat": null,
+    "grep_content": null,
+    "find_definition": null,
+    "find_references": null,
+    "match_filename": null,
+    "diff_file": null,
+    "diff_folder": null,
+    "list_folder": null,
+    "diff_xml": null,
+    "diff_sql_table": null,
+    "clone_sql": null,
+    "paste_sql": null,
+    "new_sql_file": null,
+    "clone_data": null,
+    "copy_files": null,
+    "register_page": null,
+    "save_as_existing": null,
+    "db_object": null,
+    "db_snippet": null,
+    "db_run_sql": null,
+    "db_run_file": null,
+    "db_check_syntax": null,
+    "db_balance": null,
+    "db_search": null,
+    "db_list_tables": null,
+    "db_add_field": null,
+    "entity_content": null,
+    "entity_path": null,
+    "entity_list": null,
+    "entity_check": null,
+    "find_by_title": null,
+    "ur_semantic": null,
+    "ur_exact": null,
+    "clone_template": null,
+    "no_match": null
+   }
+  },
+  "step2_tool": {
+   "type": "choice",
+   "instructions": "task_type for step 'Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS'? meanings: state.task_type_catalog",
+   "criteria": {
+    "read_summary": null,
+    "read_raw": null,
+    "read_snippet": null,
+    "read_suggest_edit": null,
+    "read_flat": null,
+    "grep_content": null,
+    "find_definition": null,
+    "find_references": null,
+    "match_filename": null,
+    "diff_file": null,
+    "diff_folder": null,
+    "list_folder": null,
+    "diff_xml": null,
+    "diff_sql_table": null,
+    "clone_sql": null,
+    "paste_sql": null,
+    "new_sql_file": null,
+    "clone_data": null,
+    "copy_files": null,
+    "register_page": null,
+    "save_as_existing": null,
+    "db_object": null,
+    "db_snippet": null,
+    "db_run_sql": null,
+    "db_run_file": null,
+    "db_check_syntax": null,
+    "db_balance": null,
+    "db_search": null,
+    "db_list_tables": null,
+    "db_add_field": null,
+    "entity_content": null,
+    "entity_path": null,
+    "entity_list": null,
+    "entity_check": null,
+    "find_by_title": null,
+    "ur_semantic": null,
+    "ur_exact": null,
+    "clone_template": null,
+    "no_match": null
+   }
+  },
+  "step3_tool": {
+   "type": "choice",
+   "instructions": "task_type for step 'Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN'? meanings: state.task_type_catalog",
+   "criteria": {
+    "read_summary": null,
+    "read_raw": null,
+    "read_snippet": null,
+    "read_suggest_edit": null,
+    "read_flat": null,
+    "grep_content": null,
+    "find_definition": null,
+    "find_references": null,
+    "match_filename": null,
+    "diff_file": null,
+    "diff_folder": null,
+    "list_folder": null,
+    "diff_xml": null,
+    "diff_sql_table": null,
+    "clone_sql": null,
+    "paste_sql": null,
+    "new_sql_file": null,
+    "clone_data": null,
+    "copy_files": null,
+    "register_page": null,
+    "save_as_existing": null,
+    "db_object": null,
+    "db_snippet": null,
+    "db_run_sql": null,
+    "db_run_file": null,
+    "db_check_syntax": null,
+    "db_balance": null,
+    "db_search": null,
+    "db_list_tables": null,
+    "db_add_field": null,
+    "entity_content": null,
+    "entity_path": null,
+    "entity_list": null,
+    "entity_check": null,
+    "find_by_title": null,
+    "ur_semantic": null,
+    "ur_exact": null,
+    "clone_template": null,
+    "no_match": null
+   }
+  },
+  "requirement_type": {
+   "type": "choice",
+   "instructions": "Classify state.task_requirement into ONE requirement_type. template types (category_*/report_*/voucher) ONLY for create-from-scratch. EXCEPTION: retrieve_flow_* also fits ADDING lay du lieu onto an existing voucher (creates new {X}Filter/{X}MultiForm/{X}MultiGrid/{X}Lookup); popup_* fits ADDING a button popping a {X}Filter form onto existing Dir/Grid (pick voucher -> popup_lookup_*, input params -> popup_input_form). voucher_* by UR signals: duyet/phe duyet/trinh duyet->approval; ngoai te/ma_nt/ty gia/nguyen te->currency; both->voucher_approval_currency; UR says khong/none->no_* variant; signals unstated->'voucher'. edits/fixes/queries on existing targets or ambiguous->'none' high probability. meanings: state.requirement_type_catalog",
+   "criteria": {
+    "category_1_key": null,
+    "category_multi_key": null,
+    "category_1_key_detail": null,
+    "category_multi_key_detail": null,
+    "report_normal": null,
+    "report_check": null,
+    "report_mau": null,
+    "report_pivot": null,
+    "voucher": null,
+    "voucher_normal_no_currency": null,
+    "voucher_normal_currency": null,
+    "voucher_approval_no_currency": null,
+    "voucher_approval_currency": null,
+    "retrieve_flow_parition_table": null,
+    "retrieve_flow_single_table": null,
+    "popup_lookup_partition_table": null,
+    "popup_lookup_single_table": null,
+    "popup_input_form": null,
+    "clone_existing": null,
+    "none": null
+   }
+  },
+  "step1_flag_edits_db_object": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step modify (ALTER/edit/fix/add logic to) an existing stored procedure, function or view in the database?",
+    "step": "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP"
+   },
+   "criteria": {
+    "true": "sửa/chỉnh/thêm logic vào proc/func/view có sẵn (rs_*, zc_*, fs_*, FastBusiness$*), ALTER PROCEDURE",
+    "false": "chỉ đọc/xem/tìm proc, chạy SELECT, sửa file XML, tạo proc hoàn toàn mới"
+   }
+  },
+  "step1_flag_writes_db_columns": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step write data into specific table columns or add columns (INSERT/UPDATE named columns, ALTER TABLE ADD, add field to table)?",
+    "step": "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP"
+   },
+   "criteria": {
+    "true": "insert/update vào cột cụ thể, thêm cột/trường vào bảng, SELECT INTO bảng đích với danh sách cột",
+    "false": "chỉ đọc/xem dữ liệu, sửa XML, tìm file"
+   }
+  },
+  "step1_flag_edits_xml_controller": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step edit an XML controller file on disk (Dir/Grid/Filter/Report/Lookup .xml: fields, views, JS, SQL commands inside XML)?",
+    "step": "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP"
+   },
+   "criteria": {
+    "true": "sửa/thêm/xóa/ẩn field, view, category, JS, command SQL trong file XML controller",
+    "false": "chỉ đọc/xem/tìm trong XML, sửa proc DB, chạy SQL"
+   }
+  },
+  "step1_flag_produces_sql_file": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step create or modify a .sql script file that will later be run on the database (export proc to .sql, write/edit script, generate data script)?",
+    "step": "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP"
+   },
+   "criteria": {
+    "true": "tạo/viết/sửa/xuất file .sql (script tạo bảng, ALTER proc, insert dữ liệu) để user F5 sau",
+    "false": "chỉ đọc file .sql, chạy SELECT trực tiếp, sửa XML"
+   }
+  },
+  "step1_flag_runs_sql_on_db": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step execute a .sql script or DDL/DML that changes the database (deploy proc, run script file, CREATE/ALTER/INSERT/UPDATE/DELETE)?",
+    "step": "Đọc file Filter zus_rptTransactionList.xml của TA_VN để hiểu cấu trúc báo cáo Bảng kê chứng từ US GAAP"
+   },
+   "criteria": {
+    "true": "chạy/deploy file .sql, ALTER/CREATE proc, INSERT/UPDATE/DELETE lên DB",
+    "false": "chỉ SELECT đọc dữ liệu, check syntax PARSEONLY, đọc file"
+   }
+  },
+  "step2_flag_edits_db_object": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step modify (ALTER/edit/fix/add logic to) an existing stored procedure, function or view in the database?",
+    "step": "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "true": "sửa/chỉnh/thêm logic vào proc/func/view có sẵn (rs_*, zc_*, fs_*, FastBusiness$*), ALTER PROCEDURE",
+    "false": "chỉ đọc/xem/tìm proc, chạy SELECT, sửa file XML, tạo proc hoàn toàn mới"
+   }
+  },
+  "step2_flag_writes_db_columns": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step write data into specific table columns or add columns (INSERT/UPDATE named columns, ALTER TABLE ADD, add field to table)?",
+    "step": "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "true": "insert/update vào cột cụ thể, thêm cột/trường vào bảng, SELECT INTO bảng đích với danh sách cột",
+    "false": "chỉ đọc/xem dữ liệu, sửa XML, tìm file"
+   }
+  },
+  "step2_flag_edits_xml_controller": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step edit an XML controller file on disk (Dir/Grid/Filter/Report/Lookup .xml: fields, views, JS, SQL commands inside XML)?",
+    "step": "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "true": "sửa/thêm/xóa/ẩn field, view, category, JS, command SQL trong file XML controller",
+    "false": "chỉ đọc/xem/tìm trong XML, sửa proc DB, chạy SQL"
+   }
+  },
+  "step2_flag_produces_sql_file": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step create or modify a .sql script file that will later be run on the database (export proc to .sql, write/edit script, generate data script)?",
+    "step": "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "true": "tạo/viết/sửa/xuất file .sql (script tạo bảng, ALTER proc, insert dữ liệu) để user F5 sau",
+    "false": "chỉ đọc file .sql, chạy SELECT trực tiếp, sửa XML"
+   }
+  },
+  "step2_flag_runs_sql_on_db": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step execute a .sql script or DDL/DML that changes the database (deploy proc, run script file, CREATE/ALTER/INSERT/UPDATE/DELETE)?",
+    "step": "Clone suite báo cáo Bảng kê chứng từ US GAAP từ TA_VN sang DIVN và đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "true": "chạy/deploy file .sql, ALTER/CREATE proc, INSERT/UPDATE/DELETE lên DB",
+    "false": "chỉ SELECT đọc dữ liệu, check syntax PARSEONLY, đọc file"
+   }
+  },
+  "step3_flag_edits_db_object": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step modify (ALTER/edit/fix/add logic to) an existing stored procedure, function or view in the database?",
+    "step": "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+   },
+   "criteria": {
+    "true": "sửa/chỉnh/thêm logic vào proc/func/view có sẵn (rs_*, zc_*, fs_*, FastBusiness$*), ALTER PROCEDURE",
+    "false": "chỉ đọc/xem/tìm proc, chạy SELECT, sửa file XML, tạo proc hoàn toàn mới"
+   }
+  },
+  "step3_flag_writes_db_columns": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step write data into specific table columns or add columns (INSERT/UPDATE named columns, ALTER TABLE ADD, add field to table)?",
+    "step": "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+   },
+   "criteria": {
+    "true": "insert/update vào cột cụ thể, thêm cột/trường vào bảng, SELECT INTO bảng đích với danh sách cột",
+    "false": "chỉ đọc/xem dữ liệu, sửa XML, tìm file"
+   }
+  },
+  "step3_flag_edits_xml_controller": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step edit an XML controller file on disk (Dir/Grid/Filter/Report/Lookup .xml: fields, views, JS, SQL commands inside XML)?",
+    "step": "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+   },
+   "criteria": {
+    "true": "sửa/thêm/xóa/ẩn field, view, category, JS, command SQL trong file XML controller",
+    "false": "chỉ đọc/xem/tìm trong XML, sửa proc DB, chạy SQL"
+   }
+  },
+  "step3_flag_produces_sql_file": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step create or modify a .sql script file that will later be run on the database (export proc to .sql, write/edit script, generate data script)?",
+    "step": "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+   },
+   "criteria": {
+    "true": "tạo/viết/sửa/xuất file .sql (script tạo bảng, ALTER proc, insert dữ liệu) để user F5 sau",
+    "false": "chỉ đọc file .sql, chạy SELECT trực tiếp, sửa XML"
+   }
+  },
+  "step3_flag_runs_sql_on_db": {
+   "type": "noul",
+   "instructions": {
+    "question": "Does this step execute a .sql script or DDL/DML that changes the database (deploy proc, run script file, CREATE/ALTER/INSERT/UPDATE/DELETE)?",
+    "step": "Xác định các proc/SQL mà báo cáo gọi để clone những SQL thiếu từ TA_VN sang DIVN"
+   },
+   "criteria": {
+    "true": "chạy/deploy file .sql, ALTER/CREATE proc, INSERT/UPDATE/DELETE lên DB",
+    "false": "chỉ SELECT đọc dữ liệu, check syntax PARSEONLY, đọc file"
+   }
+  },
+  "skill_gate_act": {
+   "type": "noul",
+   "instructions": {
+    "question": "Must the assistant act on the user's FastBusiness project, files, database or services (not just explain)?",
+    "request": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS"
+   }
+  },
+  "skill_gate_proc": {
+   "type": "noul",
+   "instructions": {
+    "question": "Would a careful FastBusiness expert follow a documented procedure or set of steps to do this?",
+    "request": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS"
+   }
+  },
+  "skill_gate_prose": {
+   "type": "noul",
+   "instructions": {
+    "question": "Could a knowledgeable generalist answer this fully in prose without touching the project?",
+    "request": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS"
+   }
+  },
+  "skill_pick": {
+   "type": "choice",
+   "instructions": {
+    "question": "Which skill (playbook) best covers this request?",
+    "request": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS"
+   },
+   "criteria": {
+    "excel-mcp": "Excel MCP Server skill for Windows workbook automation. Use when an assistant needs rich MCP tools to create, inspect, modify, format, or analyze Excel files. Supports Power Query (M), Data Model/DAX, PivotTables, Tables, Ranges, Charts, Slicers, formatting, screenshots, VBA macros, connections, and calculation mode. Triggers: Excel, spreadsheet, workbook, xlsx, xlsm, Power Query, DAX, PivotTable,",
+    "fbo-ap-payment-cttt30": "Trả tiền phải trả FBO qua bảng cttt30 (loai_tt 0/1, stt_rec_tt, stt_rec_pb, tt_cn/tt_qd). Dùng khi báo cáo đã thanh toán trả tiền / bảng kê trả tiền hóa đơn, phiếu chi–báo nợ, phân bổ PC0, đầu kỳ–trong kỳ theo ngày báo cáo; tham chiếu rs_rptPaymentTransactionListByInvoice. Không nhầm với thu tiền cttt20 (fbo-ar-receipt-cttt20).",
+    "fbo-approval-category-dimension": "Thêm chiều xác định kiểu duyệt FBO (cột yn trên dmloaiduyet, flag trên dmkieuduyet, giá trị trên ctkieuduyet + Dir/Grid/Filter ApprovalCategory*, đồng bộ key GetApprovalCategory với APVCheckCategory trên chứng từ). Dùng khi thêm mã vào kiểu duyệt, bp2_yn/ma_bp2, sodmloaiduyet/gndmloaiduyet, FastBusiness$APV$PU$GetApprovalCategory / FastBusiness$APV$SO$GetApprovalCategory / FastBusiness$APV$GetAppr",
+    "fbo-ar-receipt-cttt20": "Thu tiền phải thu FBO qua bảng cttt20 (loai_tt 0/1, stt_rec_tt, tt_cn/tt_qd). Dùng khi báo cáo đã thu tiền / bảng kê thu tiền theo hóa đơn, phiếu thu–báo có gắn hóa đơn, đầu kỳ–trong kỳ theo ngày báo cáo; tham chiếu rs_rptReceiptTransactionListByInvoice. Không nhầm với trả tiền cttt30 (fbo-ap-payment-cttt30).",
+    "fbo-bao-cao-tao-mau": "CHỈ báo cáo tạo mẫu FBO (Dir mẫu + v20dmmaubc + Filter chọn form + proc đọc #report theo @Form). KHÔNG dùng cho báo cáo listing/pivot thường (không bảng mẫu, không form) — dùng fbo-procedure-create-report. Variant NS (ds_chi_tieu + ty_trong), BCTC (tk_no/tk_co), DTCP (tk + no_co). fsd_genFomulaReportForm. Dùng khi: báo cáo tạo mẫu, dm maubc, ISPart1, SalesExpensesForm, kind, cach_tinh, ty_trong, b",
+    "fbo-chat-ba-tester": "Viết tin nhắn / giải thích nghiệp vụ FastBusiness gửi BA hoặc tester theo kiểu nói chuyện đồng nghiệp: đoạn văn tự nhiên, không bảng, không báo cáo AI. Dùng khi giải thích dùm, trả lời tester, trả lời BA, vì sao ra dòng, đầu kỳ trong kỳ, note UR vs code đang chạy, chat BA tester, nói chuyện với tester.",
+    "fbo-chuc-nang-lay-du-lieu": "Triển khai luồng FastBusiness \"Lấy dữ liệu\" CT nguồn → CT đích (Retrieve): 1–1 (Filter/Form/Grid) hoặc 1–n FlowMulti (MultiForm/MultiGrid); fsdSttRecRef + BeforeAfterUpdate. MCP trước — hỏi user sau. Dùng khi lấy dữ liệu CT→CT, clone cặp Filter/Grid/Form/Lookup hoặc *Multi* Retrieve.",
+    "fbo-create-category": "Tạo / chỉnh danh mục FastBusiness FBO (cặp Dir + Grid). Khai báo khóa chính, validation trùng/lồng (so sánh =, fsd_StringToTable, OldValue), tạo bảng + PK qua MCP. Dùng khi tạo/sửa danh mục, thêm PK, viết check Inserting/Updating, hoặc user đưa cặp Dir/Grid.",
+    "fbo-create-hddt": "Bật phát hành/xử lý HDDT cho ma_ct FBO mới bằng cách clone cấu hình HDDT từ chứng từ mẫu (options, hddtfields, CASE EInvoice, Filter EITran). Dùng khi thêm mã CT lên menu/luồng HDDT, thiếu ma_ct trên lookup EITran / GetTableName / hddtfields, hoặc cần phát hành full-suite giống CT mẫu đã chạy.",
+    "fbo-create-hddv": "Migrate ImportXmlInputInvoice (HDDV/II) vào chứng từ FastBusiness Dir/*Tran.xml; cấu hình project (Extender, Invoice.ent EIImport, Lookup/Filter/Grid, Web.config); runtime/bin .NET4; sửa mapping Templates Upload Invoice; option gop_dl (Gộp DL hạch toán); tab Thuế listTax / gom theo ma_thue_ext (tránh nhân dòng thuế). Recipe từng Tran (APTran InputInvoiceInsert, PATran IIInsert...). List vs InputIn",
+    "fbo-create-skill": "Hướng dẫn tạo/chỉnh Agent Skill cho FastBusiness FBO — pattern tổng quát trước ví dụ cụ thể, progressive disclosure, mô tả chính xác mọi case. Dùng khi user yêu cầu tạo skill FBO, refactor skill quá đặc thù, hoặc chuẩn hóa từ ngữ skill JS/SQL/XML/danh mục/báo cáo/chứng từ.",
+    "fbo-create-vocuher": "Tạo chứng từ FBO mới trọn gói: clone bộ controller bằng clone_things suite:{MauCT} từ chứng từ mẫu rồi sửa trên bản clone (KHÔNG viết tay từ đầu), SQL gom 1 file 2 khối SYS/APP để user F5, Dir/Grid/Filter/Query/Notify/Report + Main aspx + Extender/config chung. Hai variant độc lập: duyệt APV (kiểu duyệt 015xx, Message.xml, Post.xml, Grid {X}Approval*, proc APV) — bỏ toàn bộ nếu chứng từ chỉ lập CT",
+    "fbo-danh-muc-cap-nhat-gia-ban": "Cập nhật giá bán FBO (SalesPrice): Filter + Grid + Dir, ẩn/hiện field theo dmloaigia2.xtype, thêm cột tùy loại giá. Dùng khi sửa SalesPrice, dmgia2, vdmgia2, loại giá bán, xtype, ngay_het_hl, hoặc ẩn hiện field theo loai_gia.",
+    "fbo-design-view-field": "Thiết kế layout trường trên tab Dir FBO: pattern view item (1/0/-), khai báo category columns, căn 2 cột label+input trên tab phụ, thêm field header form bằng cách kéo field cột phải lên ngang (không chèn dòng trống cột phải), anchor (cột co giãn khi kéo form), split (chia cột cha + thứ tự Tab). ẩn/hiện field hoặc cột (hidden=\"true\" + width=\"0\", không xóa khỏi <fields>; Filter hidden param thì thê",
+    "fbo-excel-pivot-template": "Mẫu in Excel/PivotTable của báo cáo FBO (App_Data/Controllers/Templates/Excel/*.xlsx, khai báo qua templateFile trong Report XML): clone mẫu bằng clone_things type=3/6 rồi sửa bằng excel-mcp; token mẫu ?h_xxx (header Report XML), !N.field (field recordset N), #...+ +... (biểu thức nối chuỗi); caption pivot item bị đổi tay → MissingItemsLimit=None + refresh 2 lần để reset caption. Dùng khi thêm/sửa",
+    "fbo-fastapi-test": "Test/gen FastAPI FBO theo DA: đọc Projects/{DA}.json + apiFolder XML, không hardcode catalog/form/số lượng API. fastApiTest /mode:http, quy tắc PASS theo fields/@type. Dùng khi test API Fast, gen JSON, automation fastApiTest mọi dự án.",
+    "fbo-js-skill": "FastBusiness FBO JavaScript patterns for Dir/Grid XML — f.request/g.request, fill/clear grid, FlowMulti, request trước làm sau (ResponseComplete), Report grid chọn nhiều dòng (tag) + nút batch (Infinite/fsd_StringToTable), khóa cột theo dòng (item.disabled hoặc readOnly + handle sua_*_yn), khóa form/grid khi phiếu sinh từ nguồn (fsdSttRecRef / _from_*), tiền nguyên tệ/hạch toán (tien_nt2 → tien2 ×",
+    "fbo-mcp-tool-help": "Hỏi tool_help (fastbusiness-mcp) trước khi gọi tool thật: truyền các bước plan, nhận per-step {task_type, tool, call template, required_params, pitfalls, confidence, decision, alternatives} + plan_patch (bước bắt buộc còn thiếu) + related_skills; tool lỗi → gọi lại kèm context.failed để nhận bước kế tiếp. Dùng khi chưa chắc nên gọi tool nào / mode hay param nào — đặc biệt trước search_files (mode ",
+    "fbo-nd70": "Áp dụng cập nhật FBO theo NĐ70 (Số CCCD / hộ chiếu / mã đơn vị mua): dmkh, tab Định danh trên chứng từ HDDT, dmhddtbs, Proxy XML. Dùng khi NĐ70, so_cmnd, so_hc, IDCardNo, PassportNo, hoặc copy package Include/ND70 vào dự án.",
+    "fbo-partition-table-knowledge": "Kiến thức bảng partition FastBusiness FBO: m**/d**/c**$000000 vs $%Partition vs $$partition$current vs $YYYYMM; load theo kỳ bằng Partition$Execute + %[ @Key ]%; load theo stt_rec bằng #parti + EXEC; Filter/Dir Inserting không dùng $$partition trần. Dùng khi viết/sửa SQL quét chứng từ theo ngày, Filter Nhận, FlowFilter, action Load*, báo cáo rs_/zc_, hoặc lỗi Invalid object / Must declare gần m**$",
+    "fbo-procedure-create-report": "Viết/sửa stored procedure báo cáo FastBusiness (rs_*, zc_*) và bộ XML báo cáo đầy đủ: Filter/Grid/aspx listing, Query truy ngược (hyperlink View.ashx), drill số CT mở phiếu (Voucher.ashx + ma_ct/stt_rec), Detail sổ chi tiết (Session View + passQueryParameters), tick chọn keys Infinite rồi In, PrintProc dòng ảo + kieu in từng trang/liên tục, cột link chung giữa các RS Excel (vd. ma_phi_print). 4 vù",
+    "fbo-procedure-create-voucher": "Viết/sửa stored procedure tạo chứng từ đích từ chứng từ nguồn FastBusiness (zc_Create*From*). Pipeline 7 vùng: Struct / Load / Validate / Cấp số / Build / Inquiry / Save / Post. Load nguồn qua @list_stt_rec → c**$000000 → #parti. Format bậc thang SQL (fbo_style_sql). Thiếu schema → query_database.",
+    "fbo-quy-doi-dvt": "Quy đổi đơn vị tính FBO trên grid chứng từ: he_so chuẩn từ dmqddvt (dvt → tồn/kho), và quy đổi sang ĐVT đích thứ hai (Kg/Mét…) bằng fn_GetRateQD + cột he_so_* ẩn + g.$a. Dùng khi UOM/Item load he_so, tồn theo hệ số, số lượng chuẩn từ tờ/mét×hệ số, he_so_met_tx / he_so_kg, hoặc khách yêu cầu quy đổi thêm theo ĐVT khác ngoài he_so.",
+    "fbo-send-mail-customize": "Customize gửi mail FBO riêng (không mail duyệt chuẩn): clone bảng fsdMail + fsdMail_log, copy DLL/ASPX/jAjax, proc mail RS cột gốc, AjaxWeb CWD Controllers\\Dir, acceptSendMail queue. Dùng khi gửi mail customize, fsdMail, fsdMail_log, acceptSendMail, AjaxWeb, jAjax.sendMail, callMail, EmailConfig, NotifyPush.ent path lỗi, hoặc mang stack mail từ dự án mẫu sang dự án mới.",
+    "fbo-style-sql": "Phong cách viết SQL/T-SQL FastBusiness: format bậc thang (INSERT/SELECT/INTO/FROM), gom ~10 cột/dòng, FROM+JOIN đầu cùng dòng; link CT theo stt_rec (#parti + EXEC @q); BeforeAfterUpdate (#stt_rec + parti CONVERT 112). MCP trước — hỏi user sau. Dùng khi viết/sửa/format proc, báo cáo link phiếu, hoặc BeforeAfterUpdate.",
+    "fbo-update-qty-link-voucher": "Dùng khi chứng từ FBO cần cập nhật sl_* trên chứng từ nguồn, kiểm tra vượt số lượng nguồn, xử lý link stt_rec_*/stt_rec0*, đồng bộ fsdSttRecRef (Update/Delete entity, zcLinkSttrecVoucher rebuild), hoặc bảo đảm đúng khi thêm, sửa, xóa, đổi trạng thái và đổi partition.",
+    "fbo_create_pdf_fast_report": "Tạo mẫu in PDF Fast Report (.frx) cho FBO từ lệnh SQL (query Report XML / store rs_*) và ảnh mẫu in kèm theo (nếu có), lưu vào Controllers\\Templates\\Frx của dự án được chọn. Dùng khi user nhờ tạo/sửa file .frx, chuyển mẫu RPT (Crystal) sang Fast Report, dựng mẫu in chứng từ/báo cáo/HĐĐT từ SQL + ảnh chụp/scan mẫu, sửa lỗi in frx.",
+    "fbo_grid_filter": "Thêm dòng lọc (column filter) trên Grid FBO: allowFilter + Filter.ent + Declare, sysfilterdeclares (DB sys), đăng ký Filter/Config/Initialize.xml và Grid/Config/Aggregation.xml. Dùng khi \"thêm dòng lọc\", \"allowFilter\", \"điều kiện lọc trên grid\", hoặc lọc cột / tổng cộng không ăn.",
+    "fbo_hddt_external": "FastBusiness e-invoice (HDDT) customization via dmhddtbs and eInv External structure. Use when mapping voucher fields (ten_vt_in, ten_khi_in, …) onto HDDT XML/bản thể hiện, appending dmhddtbs without DELETE wipe, or adding eInv App_Data/XMLEInvoice/.../Structure/External/010 + edmkh.external_folder."
+   }
+  },
+  "is_new_menu": {
+   "type": "noul",
+   "instructions": {
+    "description": "Quy tắc xác định:\n- TRUE (Tạo mới menu): Chứa hành động thêm mới, tạo mới, hoặc 'Gen/Clone/Save as' một menu/chức năng sang menu mới.\n- FALSE (Không phải tạo mới menu): Chỉ sửa đổi nội dung, thêm nút, sửa logic tính toán trên một menu/chứng từ đã có sẵn.",
+    "question": "Yêu cầu trên State thuộc trường hợp tạo mới menu (TRUE) hay chỉ chỉnh sửa chức năng có sẵn (FALSE)?"
+   },
+   "criteria": {
+    "true": "tạo mới/thêm mới/Gen/Clone/Save as sang menu mới",
+    "false": "chỉ sửa nội dung, thêm nút, sửa logic trên menu/chứng từ có sẵn"
+   }
+  },
+  "menu_kind": {
+   "type": "choice",
+   "instructions": {
+    "description": "State là dạng hỏi về vấn đề thực hiện 1 yêu cầu trên phần mềm ERP. Khi yêu cầu là tạo mới 1 menu/chức năng thì menu đó chỉ thuộc 1 trong 3 dạng: báo cáo, chứng từ hoặc danh mục, dù có bao nhiêu biến thể. Với Gen/Clone/Save as từ menu nguồn thì phân loại theo loại của menu nguồn (vd Gen từ 'Bảng cân đối', 'Bảng kê', 'Sổ chi tiết' = báo cáo; Gen từ 'Phiếu thu', 'Hóa đơn', 'Đơn hàng' = chứng từ). Ví dụ tạo chức năng lấy các chứng từ xuất kho và có nút tạo chứng từ bán hàng thì chức năng này là báo cáo (lọc chọn rồi tạo ra thứ khác).",
+    "question": "Menu cần tạo mới trong State là dạng báo cáo, chứng từ hay danh mục trên ERP?"
+   },
+   "criteria": {
+    "report": "Báo cáo, bảng kê, sổ sách, bảng cân đối, tiện ích/chức năng đặc thù: có bộ lọc (Filter) rồi hiển thị/tạo ra kết quả trên lưới. Gồm cả chức năng lọc chọn dữ liệu rồi tạo thứ gì đó.",
+    "voucher": "Tạo chứng từ mới. Thường state mô tả chức năng có lưới chi tiết (grid, detail), số phiếu hoặc số chứng từ, ngày chứng từ, hạch toán. Nói chung là nhìn giống 1 cái chứng từ hoặc State nhắc thẳng là tạo chứng từ.",
+    "category": "Là dạng danh mục. Tạo 1 chức năng có thể thêm, xóa, sửa, import data (danh mục khách hàng, vật tư, tài khoản, tham số...)."
+   }
+  }
+ }
+}

@@ -27,6 +27,9 @@ def result_to_dict(result: SummaryXmlResult) -> dict[str, Any]:
         "request_actions": sorted(result.js.request_actions),
         "line_count": result.js.line_count,
     }
+    # Nguồn của từng hàm (file gốc hay entity). Chỉ xuất khi đã được tính (omit nếu rỗng).
+    if result.js.function_origins:
+        js_dict["function_origins"] = result.js.function_origins
 
     # Format SQL summary
     blocks_list = []

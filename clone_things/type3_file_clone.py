@@ -13,11 +13,25 @@ import logging
 import os
 import re
 import shutil
+import stat
 import time
 from pathlib import Path
 from typing import Any
 
 from find_connect_by_path.path_resolver import get_project_root_from_path
+from find_connect_by_path.project_version import generation_of, is_metadata_project
+
+from .config_registry import register_query_aggregation
+
+from .page_registry import (
+    find_page_entries,
+    page_attrs_from_aspx,
+    page_base_attrs_from_aspx,
+    page_needed_features,
+    register_suite_pages,
+    register_template_page,
+    suggest_template,
+)
 
 logger = logging.getLogger("clone_things.type3")
 
@@ -79,6 +93,15 @@ def resolve_project_root(path_str: str) -> str | None:
         logger.warning("Error resolving project root for %s: %e", path_str, e)
 
     return None
+
+
+def _copy_file_writable(src: Path, dst: Path) -> None:
+    """``copy2`` nhưng bản đích luôn ghi được: nguồn có cờ ReadOnly (vd file Lookup)
+    thì bản clone cũng ReadOnly và Edit sau đó lỗi EPERM."""
+    if dst.exists():
+        os.chmod(dst, stat.S_IREAD | stat.S_IWRITE)
+    shutil.copy2(src, dst)
+    os.chmod(dst, stat.S_IREAD | stat.S_IWRITE)
 
 
 def calculate_sha256(file_path: Path) -> str:
@@ -312,8 +335,65 @@ def _detect_suite_aspx(
     return out
 
 
+def _detect_suite_pages(root_src_path: Path, ctrl_name: str) -> list[str]:
+    """Program mới (SP30+): trang không còn là file ``Main/*.aspx`` mà là một dòng
+    ``<page id=".." controller="<ctrl>" template="Page.0xx"/>`` trong
+    ``App_Data/Metadata/Page*.xml``. Trả list ``"<file>:<dòng> id=<id> template=<t>"``."""
+    return [
+        f"App_Data/Metadata/{x['file']}:{x['line_no']} "
+        f"id={x['id'] or '?'} template={x['template'] or '?'}"
+        for x in find_page_entries(root_src_path, ctrl_name)
+    ]
+
+
+RE_ENTITY_SYSTEM = re.compile(r'<!ENTITY\s+\S+\s+SYSTEM\s+"([^"]+)"', re.IGNORECASE)
+
+
+def _expand_entity_includes(
+    root_src_path: Path, root_tgt_path: Path | None, suite_files: list[str]
+) -> list[str]:
+    """Các file ``<!ENTITY x SYSTEM "..\\Include\\...">`` mà XML của suite gọi nhưng
+    CHƯA có trên project đích (thiếu file => form báo "error occurred while opening
+    external entity"). Chỉ trả file thiếu ở đích; đi theo include lồng nhau."""
+    if root_tgt_path is None or root_tgt_path == root_src_path:
+        return []
+    out: list[str] = []
+    seen: set[str] = set(suite_files)
+    queue = [
+        rel for rel in suite_files
+        if rel.lower().endswith((".xml", ".txt", ".ent"))
+    ]
+    while queue and len(out) < 50:
+        rel = queue.pop(0)
+        try:
+            text = (root_src_path / rel).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        parent = (root_src_path / rel).parent
+        for m in RE_ENTITY_SYSTEM.finditer(text):
+            ref = m.group(1).strip().replace("\\", "/")
+            if not ref or ref.lower().endswith((".f", ".xsd")):
+                continue
+            try:
+                cand = (parent / ref).resolve()
+                rel_out = to_posix(cand.relative_to(root_src_path.resolve()))
+            except Exception:
+                continue
+            if rel_out in seen or not cand.is_file():
+                continue
+            seen.add(rel_out)
+            if (root_tgt_path / rel_out).exists():
+                continue
+            out.append(rel_out)
+            queue.append(rel_out)
+    return out
+
+
 def _expand_suite_files(
-    root_src_path: Path, ctrl_name: str, warnings: list[str]
+    root_src_path: Path,
+    ctrl_name: str,
+    warnings: list[str],
+    root_tgt_path: Path | None = None,
 ) -> list[str]:
     """Templated candidates tồn tại trên source + prefix-family scan
     (dedupe với templated, giữ thứ tự) + mẫu in khai báo trong Report XML +
@@ -349,7 +429,23 @@ def _expand_suite_files(
             + ", ".join(tpl_extra)
         )
         found.extend(tpl_extra)
-    if not (root_src_path / f"Main/{ctrl_name}.aspx").is_file():
+    if is_metadata_project(root_src_path):
+        pages = _detect_suite_pages(root_src_path, ctrl_name)
+        if pages:
+            warnings.append(
+                "suite_page_detected: " + "; ".join(pages) + " — program mới "
+                "khai báo trang bằng dòng <page> trong Metadata/Page*.xml hoặc "
+                "inline PageMetadata.xml (không có file Main/*.aspx để clone). "
+                "Execute sẽ tự nhân bản vào <!--Customize--> của "
+                "PageMetadata.xml đích — xem page_entries"
+            )
+        else:
+            warnings.append(
+                "suite_page_missing: không thấy dòng <page controller="
+                f'"{ctrl_name}"> trong Metadata/Page*.xml lẫn '
+                "PageMetadata.xml — tìm tay bằng search_files trên App_Data"
+            )
+    elif not (root_src_path / f"Main/{ctrl_name}.aspx").is_file():
         detected = _detect_suite_aspx(root_src_path, ctrl_name)
         known = set(found)
         detected = [a for a in detected if a not in known]
@@ -368,7 +464,43 @@ def _expand_suite_files(
                 f'\'Controller="{ctrl_name}"\' trên <project>\\Main rồi copy '
                 "tay nếu cần"
             )
+    known = set(found)
+    query_extra = [
+        rel for rel in _detect_query_companions(root_src_path, ctrl_name) if rel not in known
+    ]
+    if query_extra:
+        found.extend(query_extra)
+        warnings.append(
+            f"suite_query_found: +{len(query_extra)} grid truy ngược đặt tên lệch "
+            "prefix controller: " + ", ".join(query_extra)
+        )
+    include_extra = _expand_entity_includes(root_src_path, root_tgt_path, found)
+    if include_extra:
+        found.extend(include_extra)
+        warnings.append(
+            f"suite_includes_missing: +{len(include_extra)} file <!ENTITY SYSTEM> "
+            "controller gọi nhưng đích chưa có (thiếu sẽ lỗi 'opening external "
+            "entity'): " + ", ".join(include_extra)
+        )
     return found
+
+
+def _detect_query_companions(root_src_path: Path, ctrl_name: str) -> list[str]:
+    """Báo cáo ``zus_rptX`` có grid truy ngược ``zus_QueryX`` (bỏ ``rpt``, thêm
+    ``Query``) mà prefix-scan không bắt được."""
+    m = re.match(r"^(z\w*?_)?(?:rpt|rs)?(\w+)$", ctrl_name, re.IGNORECASE)
+    if not m or not m.group(2):
+        return []
+    pre, tail = m.group(1) or "", m.group(2)
+    grid_dir = root_src_path / "App_Data" / "Controllers" / "Grid"
+    if not grid_dir.is_dir():
+        return []
+    want = (pre + "Query" + tail + ".xml").lower()
+    return [
+        f"App_Data/Controllers/Grid/{e.name}"
+        for e in os.scandir(grid_dir)
+        if e.is_file() and e.name.lower() == want
+    ]
 
 
 def apply_pattern(pattern_str: str, target_name: str) -> str:
@@ -628,7 +760,7 @@ def expand_object_tokens(
                         )
 
                 found_suite_files = _expand_suite_files(
-                    root_src_path, ctrl_name, warnings
+                    root_src_path, ctrl_name, warnings, root_tgt_path
                 )
                 if found_suite_files:
                     src_prefix = suite_prefix(ctrl_name)
@@ -788,7 +920,7 @@ def expand_object_tokens(
                         },
                     )
                 found_suite_files = _expand_suite_files(
-                    root_src_path, ctrl_name, warnings
+                    root_src_path, ctrl_name, warnings, root_tgt_path
                 )
                 if found_suite_files:
                     pairs.extend((cand, cand) for cand in found_suite_files)
@@ -946,6 +1078,144 @@ def expand_object_tokens(
     return unique_pairs, None, warnings, None
 
 
+_RE_SUITE_RENAME = re.compile(
+    r"suite:([A-Za-z0-9_]+)\s*->\s*([A-Za-z0-9_]+)(?![A-Za-z0-9_(])", re.IGNORECASE
+)
+_RE_SUITE_CTRL_FILE = re.compile(
+    r"App_Data/Controllers/(Dir|Grid|Filter|Report)/[^/]+\.xml$", re.IGNORECASE
+)
+
+
+def _register_suite_pages(
+    object: str,
+    root_src_path: Path,
+    root_tgt_path: Path,
+    execute: bool,
+    warnings: list[str],
+) -> list[dict[str, Any]]:
+    """Program mới (SP30+): sau khi clone ``suite:SRC->DST`` thì nhân bản dòng
+    ``<page>`` của các controller thuộc suite (vd ``APTran`` và ``APApproval``)."""
+    out: list[dict[str, Any]] = []
+    for m in _RE_SUITE_RENAME.finditer(str(object)):
+        ctrl_name, dst_tok = m.group(1), m.group(2)
+        files = _expand_suite_files(root_src_path, ctrl_name, [])
+        controllers = {Path(f).stem for f in files if _RE_SUITE_CTRL_FILE.search(f)}
+        src_prefix, dst_prefix = suite_prefix(ctrl_name), suite_prefix(dst_tok)
+
+        def rename(c: str, _s=src_prefix, _d=dst_prefix, _c=ctrl_name, _t=dst_tok) -> str:
+            return rename_suite_basename(c, _s, _d, _c, _t)
+
+        out.extend(
+            register_suite_pages(
+                root_src_path, root_tgt_path, ctrl_name, controllers, rename, execute
+            )
+        )
+    bad = [p for p in out if p["status"] not in ("added", "planned")]
+    if bad:
+        warnings.append(
+            "page_not_registered: "
+            + "; ".join(
+                f'{p["src_controller"]}->{p["dst_controller"]}={p["status"]}'
+                + (f' {p["entries"]}' if p.get("entries") else "")
+                + (f' {p["message"]}' if p.get("message") else "")
+                for p in bad
+            )
+            + " — đăng ký tay bằng param page (dòng <page> vào "
+            "<!--Customize--> của App_Data/PageMetadata.xml)"
+        )
+    return out
+
+
+def _is_main_aspx(rel: str) -> bool:
+    """``Main/<tên>.aspx`` (trang chức năng); không tính ``Main/Uploads/...``."""
+    parts = rel.replace("\\", "/").split("/")
+    return len(parts) == 2 and parts[0].lower() == "main" and parts[1].lower().endswith(".aspx")
+
+
+def _register_legacy_aspx_pages(
+    object: str,
+    root_src_path: Path,
+    root_tgt_path: Path,
+    aspx_pairs: list[tuple[str, str]],
+    execute: bool,
+    warnings: list[str],
+) -> list[dict[str, Any]]:
+    """Nguồn bản cũ -> đích SP30+: đọc ``Main/*.aspx`` nguồn, đổi thành dòng ``<page>``
+    ở đích (chỉ trang 'trơn' -> ``Page.001``; trang có code riêng báo ``manual``)."""
+    renames = []
+    for m in _RE_SUITE_RENAME.finditer(str(object)):
+        ctrl_name, dst_tok = m.group(1), m.group(2)
+        renames.append(
+            (ctrl_name, suite_prefix(ctrl_name), suite_prefix(dst_tok), dst_tok)
+        )
+
+    out: list[dict[str, Any]] = []
+    for src_rel, dst_rel in aspx_pairs:
+        page_id = Path(dst_rel).stem
+        try:
+            content = (root_src_path / src_rel).read_text(
+                encoding="utf-8-sig", errors="replace"
+            )
+        except Exception as ex:
+            out.append({"id": page_id, "status": "error", "message": str(ex),
+                        "src_controller": "", "dst_controller": ""})
+            continue
+        base = page_base_attrs_from_aspx(content)
+        if base is None:
+            out.append({"id": page_id, "status": "manual", "src_controller": "",
+                        "dst_controller": "",
+                        "message": f"{src_rel} không thấy Controller= — thêm tay "
+                                   "dòng <page>"})
+            continue
+        src_ctrl = base["controller"]
+        dst_ctrl = src_ctrl
+        for ctrl_name, sp, dp, tok in renames:
+            new = rename_suite_basename(src_ctrl, sp, dp, ctrl_name, tok)
+            if new != src_ctrl:
+                dst_ctrl = new
+                break
+        if dst_ctrl == src_ctrl:
+            out.append({"id": page_id, "status": "controller_not_renamed",
+                        "src_controller": src_ctrl, "dst_controller": dst_ctrl})
+            continue
+        attrs = page_attrs_from_aspx(content)
+        if attrs is None:
+            # Trang có code riêng (chứng từ/duyệt) — gợi ý khuôn theo feature.
+            needed = page_needed_features(dst_ctrl, [content])
+            cands = suggest_template(root_tgt_path, needed, dst_ctrl)
+            if cands and not cands[0]["missing"]:
+                attrs = {**base, "template": cands[0]["template"],
+                         "controller": dst_ctrl}
+                res = register_template_page(
+                    root_tgt_path, page_id, attrs, execute
+                )
+                out.append({**res, "src_controller": src_ctrl,
+                            "dst_controller": dst_ctrl,
+                            "auto_template": True,
+                            "candidates": [c["template"] for c in cands[:3]]})
+            else:
+                out.append({"id": page_id, "status": "manual",
+                            "src_controller": src_ctrl,
+                            "dst_controller": dst_ctrl,
+                            "candidates": [c["template"] for c in cands[:5]],
+                            "message": f"{src_rel} có code riêng — chọn "
+                                       "template trong candidates rồi đăng ký "
+                                       "bằng param page"})
+            continue
+        attrs["controller"] = dst_ctrl
+        res = register_template_page(root_tgt_path, page_id, attrs, execute)
+        out.append({**res, "src_controller": src_ctrl, "dst_controller": dst_ctrl})
+    bad = [p for p in out if p["status"] not in ("added", "planned")]
+    if bad:
+        warnings.append(
+            "page_not_registered: "
+            + "; ".join(f'{p["id"]}={p["status"]}' for p in bad)
+            + " — đăng ký tay bằng param page (vào <!--Customize--> của "
+            "App_Data/PageMetadata.xml)"
+        )
+    return out
+
+
 def run_type3_file_clone(
     object: str = "",
     project_source: str = "",
@@ -1078,6 +1348,21 @@ def run_type3_file_clone(
         return res_err
 
     assert pairs is not None
+
+    # 3a. Nguồn bản cũ -> đích SP30+: không copy Main/*.aspx (đích không có Main),
+    # đổi thành dòng <page> ở đích.
+    legacy_aspx_pairs: list[tuple[str, str]] = []
+    if is_metadata_project(root_tgt_path) and not is_metadata_project(root_src_path):
+        legacy_aspx_pairs = [(s, d) for s, d in pairs if _is_main_aspx(s)]
+        if legacy_aspx_pairs:
+            pairs = [(s, d) for s, d in pairs if not _is_main_aspx(s)]
+            warnings.append(
+                "aspx_converted_to_page: "
+                + ", ".join(s for s, _ in legacy_aspx_pairs)
+                + " — đích là program mới (SP30+) không có Main/*.aspx, không copy "
+                "file; trang được đăng ký bằng dòng <page> trong "
+                "<!--Customize--> của PageMetadata.xml"
+            )
 
     # 3b. Giới hạn max_files
     limit_files = int(max_files) if (isinstance(max_files, (int, str)) and str(max_files).isdigit() and int(max_files) > 0) else 100
@@ -1236,7 +1521,7 @@ def run_type3_file_clone(
                 if exec_coerced:
                     try:
                         tgt_file.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(src_file, tgt_file)
+                        _copy_file_writable(src_file, tgt_file)
                         copied.append(src_rel)
                     except Exception as e:
                         failed.append({"relative": src_rel, "error": str(e)})
@@ -1292,7 +1577,7 @@ def run_type3_file_clone(
                 if exec_coerced:
                     try:
                         tgt_file.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(src_file, tgt_file)
+                        _copy_file_writable(src_file, tgt_file)
                         copied.append(src_rel)
                     except Exception as e:
                         failed.append({"relative": src_rel, "error": str(e)})
@@ -1444,6 +1729,44 @@ def run_type3_file_clone(
                 f"Execute type=3 hoàn tất: {len(copied)} file copied, {len(failed)} failed."
             )
 
+    page_entries: list[dict[str, Any]] = []
+    if not needs_user_confirm and is_metadata_project(root_tgt_path):
+        if is_metadata_project(root_src_path):
+            page_entries = _register_suite_pages(
+                object, root_src_path, root_tgt_path, exec_coerced, warnings
+            )
+        elif legacy_aspx_pairs:
+            page_entries = _register_legacy_aspx_pages(
+                object, root_src_path, root_tgt_path, legacy_aspx_pairs,
+                exec_coerced, warnings,
+            )
+
+    aggregation_entries: list[dict[str, Any]] = []
+    if not needs_user_confirm:
+        copy_set = set(will_copy)
+        query_ctrls = [
+            Path(p["target_relative"]).stem
+            for p in planned
+            if p.get("relative") in copy_set
+            and str(p.get("target_relative", "")).replace("\\", "/").startswith(
+                "App_Data/Controllers/Grid/"
+            )
+            and str(p.get("target_relative", "")).lower().endswith(".xml")
+        ]
+        aggregation_entries = register_query_aggregation(
+            root_tgt_path, query_ctrls, exec_coerced
+        )
+        if any(a["status"] in ("file_missing", "error") for a in aggregation_entries):
+            warnings.append(
+                "query_not_registered: "
+                + ", ".join(
+                    a["controller"] for a in aggregation_entries
+                    if a["status"] in ("file_missing", "error")
+                )
+                + " — thêm tay dòng <controller name=... description=\"\"/> vào "
+                "Grid/Config/Aggregation.q (thiếu sẽ báo 'Chưa có quyền truy cập')"
+            )
+
     elapsed_ms = int((time.perf_counter() - start_time) * 1000)
 
     return {
@@ -1472,6 +1795,9 @@ def run_type3_file_clone(
         "skipped_same_source": skipped_same_source,
         "missing_on_source": missing_on_source,
         "failed": failed,
+        "page_entries": page_entries,
+        "aggregation_entries": aggregation_entries,
+        "target_generation": generation_of(root_tgt_path),
         "warnings": warnings,
         "user_prompt": user_prompt,
         "agent_message": agent_message,

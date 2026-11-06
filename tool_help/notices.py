@@ -115,17 +115,6 @@ NOTICE_RULES = [
         "task_types": {"db_balance"},
     },
     {
-        "id": "save_as_flow",
-        "text": "SAVE-AS chức năng có sẵn: clone_things type=6 "
-                "'saveas:title:<tiêu đề>-><new>' tự resolve controller + "
-                "clone suite + export proc; tool tự quét <title> trên "
-                "disk; không thấy → HỎI USER file nguồn, đừng đoán. Proc export giữ NGUYÊN tên nguồn "
-                "— đổi tên tay trong .sql + sửa <title v> + đăng ký "
-                "menu/aspx",
-        "task_types": {"save_as_existing", "find_by_title"},
-        "requirements": {"clone_existing"},
-    },
-    {
         "id": "voucher_partition",
         "text": "Bảng chứng từ partition theo tháng: m/d/i{x}$YYYYMM — "
                 "insert/query phải đúng partition; c{x}$000000 giữ ngày "
@@ -135,8 +124,14 @@ NOTICE_RULES = [
     {
         "id": "voucher_no_structure",
         "text": "KHÔNG tạo Structure/App/*.xml tay — hệ thống tự sinh khi "
-                "đăng ký bảng; file .aspx đặt ở project-root Main/ (KHÔNG "
-                "phải App_Data/Controllers)",
+                "đăng ký bảng. "
+                "⟪L:File .aspx đặt ở project-root Main/ (KHÔNG phải "
+                "App_Data/Controllers).⟫"
+                "⟪N:Mỗi trang là 1 dòng <page>; dòng thêm tay/tool nằm "
+                "trong <!--Customize--> của App_Data/PageMetadata.xml — "
+                "đăng ký bằng param page của clone_things, chứng từ giữ "
+                "template của chứng từ mẫu (thiếu template → tool tự gợi "
+                "ý).⟫",
         "requirements": _VOUCHER_TYPES | _RETRIEVE_TYPES,
     },
     {
@@ -200,8 +195,10 @@ NOTICE_RULES = [
     },
     {
         "id": "report_graph_button",
-        "text": "Chức năng có nút Đồ thị cần đủ bộ: aspx phải "
-                "LoadControl(\"Chart.ascx\") (thiếu → lỗi JS "
+        "text": "Chức năng có nút Đồ thị cần đủ bộ: "
+                "⟪L:aspx phải LoadControl(\"Chart.ascx\")⟫"
+                "⟪N:khuôn Page.0xx của dòng <page> phải nạp Chart (giữ "
+                "template của trang nguồn)⟫ (thiếu → lỗi JS "
                 "'chart$Graph$InitObject is not defined'), Grid cần entity "
                 "Identification + GraphReportInit + button "
                 "command=\"Graph\", Filter {X}Graph.xml. File *Graph.xml "

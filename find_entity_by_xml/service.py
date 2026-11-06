@@ -177,12 +177,11 @@ def _get_xml_entities_impl(
             "file_path": file_path,
         }
 
+    auto_list = False
     if not want_list and not entities and want_content and not want_path:
-        return {
-            "success": False,
-            "error": "Cần truyền entities (array) hoặc gọi mode='list'",
-            "file_path": file_path,
-        }
+        # content thiếu entities: tự chuyển sang list thay vì báo lỗi.
+        want_list = True
+        auto_list = True
 
     requested = entities or []
     normalized_names = [normalize_entity_name(raw_name) for raw_name in requested]
@@ -210,6 +209,12 @@ def _get_xml_entities_impl(
         "reloaded": force_reload,
         "entity_count": len(all_entities),
     }
+    if auto_list:
+        base_result["warnings"] = [
+            "Không truyền entities nên tự chuyển sang mode='list'. "
+            "Muốn lấy nội dung thì gọi mode='content' kèm entities=[...] "
+            "theo tên trong danh sách này."
+        ]
 
     if want_checking:
         # checking: entity &name; chưa khai báo + SYSTEM entity trỏ file thiếu.

@@ -142,6 +142,7 @@ function on$Filter$ResponseComplete(sender, e) {
     case 'Checking':
       var g = f.grid, v = f._language == 'v';
       g._alterTitle = [null, [['%d1', f.getItem('tu_ngay').value, true], ['%d2', f.getItem('den_ngay').value, true]]];
+      // BẮT BUỘC: có remove$GridReport$Filter(g) thì phải có g._hiddenFields (kể cả = []) — KHÔNG xóa khối này
       g._hiddenFields = [
         // TODO: {Fields: 'f1,f2', Value: true/false} — ẩn cột grid theo điều kiện; để [] nếu không dùng
       ];

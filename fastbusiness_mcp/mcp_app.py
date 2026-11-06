@@ -40,6 +40,9 @@ from compare_things.formatter import format_compare_result
 
 from search_files import search_files
 
+from acceptance_xml import acceptance_xml
+from acceptance_xml.formatter import format_acceptance_result
+
 from jev import load_jev_config
 from config import TOOLS_ENABLED
 
@@ -391,8 +394,9 @@ def get_xml_entities_tool(
         Field(default=None, description="Danh sách project root NGUỒN (abs path, UNC ok) — chỉ dùng với mode='checking': file/entity thiếu ở đây nhưng có sẵn ở source. Optional."),
     ] = None,
 ) -> str:
-    """Đọc XML entity từ file_path. 
-mode: 
+    """Đọc XML entity từ file_path.
+Chưa biết tên entity → mode='list'. mode='content'/'path' bắt buộc truyền entities (nếu content thiếu entities sẽ tự chuyển sang list).
+mode:
 - content: lấy nội dung entity (cần truyền entities)
 - path: vị trí khai báo file:line (cần truyền entities)
 - list: liệt kê toàn bộ ENTITY trong DOCTYPE (dùng khi chưa biết tên entity, không cần truyền entities). Mặc định mode=list chỉ trả về các entity loại 'general' được khai báo trực tiếp trong file.
@@ -736,6 +740,13 @@ def clone_things_tool(
             description="Chỉ dùng khi type=4 (template paste): tên controller mới thay token {new} trong tên file + nội dung, vd 'zccnsldkbctdo'. Bắt buộc khi paste; object='?' để list template có sẵn.",
         ),
     ] = "",
+    page: Annotated[
+        str,
+        Field(
+            default="",
+            description="SP30+: truyền dòng <page id=\"..\" v=\"..\" e=\"..\" controller=\"..\" template=\"..\"/> → tool nhét vào block <!--Customize--> của App_Data/PageMetadata.xml (tự tạo block nếu thiếu). object trống → chỉ đăng ký page. Thiếu template → tự gợi ý theo khuôn fragment + controller cùng họ. Dùng khi thêm menu mới / đăng ký trang cho chức năng.",
+        ),
+    ] = "",
 ) -> str:
     """
     BƯỚC 1 BẮT BUỘC khi cần clone object SQL giữa 2 dự án FBO hoặc lấy object ra chỉnh sửa hoặc copy file:
@@ -777,8 +788,13 @@ def clone_things_tool(
     7) type=6 (save-as — clone chức năng có sẵn làm khung cho chức năng mới):
        - object='saveas:<src>-><new_ctrl>'; src = ctrl:<tên controller> | title:<tiêu đề chức năng> | tên controller trần (vd 'saveas:zclctt->zcbcdt', 'saveas:title:Báo cáo lưu chuyển tiền tệ->zcbcdt').
        - Title resolve bằng cách quét <title v> trên disk; match nhiều controller → trả candidates để hỏi user, không auto-pick.
-       - Clone toàn bộ suite file (Filter/Grid/Dir/Report/Lookup/Query/Include/Main aspx...) đổi tên sang new_ctrl — delegate type=3 nên execute=False = dry-run mặc định, overwrite cần confirm_overwrite.
+       - Clone toàn bộ suite file (Filter/Grid/Dir/Report/Lookup/Query/Include/Main aspx...; đích SP30+ không có Main/*.aspx — thay bằng dòng <page> nhét vào block <!--Customize--> của App_Data/PageMetadata.xml, tự nhân bản kèm tinyv/tinye của khuôn; grid truy ngược Query* tự khai vào Grid/Config/Aggregation.q) đổi tên sang new_ctrl — delegate type=3 nên execute=False = dry-run mặc định, overwrite cần confirm_overwrite.
        - Extract proc từ XML nguồn → export ALTER ra 1 file .sql temp; KHÔNG tự đổi tên object — agent đổi tên trong file theo tên user gửi, sửa <title v> + đăng ký menu, rồi mới sửa theo yêu cầu UR.
+    8) Param page (đăng ký trang SP30+ độc lập hoặc kèm clone):
+       - Truyền dòng <page id=".." v=".." e=".." controller=".." template=".."/> qua param page → tool nhét vào block <!--Customize--> ... <!--End Customize--> của App_Data/PageMetadata.xml (tự tạo block trước </pages> nếu thiếu).
+       - object trống → chỉ đăng ký page (đăng ký menu mới cho chức năng có sẵn); kèm object → chạy sau flow chính.
+       - Thiếu template → tool tự gợi ý theo feature khuôn Fragments + tần suất template của controller cùng họ trên project đích; kiểm tra page_param.suggested_template/candidates.
+       - Idempotent: id trùng → id_exists, controller đã có page → controller_exists, fragment thiếu → template_missing.
     """
     try:
         cfg = get_config()
@@ -802,6 +818,7 @@ def clone_things_tool(
             table=table,
             where=where,
             new_name=new_name,
+            page=page,
             config=cfg,
         )
         return format_clone_result(result)
@@ -1199,8 +1216,8 @@ async def search_files_tool(
     ] = False,
     max_files: Annotated[
         int,
-        Field(default=500, description="Số file quét khi ĐÃ có kết quả (mặc định 500). Chưa có kết quả thì server tự quét tiếp tới hết time_budget. Output luôn bị chặn bởi max_total_matches, không phụ thuộc max_files."),
-    ] = 500,
+        Field(default=0, description="Giới hạn số file đọc (mặc định 0 = quét HẾT mọi file ứng viên, chỉ dừng do time_budget_seconds hoặc max_total_matches). Chỉ đặt >0 khi muốn cố ý cắt sớm; khi đó đã có kết quả thì dừng ở số file này và trả truncated=true."),
+    ] = 0,
     max_matches_per_file: Annotated[
         int,
         Field(default=5, description="Số lượng dòng khớp tối đa trên mỗi file (mặc định 5)"),
@@ -1262,7 +1279,7 @@ async def search_files_tool(
     - CẤM đọc file *.f mã hóa của FastBusiness và *.xsd (file schema/kiến trúc); tự động bỏ qua file nhị phân.
     - Hỗ trợ giải mã UTF-8 và Windows-1258 (CP1258).
     - Có chốt chặn số file và số kết quả để tránh làm tràn bộ nhớ/context.
-    - status: 'found' | 'not_found' (đã quét HẾT candidate) | 'inconclusive' (0 kết quả nhưng chưa quét hết — KHÔNG kết luận không có; hẹp root/include_glob rồi gọi lại). 0 kết quả sau max_files → server tự quét tiếp tới time_budget (auto_extended=true).
+    - status: 'found' | 'not_found' (đã quét HẾT candidate) | 'inconclusive' (0 kết quả nhưng chưa quét hết — KHÔNG kết luận không có; hẹp root/include_glob rồi gọi lại). Mặc định quét hết mọi file ứng viên để liệt kê đủ file chứa pattern; chỉ dừng sớm khi hết time_budget_seconds (45s) hoặc đủ max_total_matches. Luôn kiểm tra truncated=false và files_scanned == files_candidate trước khi kết luận.
     - root nhận path BẤT KỲ: abs folder, abs file (search đúng file đó), hoặc relative — MCP tự resolve qua sticky project context.
     - mode='definition' + symbol: trả lời "symbol X có được định nghĩa ở đâu / có tồn tại không" (definitions[] + definition_found + usage_hint) thay vì list hàng trăm dòng usage. definition_found=false + truncated → KHÔNG kết luận chưa định nghĩa, hẹp root/include_glob.
     - mode='files_only': list candidate path sau glob + priority sort, không mở file nào.
@@ -1385,6 +1402,159 @@ if _JEV_CONFIG is not None:
             return text
         except Exception as e:
             return format_execution_error("tool_help", e)
+
+
+# ============================================================================
+# TOOL 9: excel_handler — xuất mẫu in Excel (.xlsx) từ file Grid XML báo cáo
+# ============================================================================
+@_maybe_tool("excel_handler")
+def excel_handler(
+    grid_file: Annotated[
+        str,
+        Field(
+            description="BẮT BUỘC. Path tuyệt đối file Grid XML của báo cáo (local hoặc UNC), vd 'z:\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Grid\\zcbccashflow.xml'. File phải là .xml nằm trong thư mục tên 'Grid'. Tool tự đọc XML: có thẻ <pivot> → Excel xoay (PivotTable thật qua PivotExcel.exe — cần Excel desktop), không có → Excel thường (template mau_chuan.xlsx: row9 '?h_<field>', row10 '!2.<field>{b:systotal=0}')."
+        ),
+    ],
+    row_fields: Annotated[
+        Optional[Union[str, List[str]]],
+        Field(
+            default=None,
+            description="CHỈ khi grid có <pivot>. CSV 'a,b,c' hoặc list field cho vùng Row Labels. Token 'systotal' (cột tổng ẩn), '?h_<field>' (header field Report XML — caption động). Bỏ trống → auto = rowField + 'systotal' + field <view id='Grid'> dạng '?h_<name>' (trừ trùng dataFields).",
+        ),
+    ] = None,
+    column_fields: Annotated[
+        Optional[Union[str, List[str]]],
+        Field(
+            default=None,
+            description="CHỈ khi grid có <pivot>. CSV/list field cho vùng Column Labels. Token 'npivot' = cột nhóm phụ báo cáo xoay FBO. Bỏ trống → auto = columnField + ',npivot'.",
+        ),
+    ] = None,
+    value_fields: Annotated[
+        Optional[Union[str, List[str]]],
+        Field(
+            default=None,
+            description="CHỈ khi grid có <pivot>. CSV/list field cho vùng Values (mặc định Sum). Bỏ trống → auto = dataFields của <pivot>.",
+        ),
+    ] = None,
+    output_path: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="Path .xlsx đích (kèm thư mục). Bỏ trống → thư mục mặc định '<Controllers>\\Templates\\Excel' + excel_name/<tên_grid>.xlsx. KHÔNG truyền cùng excel_name.",
+        ),
+    ] = None,
+    excel_name: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="TÊN file .xlsx muốn xuất, vd 'zcbccashflow_01.xlsx' hoặc 'zcbccashflow_01' (thiếu đuôi tự thêm '.xlsx') — đặt trong '<Controllers>\\Templates\\Excel'. Bỏ trống → '<tên_grid>.xlsx'. KHÔNG truyền cùng output_path.",
+        ),
+    ] = None,
+    defaults_only: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="True → CHỈ trả JSON defaults (mode + row_csv/column_csv/value_csv cho pivot, hoặc headers cho normal) KHÔNG ghi file — xem gợi ý trước khi truyền override.",
+        ),
+    ] = False,
+) -> str:
+    """Xuất mẫu in Excel (.xlsx) từ file Grid XML của báo cáo FBO — tự nhận
+    diện thẻ <pivot>: có → Excel xoay (PivotTable), không → Excel thường.
+    Trước khi export luôn chạy AddFieldToReport: inject field h_* thiếu vào
+    Controllers/Report/<tên_grid>.xml (xem report_update trong kết quả).
+    Output mặc định Controllers/Templates/Excel/<tên_grid>.xlsx (vị trí
+    templateFile của Report). defaults_only=True để xem field gợi ý mà
+    không ghi file."""
+    try:
+        if defaults_only:
+            from excel_handler import ExcelHandlerRequest
+            from excel_handler.grid_parser import (
+                build_pivot_defaults,
+                has_pivot_tag,
+                parse_header_fields,
+            )
+            req = ExcelHandlerRequest(grid_file=grid_file)
+            from pathlib import Path
+            xml = Path(req.grid_file).read_text(encoding="utf-8-sig")
+            if has_pivot_tag(xml):
+                payload = {"mode": "pivot", **build_pivot_defaults(xml)}
+            else:
+                payload = {
+                    "mode": "normal",
+                    "headers": [list(h) for h in parse_header_fields(xml)],
+                }
+            return json.dumps(payload, ensure_ascii=False, indent=2)
+
+        from excel_handler import excel_handler
+        result = excel_handler(
+            grid_file=grid_file,
+            row_fields=row_fields,
+            column_fields=column_fields,
+            value_fields=value_fields,
+            output_path=output_path,
+            excel_name=excel_name,
+        )
+        return f"Đã xuất mẫu Excel ({result.mode}): {result.output_path}"
+    except Exception as e:
+        logger.error(f"excel_handler execution error: {e}")
+        return format_execution_error("excel_handler", e)
+
+
+# ============================================================================
+# TOOL 10: acceptance_xml — format XML + auto UTF-8 BOM + check legacy FBO
+# ============================================================================
+@_maybe_tool("acceptance_xml")
+def acceptance_xml_tool(
+    file_paths: Annotated[
+        Union[str, List[str]],
+        Field(
+            description="BẮT BUỘC. 1 path file .xml hoặc nhiều path cách nhau bởi dấu phẩy (hoặc list). Path abs (local/UNC) hoặc relative (tự resolve qua sticky project). CHỈ chấp nhận .xml — file khác loại được liệt vào invalid_files và các file .xml còn lại vẫn xử lý bình thường."
+        ),
+    ],
+    format: Annotated[
+        Optional[bool],
+        Field(
+            default=None,
+            description="True = format (pretty-print, GHI ĐÈ file) rồi mới check legacy; False = chỉ check. Bỏ trống → theo config.yaml format_in_acceptance (mặc định false).",
+        ),
+    ] = None,
+    reference_file: Annotated[
+        str,
+        Field(
+            default="",
+            description="Optional. Path abs tới 1 file trong project FBO để resolve relative file_paths (khi làm nhiều project xen kẽ hoặc call đầu).",
+        ),
+    ] = "",
+) -> str:
+    """Chấm điểm file XML controller FBO sau khi agent sửa xong — gọi cuối phiên
+    với danh sách Dir/Grid/Filter .xml vừa đụng tới.
+
+    Pipeline per file:
+    1. Validate .xml (file khác loại -> invalid, xử lý tiếp file còn lại).
+    2. Auto thêm UTF-8 BOM nếu file là UTF-8 không BOM (chức năng ẩn, luôn chạy).
+    3. Format XML (ghi đè, giữ encoding/EOL) — theo param `format` hoặc config.
+    4. Check legacy full: field trên view chưa khai báo, thừa/thiếu phần tử
+    pattern, field chưa xuống view, numeric thiếu items style=Numeric, khóa
+    chính vs code=, categoryIndex, anchor/split, pattern quá dài; Grid thêm
+    rule allowFilter (query + Declare + Filter.ent); Options/Message.xml check
+    duplicate field. XML ngoài Controllers\\{Dir,Grid,Filter} -> skipped.
+
+    Trả JSON: summary{ok,warning,error,skipped,invalid,formatted,bom_added} +
+    results[] per-file {file,status,formatted,changed,bom_added,diagnostics
+    [{line,severity,message}]} + invalid_files[]."""
+    try:
+        cfg = get_config()
+        default_format = bool(cfg.get("format_in_acceptance", False))
+        result = acceptance_xml(
+            file_paths=file_paths,
+            format=format,
+            reference_file=reference_file,
+            format_in_acceptance_default=default_format,
+        )
+        return format_acceptance_result(result)
+    except Exception as e:
+        logger.error(f"acceptance_xml execution error: {e}")
+        return format_execution_error("acceptance_xml", e)
 
 
 # ============================================================================

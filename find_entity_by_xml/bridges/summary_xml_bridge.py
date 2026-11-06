@@ -6,8 +6,9 @@ import copy
 import os
 import threading
 from typing import Any
-from find_entity_by_xml.facade import flat_xml
+from find_entity_by_xml.facade import flat_xml_with_trace
 from xml_controller_summary import analyze_flat_xml, result_to_dict
+from xml_controller_summary.origins import build_function_origins
 from xml_controller_summary.models import (
     SPEC_VERSION,
     SummaryXmlResult,
@@ -19,8 +20,31 @@ from xml_controller_summary.models import (
 from xml_controller_summary.analyze import infer_folder_type, normalize_display_file_path
 
 _CACHE_LOCK = threading.Lock()
+# Giá trị cache: {"data": summary dict, "deps": {đường dẫn file include: mtime_ns}}
 _SUMMARY_CACHE: dict[tuple[str, int, int, str], dict[str, Any]] = {}
 _MAX_CACHE_ENTRIES = 256
+
+
+def _deps_unchanged(deps: dict[str, int]) -> bool:
+    """True nếu mọi file include/entity phụ thuộc vẫn giữ nguyên mtime."""
+    for dep_path, old_mtime_ns in deps.items():
+        try:
+            if os.stat(dep_path).st_mtime_ns != old_mtime_ns:
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def _collect_deps(file_mtimes: dict[str, float]) -> dict[str, int]:
+    """Đổi danh sách file tham gia flat thành {path: mtime_ns} đọc lại từ đĩa."""
+    deps: dict[str, int] = {}
+    for dep_path in file_mtimes:
+        try:
+            deps[dep_path] = os.stat(dep_path).st_mtime_ns
+        except OSError:
+            continue
+    return deps
 
 
 def summary_xml(file_path: str, *, use_cache: bool = True) -> dict[str, Any]:
@@ -39,13 +63,14 @@ def summary_xml(file_path: str, *, use_cache: bool = True) -> dict[str, Any]:
                 f"summary_xml:{SPEC_VERSION}",
             )
             with _CACHE_LOCK:
-                if cache_key in _SUMMARY_CACHE:
-                    return copy.deepcopy(_SUMMARY_CACHE[cache_key])
+                cached = _SUMMARY_CACHE.get(cache_key)
+                if cached is not None and _deps_unchanged(cached["deps"]):
+                    return copy.deepcopy(cached["data"])
         except Exception:
             cache_key = None
 
     try:
-        flat = flat_xml(file_path)
+        flat, entity_trace, file_mtimes = flat_xml_with_trace(file_path)
     except Exception as exc:
         return result_to_dict(
             SummaryXmlResult(
@@ -74,12 +99,17 @@ def summary_xml(file_path: str, *, use_cache: bool = True) -> dict[str, Any]:
         )
 
     res = analyze_flat_xml(flat, source_path=file_path)
+    if res.js.functions:
+        res.js.function_origins = build_function_origins(res.js.functions, entity_trace)
     res_dict = result_to_dict(res)
 
     if use_cache and cache_key is not None:
         with _CACHE_LOCK:
             if len(_SUMMARY_CACHE) >= _MAX_CACHE_ENTRIES:
                 _SUMMARY_CACHE.clear()
-            _SUMMARY_CACHE[cache_key] = copy.deepcopy(res_dict)
+            _SUMMARY_CACHE[cache_key] = {
+                "data": copy.deepcopy(res_dict),
+                "deps": _collect_deps(file_mtimes),
+            }
 
     return res_dict

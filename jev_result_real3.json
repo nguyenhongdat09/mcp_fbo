@@ -1,0 +1,313 @@
+{
+ "description": "Each step is recommended the most suitable tool to execute. Always try the recommended tool first (step.tool + step.call). Only fall back to step.alternatives or another tool if the recommended one fails or cannot fulfill the task. confidence_to_use_top = số candidate Jev chấm >20% (đáp án nằm trong top-N) — KHÔNG phải xác suất đúng; luôn đối chiếu pitfalls và required_params trước khi call.",
+ "steps": [
+  {
+   "step": "Tìm file controller RDTran và cactpt0 của chứng từ phân bổ thu tiền hàng cho các hóa đơn",
+   "task_type": "match_filename",
+   "confidence_to_use_top": 2,
+   "confidence": 0.5,
+   "decision": "review",
+   "tool": "search_files",
+   "call": {
+    "root": "<abs path>",
+    "include_glob": "<*pattern*>",
+    "mode": "files_only"
+   },
+   "required_params": [
+    "root"
+   ],
+   "pitfalls": [
+    "KHÔNG đọc nội dung — chỉ lọc theo tên/path file"
+   ],
+   "alternatives": [
+    {
+     "task_type": "find_by_title",
+     "confidence_to_use_top": 2,
+     "tool": "query_database",
+     "call": {
+      "file_path": "<path trong project>",
+      "mode": "lookup",
+      "query": "<ma_ct | controller | cụm tiêu đề>"
+     },
+     "required_params": [
+      "file_path",
+      "mode",
+      "query"
+     ],
+     "pitfalls": [
+      "KHÔNG tự SELECT command/wcommand/dmct/functions — tên cột khác nhau giữa bản FBO (controller/url/ma_ct hay bị đoán sai)",
+      "Tiêu đề so khớp không dấu — truyền cụm ngắn đặc trưng",
+      "functions=[] → màn hình con/popup không có trong menu: search_files mode=content include_glob='*.xml' pattern='<cụm title>' root=App_Data/Controllers",
+      "encrypted_only (chỉ .f) → không sửa được, hỏi user file .xml nguồn"
+     ]
+    }
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "search_files",
+    "probability": 0.55
+   }
+  },
+  {
+   "step": "Đọc cấu trúc toolbar và tab chi tiết của RDTran để thêm nút Chọn nhiều hóa đơn",
+   "task_type": "read_summary",
+   "confidence_to_use_top": 2,
+   "confidence": 0.45,
+   "decision": "review",
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 3
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "read_option=3 chỉ summary cho .xml trực thuộc Dir/Grid/Filter; file khác tự fallback raw"
+   ],
+   "alternatives": [
+    {
+     "task_type": "read_snippet",
+     "confidence_to_use_top": 2,
+     "tool": "read_local_file",
+     "call": {
+      "file_path": "<path file>",
+      "symbol|block|start_line+end_line": "<selector>"
+     },
+     "required_params": [
+      "file_path"
+     ],
+     "pitfalls": [
+      "symbol='<tên hàm JS>' hoặc block='action:<id>'/'command:<event>'/'field:<name>'/'query:<n>'",
+      "Truyền 1 trong: symbol / block / start_line+end_line"
+     ]
+    }
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "read_local_file",
+    "probability": 0.99
+   }
+  },
+  {
+   "step": "Tạo màn hình chọn phiếu thu và danh sách hóa đơn còn công nợ có checkbox",
+   "task_type": "clone_template",
+   "confidence_to_use_top": 1,
+   "confidence": 0.61,
+   "decision": "review",
+   "tool": "clone_things",
+   "call": {
+    "type": 4,
+    "object": "<tên template>",
+    "new_name": "<tên controller mới>",
+    "project_target": "<abs path project>",
+    "execute": false
+   },
+   "required_params": [
+    "type",
+    "object",
+    "new_name",
+    "project_target"
+   ],
+   "pitfalls": [
+    "execute=False (mặc định) = dry-run; execute=True mới ghi file",
+    "object='?' để list template có sẵn",
+    "File paste ra còn placeholder name_* (và {{...}} chưa fill — xem unresolved_placeholders + edit_guide trong response): agent đổi field theo UR, khớp Dir/Grid/Upload/Filter + bảng SQL",
+    "SP30+: Dòng <page> do tool tạo nhét vào <!--Customize--> của PageMetadata.xml, khuôn phù hợp loại trang (xem page_entries, trang voucher tự gợi ý kèm candidates); đổi khuôn thì dòng <page> phải có đủ tinyv/tinye nếu khuôn đòi, không thì tiêu đề hiện '@@tinyv'"
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "clone_things",
+    "probability": 0.73
+   }
+  },
+  {
+   "step": "Sinh dòng phân bổ ở tab chi tiết theo các hóa đơn đã tích chọn với số tiền mặc định bằng số còn phải thu",
+   "task_type": "read_suggest_edit",
+   "confidence_to_use_top": 2,
+   "confidence": 0.51,
+   "decision": "review",
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 4,
+    "old_string|symbol|block": "<selector>",
+    "new_string": "<code thay thế>"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "Nhiều edit 1 file → truyền edits[] (batch) thay vì selector top-level"
+   ],
+   "alternatives": [
+    {
+     "task_type": "read_snippet",
+     "confidence_to_use_top": 2,
+     "tool": "read_local_file",
+     "call": {
+      "file_path": "<path file>",
+      "symbol|block|start_line+end_line": "<selector>"
+     },
+     "required_params": [
+      "file_path"
+     ],
+     "pitfalls": [
+      "symbol='<tên hàm JS>' hoặc block='action:<id>'/'command:<event>'/'field:<name>'/'query:<n>'",
+      "Truyền 1 trong: symbol / block / start_line+end_line"
+     ]
+    }
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "read_local_file",
+    "probability": 0.75
+   }
+  },
+  {
+   "step": "Check syntax file XML sau khi sửa",
+   "task_type": "entity_check",
+   "confidence_to_use_top": 2,
+   "confidence": 0.64,
+   "decision": "review",
+   "tool": "get_xml_entities",
+   "call": {
+    "file_path": "<path file>",
+    "mode": "checking"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "source_roots=[<abs path project mẫu>] để gợi ý entity có sẵn ở nguồn"
+   ],
+   "alternatives": [
+    {
+     "task_type": "db_check_syntax",
+     "confidence_to_use_top": 2,
+     "tool": "query_database",
+     "call": {
+      "file_path": "<path trong project>",
+      "query": "<path file .sql>",
+      "query_type": 3
+     },
+     "required_params": [
+      "file_path",
+      "query",
+      "query_type"
+     ],
+     "pitfalls": [
+      "Parse-only không check tên bảng/cột tồn tại; bỏ qua false positive 1059",
+      "File .sql chưa có → tạo trước bằng clone_things type=5 (new_sql_file), không tự tạo file trong workspace"
+     ]
+    }
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "get_xml_entities",
+    "probability": 0.65
+   }
+  }
+ ],
+ "param_examples": {
+  "_note": "CHỈ LÀ VÍ DỤ format giá trị — thay mọi path \\\\172.168.5.14\\...\\SP2264 bằng path project HIỆN TẠI của user; đừng copy nguyên địa chỉ/tên file trong ví dụ",
+  "search_files": {
+   "root": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers",
+   "pattern": "dmku",
+   "include_glob": "*kheuoc*",
+   "symbol": "fn_TinhLai"
+  },
+  "clone_things": {
+   "project_source": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264",
+   "project_target": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2265",
+   "object": "dmkh",
+   "table": "dmku",
+   "where": "ma_cu LIKE 'TD%'",
+   "path_to_pasted": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir"
+  },
+  "read_local_file": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml",
+   "symbol": "fsd_TinhLai",
+   "block": "command:Inserting",
+   "start_line": 120,
+   "end_line": 160
+  },
+  "get_xml_entities": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml",
+   "entities": [
+    "filter",
+    "dmdt"
+   ],
+   "source_roots": [
+    "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264"
+   ]
+  }
+ },
+ "jev_usage": {
+  "input_tokens": 14119,
+  "output_tokens": 2968
+ },
+ "requirement": {
+  "type": "popup_input_form",
+  "confidence_to_use_top": 2,
+  "confidence": 0.53,
+  "decision": "review",
+  "decision_note": "Jev chưa chắc loại yêu cầu — xem alternatives/secondary_requirements, hỏi lại user nếu UR mơ hồ",
+  "template": {
+   "dir": "template/popup_input_form",
+   "files": [
+    "App_Data/Controllers/Filter/{new}Filter.xml",
+    "PopupTemp/{new}_glue.txt"
+   ],
+   "clone_call": {
+    "tool": "clone_things",
+    "type": 4,
+    "object": "popup_input_form",
+    "new_name": "<tên controller mới>",
+    "project_target": "<abs path project>",
+    "execute": false
+   }
+  },
+  "alternatives": [
+   {
+    "task_type": "none",
+    "confidence_to_use_top": 2
+   }
+  ]
+ },
+ "notice": {
+  "1": "FBO: nếu IDE có sẵn grep/search đã indexing file (vd Cursor) thì ưu tiên dùng IDE — nhanh và tiện hơn; nếu không thì dùng tool MCP (read_local_file, search_files, query_database, clone_things...) — KHÔNG chạy shell/grep/find thô trên đường dẫn UNC của project"
+ },
+ "plan_patch": [
+  {
+   "insert_before": 3,
+   "rule": "suggest_edit_before_xml",
+   "step": "Lấy old_string chính xác của vùng cần sửa",
+   "tool": "read_local_file",
+   "call": {
+    "read_option": 4
+   },
+   "why": "CLAUDE.md: XML controller lấy old_string bằng read_option=4 trước khi Edit"
+  },
+  {
+   "insert_after": 4,
+   "rule": "parse_check_after_xml",
+   "step": "Đọc lại file vừa sửa kiểm tra js/sql parse_status",
+   "tool": "read_local_file",
+   "call": {
+    "read_option": 3
+   },
+   "why": "CLAUDE.md: sau khi sửa gọi read_option=3 check parse_status"
+  }
+ ],
+ "patched_plan": [
+  "Tìm file controller RDTran và cactpt0 của chứng từ phân bổ thu tiền hàng cho các hóa đơn",
+  "Đọc cấu trúc toolbar và tab chi tiết của RDTran để thêm nút Chọn nhiều hóa đơn",
+  "[+suggest_edit_before_xml] Lấy old_string chính xác của vùng cần sửa",
+  "Tạo màn hình chọn phiếu thu và danh sách hóa đơn còn công nợ có checkbox",
+  "Sinh dòng phân bổ ở tab chi tiết theo các hóa đơn đã tích chọn với số tiền mặc định bằng số còn phải thu",
+  "[+parse_check_after_xml] Đọc lại file vừa sửa kiểm tra js/sql parse_status",
+  "Check syntax file XML sau khi sửa"
+ ],
+ "jev_model": "jev-1.14.0"
+}

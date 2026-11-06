@@ -27,6 +27,15 @@ from typing import Any
 
 import yaml
 
+from find_connect_by_path.project_version import is_metadata_project, to_page_wording
+
+from .page_registry import (
+    page_attrs_from_aspx,
+    page_base_attrs_from_aspx,
+    page_needed_features,
+    register_template_page,
+    suggest_template,
+)
 from .type3_file_clone import coerce_bool
 
 logger = logging.getLogger("clone_things.type4")
@@ -125,7 +134,9 @@ def run_type4_template(
     do_over = coerce_bool(overwrite) and coerce_bool(confirm_overwrite)
 
     planned, written, skipped = [], [], []
+    page_entries: list[dict[str, Any]] = []
     unresolved: set[str] = set()
+    meta_prog = is_metadata_project(tgt_root)
     for f in manifest.get("files") or []:
         # manifest v2: {src, dst}; v1 fallback: path string cũ
         if isinstance(f, str):
@@ -144,6 +155,52 @@ def run_type4_template(
         rel_new = _expand_val(rel_new, new_name)
         dst = tgt_root / rel_new
         entry = {"src": src_rel, "dst": rel_new}
+        if meta_prog and rel_new.startswith("Main/") and dst.suffix.lower() == ".aspx":
+            # Program mới: không có Main/*.aspx — trang là dòng <page> trong Metadata.
+            try:
+                content = src.read_text(encoding="utf-8-sig")
+            except UnicodeDecodeError:
+                content = src.read_text(encoding="utf-8", errors="replace")
+            for tok, val in tokens.items():
+                content = content.replace(tok, _expand_val(val, new_name))
+            unresolved.update(_RE_TOKEN.findall(content))
+            page_id = Path(rel_new).stem
+            attrs = page_attrs_from_aspx(content)
+            if attrs is not None:
+                page_entries.append(
+                    register_template_page(tgt_root, page_id, attrs, do_exec)
+                )
+                continue
+            # Trang có code riêng (chứng từ/duyệt) — gợi ý khuôn theo feature.
+            base = page_base_attrs_from_aspx(content)
+            cands = (
+                suggest_template(
+                    tgt_root,
+                    page_needed_features(
+                        base["controller"] if base else new_name, [content]
+                    ),
+                    base["controller"] if base else new_name,
+                )
+                or []
+            )
+            if base and cands and not cands[0]["missing"]:
+                res = register_template_page(
+                    tgt_root, page_id,
+                    {**base, "template": cands[0]["template"]},
+                    do_exec,
+                )
+                page_entries.append({**res, "auto_template": True,
+                                     "candidates": [c["template"]
+                                                    for c in cands[:3]]})
+            else:
+                page_entries.append({
+                    "id": page_id, "status": "manual",
+                    "candidates": [c["template"] for c in cands[:5]],
+                    "message": "trang có code riêng (chứng từ/duyệt) — chọn "
+                               "template trong candidates rồi đăng ký bằng "
+                               "param page",
+                })
+            continue
         if dst.exists() and not do_over:
             entry["status"] = "skipped_exists"
             skipped.append(entry)
@@ -183,6 +240,24 @@ def run_type4_template(
             "file paste ra còn placeholder {{...}} chưa fill — agent sửa tay "
             "(vd {{ma_maubc}}); field name_* luôn phải đổi theo UR")
 
+    edit_guide = _expand_val(manifest.get("edit_guide") or "", new_name)
+    if meta_prog:
+        # Manifest viết theo bản cũ (Main/<x>.aspx) — SP30+ chỉ nói tới dòng <page>.
+        edit_guide = to_page_wording(edit_guide)
+    if page_entries:
+        bad = [p for p in page_entries if p["status"] not in ("added", "planned")]
+        if bad:
+            warnings.append(
+                "page_not_registered: "
+                + "; ".join(f'{p["id"]}={p["status"]}' for p in bad)
+                + " — đăng ký tay bằng param page của clone_things"
+            )
+        edit_guide += (
+            "\nTrang của chức năng là dòng <page> trong <!--Customize--> của "
+            "App_Data/PageMetadata.xml (xem page_entries). Sửa v/e ngay trên "
+            "dòng đó; menu trỏ link '<id>.aspx'."
+        )
+
     return {
         "success": True,
         "spec_version": "1.0",
@@ -194,9 +269,9 @@ def run_type4_template(
         "dry_run": not do_exec,
         "files": planned + skipped,
         "written": written,
+        "page_entries": page_entries,
         "unresolved_placeholders": sorted(unresolved),
-        "edit_guide": _expand_val(manifest.get("edit_guide") or "",
-                                  new_name),
+        "edit_guide": edit_guide,
         "warnings": warnings,
         "elapsed_ms": round((time.perf_counter() - start) * 1000, 1),
     }

@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import re
 
+from . import classify_page
 from .cards import (REQUIREMENT_TYPE_CATALOG, REQUIREMENT_TYPES,
                     TASK_TYPES, TOOL_PARAM_EXAMPLES,
                     card_for, task_type_for_call, template_block)
@@ -387,8 +388,13 @@ def tool_help_with_meta(*steps, context: dict | None = None,
         if context and context.get("task_requirement"):
             task_requirement = context["task_requirement"]
 
+        from find_connect_by_path.project_version import (
+            render_tree,
+            resolve_generation,
+        )
+        gen = resolve_generation(context)
         cache_key = (tuple(steps), task_requirement, bool(jev_config),
-                     _context_key(context))
+                     _context_key(context), gen)
         cached = _RESULT_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -433,6 +439,9 @@ def tool_help_with_meta(*steps, context: dict | None = None,
         skill_text = task_requirement or " ; ".join(steps)
         if jev_config:
             questions.update(skill_stage1_questions(skill_text))
+        # SP30+: hỏi chung call "có tạo mới menu không" + chọn Page.0xx
+        if jev_config and gen == "metadata" and task_requirement:
+            questions.update(classify_page.build_questions())
 
         res = {"ok": False}
         if jev_config:
@@ -495,6 +504,24 @@ def tool_help_with_meta(*steps, context: dict | None = None,
         if task_requirement and res.get("ok") and req_ans:
             payload["requirement"] = _requirement_result(req_ans, jev_config)
             req_type = payload["requirement"].get("type")
+        if gen == "metadata" and task_requirement and res.get("ok"):
+            page_usage: dict = {}
+
+            def _ask_pages(kind: str) -> dict | None:
+                from jev import ask_jev
+                try:
+                    r = ask_jev(jev_config,
+                                {"task_requirement": task_requirement},
+                                classify_page.page_questions(kind))
+                except Exception as e:
+                    logger.warning(f"tool_help: Jev page_template lỗi: {e}")
+                    return None
+                page_usage.update(r.get("usage") or {})
+                return r.get("answers") or {} if r.get("ok") else None
+
+            payload.update(classify_page.directive(answers, _ask_pages) or {})
+            if page_usage:
+                payload["jev_usage_page"] = page_usage
         from tool_help.notices import collect_notices
         used_tt = {s.get("task_type") for s in out_steps} - {None}
         ur_text = " ".join([task_requirement] + steps)
@@ -540,6 +567,7 @@ def tool_help_with_meta(*steps, context: dict | None = None,
                 else None)
         if res.get("model"):
             payload["jev_model"] = res["model"]
+        payload = render_tree(payload, gen)   # nhắc aspx hay <page> theo bản
         result = dumps(payload)
         meta = _build_meta(payload, router)
         # Chỉ cache kết quả Jev — fallback keyword do Jev lỗi tạm thời

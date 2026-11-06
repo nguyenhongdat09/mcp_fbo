@@ -57,6 +57,23 @@ def flat_xml(xml_path: str) -> str:
     res = XmlEntityExpander.expand_xml_entities(xml_path, raw_content)
     return res.get('flat_text', "")
 
+def flat_xml_with_trace(xml_path: str) -> tuple[str, Dict[str, Any], Dict[str, float]]:
+    """Flat XML kèm vết entity.
+
+    Returns: (flat_text, entity_trace, file_mtimes)
+      entity_trace: {tên entity: {source_file, declared_in_file, line, raw}}, raw là nội dung
+        thô của entity (chưa bung entity con).
+      file_mtimes: mtime các file tham gia (file chính + include) để làm khóa cache.
+    """
+    raw_content = read_file_content(xml_path)
+    if not raw_content:
+        return "", {}, {}
+
+    trace: Dict[str, Any] = {}
+    res = XmlEntityExpander.expand_xml_entities(xml_path, raw_content, {'entity_trace': trace})
+    return res.get('flat_text', ""), trace, res.get('file_mtimes', {})
+
+
 def extract_expanded_blocks(xml_path: str) -> Dict[str, Any]:
     """
     Extract SQL and JS blocks from the flat XML by delegating to xml_controller_summary.

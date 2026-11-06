@@ -1,0 +1,22 @@
+{
+ "ok": true,
+ "answers": {
+  "page_template": {
+   "type": "choice",
+   "choice": "Page.017",
+   "confidence": 0.98,
+   "probabilities": {
+    "Page.003": 0.0,
+    "Page.004": 0.0,
+    "Page.017": 0.98,
+    "Page.020": 0.02,
+    "Query": 0.0
+   }
+  }
+ },
+ "usage": {
+  "input_tokens": 1039,
+  "output_tokens": 73
+ },
+ "model": "jev-1.14.0"
+}

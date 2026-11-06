@@ -1,0 +1,56 @@
+{
+ "model": "jev-latest",
+ "state": {
+  "task_requirement": "# URI.QT.028 - DIVN\n* Menu: Kế toán IFRS - Sysid: zcbkctIFRS\n* Program: \\172.168.5.14\\CustomerPro\\FBI\\DIVN\\FBISP30\nGen menu [Kế toán US GAAP \\ Bảng kê chứng từ US GAAP (C) (zus_rptTransactionList.xml)] của Dự án TA_VN sang menu [Kế toán IFRS \\ Bảng kê chứng từ IFRS (C)]\nLưu ý: các báo cáo xử lý mapping tài khoản VAS vs tk IFRS theo ngày hiệu lực\nclone ra đặt tên là zcbkctIFRS"
+ },
+ "questions": {
+  "page_template": {
+   "type": "choice",
+   "instructions": {
+    "question": "Menu cần tạo là BÁO CÁO: đâu là Page (template trang SP30+) gần đúng với yêu cầu trong State nhất?",
+    "rules": "Báo cáo bình thường chỉ lọc và xem dữ liệu. Báo cáo tài chính như bảng cân đối, kết quả kinh doanh là loại riêng. Nếu là save-as/gen từ báo cáo nguồn thì chọn loại giống báo cáo nguồn. Không có Page nào thật sự khớp thì để xác suất thấp, đừng ép."
+   },
+   "criteria": {
+    "Page.003": {
+     "what": "Màn hình có dữ liệu nhạy cảm cần mã hóa, như người dùng, tài khoản hóa đơn điện tử (~28 trang)",
+     "signals": "người dùng, mã hóa, tài khoản hóa đơn điện tử",
+     "not_for": [
+      "báo cáo thông thường"
+     ]
+    },
+    "Page.004": {
+     "what": "Báo cáo có thêm nút xem đồ thị/biểu đồ (~88 trang)",
+     "signals": "báo cáo có đồ thị, biểu đồ",
+     "not_for": [
+      "báo cáo không có đồ thị"
+     ]
+    },
+    "Page.017": {
+     "what": "Báo cáo bình thường. Chỉ có lọc dữ liệu và xem dữ liệu",
+     "signals": "báo cáo thông thường chỉ lọc và xem",
+     "not_for": [
+      "báo cáo tài chính nhiều kỳ có đồ thị",
+      "báo cáo có đồ thị"
+     ]
+    },
+    "Page.020": {
+     "what": "Báo cáo tài chính: bảng cân đối, kết quả kinh doanh, xem nhiều kỳ hoặc nhiều đơn vị, có đồ thị. Gồm cả các bản customize từ báo cáo tài chính (vd zcbcdVASIFRS). Rất ít (~8 trang)",
+     "signals": "bảng cân đối VAS/IFRS/US-GAAP, kết quả kinh doanh, báo cáo tài chính",
+     "not_for": [
+      "bảng kê, sổ sách, báo cáo listing thông thường",
+      "danh mục"
+     ]
+    },
+    "Query": {
+     "what": "Màn hình xem ngược số liệu từ một báo cáo khác, không phải báo cáo chính",
+     "signals": "truy vấn số liệu, xem ngược từ báo cáo",
+     "not_for": [
+      "báo cáo chính",
+      "danh mục",
+      "chứng từ"
+     ]
+    }
+   }
+  }
+ }
+}

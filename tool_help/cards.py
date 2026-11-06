@@ -54,7 +54,12 @@ TASK_TYPES = {
         "tool": "read_local_file",
         "call": {"file_path": "<path file>", "read_option": 1},
         "required": ["file_path"],
-        "pitfalls": [],
+        "pitfalls": [
+            "⟪N:App_Data/Metadata/Page*.xml là danh sách <page> (file hàng "
+            "trăm KB) — KHÔNG đọc cả file; tra trang bằng search_files "
+            "pattern 'controller=\"<tên>\"' root App_Data/Metadata, rồi đọc "
+            "đúng dòng bằng start_line/end_line⟫",
+        ],
     },
     "read_snippet": {
         "desc": "Read AROUND ONE named thing in a known file: 'quanh/around "
@@ -262,6 +267,38 @@ TASK_TYPES = {
             "hỏi user",
         ],
     },
+    "register_page": {
+        "desc": "REGISTER a menu page on SP30+: insert a <page id v e "
+                "controller template/> line into the <!--Customize--> "
+                "block of App_Data/PageMetadata.xml (tool tự tạo block "
+                "nếu thiếu). Pick when the step is thêm/đăng ký menu "
+                "mới, khai báo trang cho chức năng có sẵn, hoặc chốt "
+                "template cho page manual sau clone/save-as — "
+                "NOT for legacy projects (Main/*.aspx)",
+        "tool": "clone_things",
+        "call": {"page": "<page id=\"<id>\" v=\"<tiêu đề v>\" "
+                 "e=\"<title e>\" controller=\"<ctrl>\" "
+                 "template=\"<Page.0xx>\"/>",
+                 "project_source": "<abs path project>",
+                 "execute": False},
+        "required": ["page", "project_source"],
+        "pitfalls": [
+            "⟪N:execute=False = dry-run (planned); execute=True mới ghi; "
+            "id trùng → id_exists, controller đã có page → "
+            "controller_exists, fragment thiếu → template_missing⟫",
+            "⟪N:Thiếu template → cứ truyền, tool tự gợi ý theo khuôn "
+            "Fragments + controller cùng họ (xem page_param."
+            "suggested_template/candidates) — vẫn chèn⟫",
+            "⟪N:Chọn template: Page.001 mặc định (danh mục/báo cáo/màn "
+            "hình grid trơn); Page.004 đồ thị; Page.005 treeview; "
+            "Page.010/017/020 tiny popup (tool tự thêm tinyv/tinye từ "
+            "v/e); *Approval → Page.011; chứng từ *Tran → Page.012-016 "
+            "chép template của chứng từ cùng module (grep dòng <page> "
+            "của chứng từ mẫu); truy vấn Query*/QRT* → template Query⟫",
+            "⟪N:Dòng tool thêm nằm trong <!--Customize--> của "
+            "PageMetadata.xml — KHÔNG cần đọc file Page.0xx.xml lớn⟫",
+        ],
+    },
     "save_as_existing": {
         "desc": "SAVE-AS / copy-from-existing: create a new screen/report/"
                 "voucher suite by cloning an EXISTING named function the "
@@ -291,11 +328,32 @@ TASK_TYPES = {
             "đăng ký menu; các yêu cầu thêm của UR (đồ thị, cách tính "
             "mới...) sửa trên bản clone sau",
             "Suite clone bắt theo tên/prefix + parse templateFile/"
-            "reportFile trong Report XML + detect Main/*.aspx qua "
-            "Controller=\"<ctrl>\"; .xsd luôn denied (designer sinh lại); "
+            "reportFile trong Report XML + "
+            "⟪L:detect Main/*.aspx qua Controller=\"<ctrl>\"⟫"
+            "⟪N:nhân bản dòng <page> vào <!--Customize--> của "
+            "App_Data/PageMetadata.xml (controller chính + controller đi "
+            "kèm như *Approval; kết quả ở page_entries, id mới = tên "
+            "controller viết thường — đổi id nếu menu cần link khác)⟫; "
+            ".xsd luôn denied (designer sinh lại); "
             "file *Graph.xml chỉ đổi TÊN — nội dung vẫn trỏ entity nguồn, "
-            "sửa tay sau clone; aspx/mẫu Excel tên lệch trong same-project "
-            "save-as bị skip same-name → copy tay + đổi tên",
+            "sửa tay sau clone; ⟪L:aspx/⟫mẫu Excel tên lệch trong "
+            "same-project save-as bị skip same-name → copy tay + đổi tên",
+            "Grid truy ngược (Query*, zus_Query*) phải có dòng <controller "
+            "name=... description=\"\"/> trong Grid/Config/Aggregation.q — "
+            "clone type=3/6 tự thêm (xem aggregation_entries); thiếu thì mở "
+            "trang báo 'Chưa có quyền truy cập'",
+            "⟪N:Khuôn của dòng <page> (template Page.0xx) theo thành phần giao "
+            "diện: mặc định Page.001; báo cáo có đồ thị Page.004 (Page.020 nếu "
+            "cần tiêu đề tinyv/tinye); màn hình cây phân quyền Page.005; duyệt "
+            "*Approval Page.011; chứng từ Page.012-016 chia theo module → "
+            "chép khuôn của chứng từ mẫu cùng module; truy vấn Query*/QRT* → "
+            "Query. Khuôn có @@tinyv/@@tinye đòi dòng <page> có thuộc tính "
+            "tinyv/tinye (thiếu → tiêu đề hiện '@@tinyv', trang trắng): "
+            "clone/paste/param page tự điền, dòng viết tay phải tự thêm⟫",
+            "Controller gọi <!ENTITY ... SYSTEM> (Include/...) chưa có ở đích "
+            "→ lỗi 'opening external entity': suite clone báo "
+            "suite_includes_missing và tự lấy; copy từng file thì check bằng "
+            "get_xml_entities mode=checking",
             "execute=False (mặc định) = dry-run; execute=True mới copy",
         ],
     },
@@ -479,7 +537,7 @@ TASK_TYPES = {
         "call": {"file_path": "<path file>", "mode": "content",
                  "entities": ["<tên entity>"]},
         "required": ["file_path", "entities"],
-        "pitfalls": [],
+        "pitfalls": ["Bắt buộc entities; chưa biết tên thì chạy mode=list trước"],
     },
     "entity_path": {
         "desc": "Find WHERE (file:line) entities are declared",
@@ -577,6 +635,63 @@ TASK_TYPES = {
             "File paste ra còn placeholder name_* (và {{...}} chưa fill — "
             "xem unresolved_placeholders + edit_guide trong response): "
             "agent đổi field theo UR, khớp Dir/Grid/Upload/Filter + bảng SQL",
+            "⟪N:Dòng <page> do tool tạo nhét vào <!--Customize--> của "
+            "PageMetadata.xml, khuôn phù hợp loại trang (xem page_entries, "
+            "trang voucher tự gợi ý kèm candidates); đổi khuôn thì dòng "
+            "<page> phải có đủ tinyv/tinye nếu khuôn đòi, không thì tiêu "
+            "đề hiện '@@tinyv'⟫",
+        ],
+    },
+    # ---------------- excel_handler ----------------
+    "export_excel_template": {
+        "desc": "Generate Excel print TEMPLATE (.xlsx) from a report Grid "
+                "XML — auto-detects <pivot> (xoay → PivotTable thật qua "
+                "PivotExcel.exe, cần Excel desktop) vs grid thường → "
+                "template mau_chuan.xlsx (row9 '?h_<field>', row10 "
+                "'!2.<field>{b:systotal=0}'). Pick when step is xuất/tạo "
+                "mẫu in Excel cho báo cáo, 'convert grid to excel', mẫu "
+                "xoay/pivot, file templateFile. Output mặc định "
+                "Controllers/Templates/Excel/<tên_grid>.xlsx",
+        "tool": "excel_handler",
+        "call": {"grid_file": "<abs path Grid\\*.xml>",
+                 "defaults_only": True},
+        "required": ["grid_file"],
+        "pitfalls": [
+            "Gọi defaults_only=True trước để xem row/column/value gợi ý "
+            "(pivot) hoặc headers (thường) rồi quyết định override",
+            "Grid có <pivot>: row_fields/column_fields/value_fields csv — "
+            "bỏ trống = auto từ <pivot> + <view id='Grid'>; token đặc "
+            "biệt '?h_<field>', 'systotal', 'npivot'",
+            "Grid pivot mà view toàn field hidden → mode normal xuất "
+            "rỗng (báo lỗi — đúng, file đó đáng lẽ đi mode pivot)",
+            "Tool TỰ chạy AddFieldToReport trước export: inject field "
+            "h_* thiếu vào Report/<tên_grid>.xml (xem "
+            "report_update.status trong kết quả)",
+        ],
+    },
+    # ---------------- acceptance_xml ----------------
+    "acceptance_xml": {
+        "desc": "FINAL acceptance check for XML controllers after edits "
+                "are done — call ONCE at end of session with CSV paths "
+                "of every Dir/Grid/Filter .xml touched. Auto-adds UTF-8 "
+                "BOM when missing; optional pretty-print format "
+                "(in-place, config format_in_acceptance or format=true); "
+                "then runs FULL legacy checks (field vs view, pattern "
+                "counts, numeric items style, PK vs code=, categoryIndex, "
+                "anchor/split, Grid allowFilter chain). Pick when step is "
+                "check/verify/acceptance/chấm điểm/check legacy file "
+                "controller sau khi sửa xong. NOT for reading file "
+                "content (read_*) or lint entities (entity_check)",
+        "tool": "acceptance_xml",
+        "call": {"file_paths": "<abs path a.xml, abs path b.xml>"},
+        "required": ["file_paths"],
+        "pitfalls": [
+            "CHỈ nhận .xml — file khác loại vào invalid_files, các file "
+            "còn lại vẫn xử lý",
+            "XML ngoài Controllers\\{Dir,Grid,Filter} -> status skipped "
+            "(vẫn format/BOM nếu bật)",
+            "format mặc định theo config.yaml format_in_acceptance "
+            "(false = chỉ check); truyền format=true để ép format ghi đè",
         ],
     },
     "no_match": {
@@ -697,6 +812,8 @@ _JEV_TASK_DESCS = {
     "ur_semantic": "semantic search past user requests/tickets by "
                    "description",
     "ur_exact": "exact ticket(s) by fcode1 (YC)|ma_da; bypass semantic",
+    "register_page": "add SP30+ menu <page> line -> PageMetadata "
+                     "Customize block; signals:dang ky menu|trang moi",
     "clone_template": "paste bundled template suite into project "
                       "(copy+rename+rewrite tokens); signals:tao moi "
                       "bao cao/man hinh/danh muc/chuc nang/chung tu "
@@ -704,12 +821,18 @@ _JEV_TASK_DESCS = {
                       "MultiForm+MultiGrid+Lookup), voucher_* suite — "
                       "new suites come from template not hand-written; "
                       "not:save-as from existing (save_as_existing)",
+    "export_excel_template": "generate Excel print template .xlsx from "
+                             "report Grid XML (pivot vs normal auto); "
+                             "signals:xuat/tao mau in Excel cho bao cao, "
+                             "convert grid to excel, mau xoay/pivot, "
+                             "templateFile",
+    "acceptance_xml": "FINAL check XML controllers after edits — CSV "
+                      "paths .xml -> auto UTF-8 BOM + optional format + "
+                      "full legacy rules; signals:check/chấm điểm/check "
+                      "legacy sau khi sửa xong; not:read file (read_*), "
+                      "entity lint (entity_check)",
     "no_match": "no tool fits — manual work only: business reasoning, "
-                "hand-writing content; not:SQL (db_run_sql/db_run_"
-                "file), new .sql file (new_sql_file), new screen/"
-                "report suite (clone_template), save-as existing "
-                "(save_as_existing), XML edit (read_suggest_edit), "
-                "balances (db_balance)",
+                "hand-writing content; not:any tool-backed task",
 }
 
 # Loại yêu cầu -> template dir tương ứng (None = chưa có mẫu).
@@ -805,7 +928,8 @@ REQUIREMENT_TYPES = {
         "desc": "CREATE a brand-new voucher suite (chung tu moi) with NO "
                 "approval flow and NO foreign currency: Dir/Grid/Filter/"
                 "Query/Report/Detail controllers + Include/Extender + "
-                "Revert + Main aspx + SYS/APP SQL. Pick when UR asks tao "
+                "Revert + Main aspx (SP30+: dong <page> o Metadata/Page*.xml, "
+                "voucher chi tra manual) + SYS/APP SQL. Pick when UR asks tao "
                 "chung tu/voucher moi WITHOUT duyet/phe duyet/trinh duyet "
                 "AND WITHOUT ma_nt/ngoai te/ty gia/nguyen te (hoac UR noi "
                 "ro 'chung tu binh thuong/thuong/don gian, khong duyet, "
@@ -927,11 +1051,12 @@ REQUIREMENT_TYPES = {
             "sẵn tên controller/file (vd zclctt) → 'saveas:ctrl:<tên>"
             "-><new_ctrl>'. Không tìm thấy hoặc ambiguous → hỏi user",
             "2. type=6 clone toàn bộ suite file (Filter/Grid/Dir/Report"
-            "/aspx...) + export proc nguồn ra .sql temp — mặc định "
+            "⟪L:/aspx⟫...) + export proc nguồn ra .sql temp — mặc định "
             "dry-run, execute=True mới ghi file",
             "3. Đổi tên proc trong .sql thành tên mới user gửi (vd "
-            "zc_lctt → zc_bcdt), sửa <title v> trong XML mới, đăng ký "
-            "menu/aspx nếu cần",
+            "zc_lctt → zc_bcdt), sửa <title v> trong XML mới"
+            "⟪N: (và v/e trên dòng <page> mới)⟫, đăng ký menu nếu cần "
+            "(link = '⟪L:<tên trang>⟫⟪N:<id dòng page>⟫.aspx')",
             "4. Sửa bản clone theo các yêu cầu phụ của UR (cột, cách "
             "tính, toolbar, đồ thị...)",
             "4b. Save-as KHÔNG tự đăng ký config chung — grep tên "
@@ -944,7 +1069,9 @@ REQUIREMENT_TYPES = {
             "Include/Extender.ent (cả nhánh List lẫn Post)",
             "5. Nếu chức năng nguồn/UR có nút Đồ thị: cần đủ bộ "
             "{X}Graph.xml (Filter/Grid) + entity Identification/GraphMa* "
-            "+ aspx có LoadControl(\"Chart.ascx\") — thiếu → lỗi JS "
+            "⟪L:+ aspx có LoadControl(\"Chart.ascx\")⟫"
+            "⟪N:+ khuôn Page.0xx của dòng <page> có nạp Chart (giữ template "
+            "của trang nguồn)⟫ — thiếu → lỗi JS "
             "'chart$Graph$InitObject is not defined'",
             "6. Verify: query_database query_type=3 (PARSEONLY) file "
             ".sql + get_xml_entities checking các XML đã sửa",
@@ -1076,6 +1203,13 @@ def template_block(req_type: str) -> dict | None:
             # output shape; v1 fallback: list path string
             files = [(f.get("dst") if isinstance(f, dict) else f)
                      for f in raw]
+            # Trang chức năng: bản cũ = Main/<id>.aspx, SP30+ = dòng <page>.
+            files = [
+                f"⟪L:{p}⟫⟪N:App_Data/Metadata/Page*.xml (dòng <page id=\""
+                f"{p.rsplit('/', 1)[-1][:-5]}\">)⟫"
+                if isinstance(p, str) and p.lower().endswith(".aspx") else p
+                for p in files
+            ]
     except Exception:
         files = []
     return {

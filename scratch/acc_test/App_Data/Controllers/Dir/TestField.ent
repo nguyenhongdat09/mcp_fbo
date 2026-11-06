@@ -1,0 +1,4 @@
+<field name="ma_bp" type="char" isPrimaryKey="true"><items style="Text"></items></field>
+<field name="ten_bp" type="char"></field>
+<field name="so_luong" type="decimal"></field>
+<field name="hidden_fld" type="char"></field>

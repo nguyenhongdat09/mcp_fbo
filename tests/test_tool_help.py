@@ -650,14 +650,14 @@ def test_find_by_title_keyword_ma_ct():
     assert out["steps"][0]["task_type"] == "find_by_title"
 
 
-def test_save_as_notice_on_task(patch_jev):
-    """Step route save_as_existing → notice save_as_flow đính kèm."""
+def test_save_as_notice_removed(patch_jev):
+    """Notice save_as_flow đã gỡ — hướng dẫn save-as nằm ở workflow."""
     patch_jev["fn"] = _fake_ask({
         "step1_tool": {"type": "choice", "choice": "save_as_existing",
                        "probabilities": {"save_as_existing": 0.9}}})
     out = _parse(tool_help("save as báo cáo", jev_config=FAKE_CFG))
     texts = list((out.get("notice") or {}).values())
-    assert any("saveas:" in t and "type=6" in t for t in texts)
+    assert not any("SAVE-AS chức năng có sẵn" in t for t in texts)
 
 
 def test_requirement_clone_existing_workflow(patch_jev):
@@ -677,9 +677,8 @@ def test_requirement_clone_existing_workflow(patch_jev):
     assert req.get("workflow"), req
     assert any("type=6" in w for w in req["workflow"])
     assert "template" not in req
-    # notice save_as_flow fire theo requirement
     texts = list((out.get("notice") or {}).values())
-    assert any("saveas:" in t for t in texts)
+    assert not any("SAVE-AS chức năng có sẵn" in t for t in texts)
     # plan đúng → không có warning clone_existing
     assert not any("clone_existing" in w for w in out.get("warnings", []))
 

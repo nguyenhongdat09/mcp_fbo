@@ -38,3 +38,6 @@ edit_guide: |
   5. Main/{new}.aspx là ENTRY POINT mở báo cáo (ReportExtender
      Controller={new}) — BẮT BUỘC phải có, KHÔNG được bỏ qua.
   6. Đăng ký menu thủ công trỏ tới Main/{new}.aspx.
+  7. Filter on$Filter$ResponseComplete (case 'Checking'): đi kèm
+     remove$GridReport$Filter(g); BẮT BUỘC phải có g._hiddenFields = []
+     (hoặc mảng thật) — không được xóa/bỏ dù không ẩn cột nào.

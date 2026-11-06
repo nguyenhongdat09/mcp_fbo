@@ -1,0 +1,598 @@
+{
+ "ASAsset": {
+  "total": 1,
+  "examples": [
+   "\"Cập nhật thông tin tài sản, thiết bị\" e=\"Asset and Equipment Information\""
+  ]
+ },
+ "About": {
+  "total": 1,
+  "examples": [
+   "\"Thông tin sản phẩm\" e=\"About\""
+  ]
+ },
+ "Allocation": {
+  "total": 2,
+  "examples": [
+   "\"Phân bổ trả tiền hàng tự động cho các hóa đơn\" e=\"Advanced Payment Allocation to Invoices\"",
+   "\"Phân bổ thu tiền hàng tự động cho các hóa đơn\" e=\"Advanced Payment Allocation to Invoices\""
+  ]
+ },
+ "BankStatement": {
+  "total": 1,
+  "examples": [
+   "\"Sao kê tài khoản ngân hàng\" e=\"Bank Statement\""
+  ]
+ },
+ "Bill": {
+  "total": 1,
+  "examples": [
+   "\"Phiếu bán hàng\" e=\"Bill of Sale\""
+  ]
+ },
+ "Contract": {
+  "total": 4,
+  "examples": [
+   "\"Danh mục hợp đồng\" e=\"Contract List\"",
+   "\"Danh mục vụ việc\" e=\"Job List\"",
+   "\"Danh mục khế ước\" e=\"Loan Contract List\"",
+   "\"Danh mục tài khoản\" e=\"Chart of Accounts\""
+  ]
+ },
+ "Customer": {
+  "total": 1,
+  "examples": [
+   "\"Danh mục khách hàng\" e=\"Customer List\""
+  ]
+ },
+ "Dashboard": {
+  "total": 1,
+  "examples": [
+   "\"Tổng quan\" e=\"Main Dashboard\""
+  ]
+ },
+ "DashboardContainer": {
+  "total": 2,
+  "examples": [
+   "\"Đồ thị phân tích mua hàng\" e=\"Purchase Dashboard\"",
+   "\"Đồ thị phân tích bán hàng\" e=\"Sales Dashboard\""
+  ]
+ },
+ "EIReleasedInvoice": {
+  "total": 1,
+  "examples": [
+   "\"Danh sách hóa đơn điện tử đã phát hành\" e=\"Released Invoices Retrieved from e-Invoice Portal\""
+  ]
+ },
+ "EmployeeInformation": {
+  "total": 1,
+  "examples": [
+   "\"Thông tin nhân viên\" e=\"Employee Information\""
+  ]
+ },
+ "Events": {
+  "total": 1,
+  "examples": [
+   "\"Lịch làm việc\" e=\"Calendar\""
+  ]
+ },
+ "FAOQuery": {
+  "total": 1,
+  "examples": [
+   "\"Truy vấn số liệu\" e=\"Data Query\""
+  ]
+ },
+ "FAOQueryScreen": {
+  "total": 1,
+  "examples": [
+   "\"Truy vấn số liệu\" e=\"Data Query\""
+  ]
+ },
+ "Flow": {
+  "total": 6,
+  "examples": [
+   "\"Quy trình bán hàng\" e=\"Sales Process Flowchart\"",
+   "\"Quy trình mua hàng\" e=\"Purchasing Process Flowchart\"",
+   "\"Quy trình hoạch định công suất\" e=\"CRP Process Flowchart\"",
+   "\"Quy trình lập kế hoạch sản xuất\" e=\"MPS Process Flowchart\"",
+   "\"Quy trình hoạch định nhu cầu vật tư\" e=\"MRP Process Flowchart\"",
+   "\"Quy trình quản lý phân xưởng\" e=\"Shop Floor Control Flowchart\""
+  ]
+ },
+ "Gantt": {
+  "total": 2,
+  "examples": [
+   "\"Bảng kế hoạch tiến độ yêu cầu sản xuất\" e=\"Job Schedule Gantt Chart\"",
+   "\"Bảng tiến độ thực hiện yêu cầu sản xuất\" e=\"Daily Production Gantt Chart\""
+  ]
+ },
+ "InputInvoice": {
+  "total": 1,
+  "examples": [
+   "\"Danh sách hóa đơn đầu vào\" e=\"Input Invoice List\""
+  ]
+ },
+ "Item": {
+  "total": 1,
+  "examples": [
+   "\"Danh mục hàng hóa, vật tư\" e=\"Item List\""
+  ]
+ },
+ "LayoutConfig": {
+  "total": 1,
+  "examples": [
+   "\"Khai báo giao diện...\" e=\"Personalization...\""
+  ]
+ },
+ "Page.001": {
+  "total": 1367,
+  "examples": [
+   "\"Danh sách người sử dụng đang thực hiện chương trình\" e=\"Currently Active Users List\"",
+   "\"Danh mục loại chỉ định đối tượng phân bổ\" e=\"Account Assignment Category\"",
+   "\"Khai báo tham số ngầm định theo người sử dụng\" e=\"User's Default Parameter\"",
+   "\"Bảng kê chi tiết thông tin giá\" e=\"Info Record\"",
+   "\"Chuyển số liệu mua hàng nội bộ\" e=\"Transfer Internal Buying Data\"",
+   "\"Khai báo tham chiếu mã hàng mua bán nội bộ\" e=\"Internal Reference Item\"",
+   "\"Bảng tổng hợp bút toán điều chỉnh\" e=\"Summary Report on the Adjustment Entry\"",
+   "\"Cập nhật số lượng sản phẩm dở dang cuối kỳ\" e=\"Input Closing Quantity of WIP\"",
+   "\"Tính chi phí dở dang cuối kỳ nguyên vật liệu\" e=\"Calculate Period-end WIP Cost of Raw Material\"",
+   "\"Danh mục mẫu thông báo\" e=\"Notification Reminders Template\"",
+   "\"Danh mục loại chiết khấu, khuyến mãi\" e=\"Discount, Promotion Type List\"",
+   "\"Tính lại số liệu giới hạn chiết khấu\" e=\"Recalculate Discount Limitation Data\"",
+   "\"Danh mục phân nhóm TSCĐ\" e=\"Fixed Asset Group List\"",
+   "\"Danh mục đơn vị cơ sở\" e=\"Unit List\"",
+   "\"Khai báo quyền thay đổi thông tin\" e=\"Allowable Change Declaration\"",
+   "\"Điều chỉnh dữ liệu lương\" e=\"Salary Adjustment\"",
+   "\"Danh mục tình trạng nhân viên\" e=\"Employee Status List\"",
+   "\"Danh mục loại phân nhóm bộ phận\" e=\"Department Category Type\"",
+   "\"Báo cáo thống kê độ tuổi theo bộ phận, vị trí công việc\" e=\"Age Statistics by Department, Position\"",
+   "\"Danh sách lao động tham gia bảo hiểm\" e=\"Employees Joining Insurance\"",
+   "\"Danh sách nhân viên không có dữ liệu chấm công\" e=\"List of Employees not complete Timesheets\"",
+   "\"Báo cáo tình hình lao động hàng ngày\" e=\"Daily Labour Report\"",
+   "\"Danh mục loại phỏng vấn\" e=\"Interview List\"",
+   "\"Tính thuế thu nhập cá nhân\" e=\"Personal Income Tax Calculation\"",
+   "\"Tính giá trung bình\" e=\"Calculate Average Cost\"",
+   "\"Khai báo danh sách trường ẩn\" e=\"Hiden Field List Declaration\"",
+   "\"Giới hạn quyền truy cập theo đơn vị cơ sở\" e=\"Limit Access Right by Unit\"",
+   "\"Đóng phiếu nhu cầu\" e=\"PR Close\"",
+   "\"Sổ chi phí quản lý dự án\" e=\"PMU Expenses Journal\"",
+   "\"Hóa đơn mua hàng dịch vụ\" e=\"Service Purchase Invoice\"",
+   "\"Bảng kê chi tiết thu tiền của các hóa đơn có CLTG\" e=\"Detail Receivable Report by Invoice with Exchange Rate Difference\"",
+   "\"Bảng kê chi tiết sổ sách, thực tế\" e=\"List of Detailed Variance\"",
+   "\"Định mức nguyên vật liệu\" e=\"Bill of Materials\"",
+   "\"Báo cáo nguồn lực vượt mức\" e=\"Resource Overload Report\"",
+   "\"Bảng tổng hợp trích khấu hao TSCĐ\" e=\"Fixed Asset Depreciation Summary Report\"",
+   "\"Bảng cân đối phát sinh theo ngày của một tài khoản\" e=\"Account Daily Balance\"",
+   "\"Sổ nhật ký mua hàng\" e=\"Purchase Journal\"",
+   "\"Sổ tiền gửi ngân hàng\" e=\"Detailed Bank Deposit\"",
+   "\"Bảng tổng hợp chi tiết vật tư\" e=\"Inventory Transaction Book\"",
+   "\"Báo cáo tổng hợp tình hình tiền vay\" e=\"Loan Contract Status Summary Report\"",
+   "\"Báo cáo giá trị hàng nhập theo nhà cung cấp\" e=\"Receipt Report by Supplier\"",
+   "\"Bảng kê hóa đơn nhóm theo khách hàng\" e=\"Sales Transaction List By Customer\"",
+   "\"Báo cáo so sánh nhập xuất tồn sổ sách, thực tế\" e=\"Stock Summary Variance Report for Consolidate\"",
+   "\"Báo cáo tình trạng phiếu nhập kho thực tế\" e=\"Goods Receipt Status Report\"",
+   "\"Khai báo sắp xếp các trường...\" e=\"Arrangement columns in grid\"",
+   "\"Danh mục loại vận chuyển\" e=\"Transport Type List\"",
+   "\"Danh mục biểu thuế lũy tiến từng phần\" e=\"The Scale of Progressive Tax Tariff\"",
+   "\"Danh sách lô kiểm định\" e=\"Inspection Lot List\"",
+   "\"Danh mục loại tài sản, thiết bị\" e=\"Asset and Equipment Type List\"",
+   "\"Báo cáo xử lý dữ liệu\" e=\"Data Processing Report\""
+  ]
+ },
+ "Page.002": {
+  "total": 11,
+  "examples": [
+   "\"Danh mục trung tâm công việc\" e=\"Work Center List\"",
+   "\"Khai báo nhóm nhân công\" e=\"Labor Group Detail\"",
+   "\"Danh mục nguồn lực chủ yếu\" e=\"Critical Resource List\"",
+   "\"Khai báo chi tiết gói sản phẩm\" e=\"Combo Product Item Configuration\"",
+   "\"Khai báo bộ sản phẩm chiết khấu, khuyến mãi\" e=\"Product Sets Declaration\"",
+   "\"Chi tiết chương trình chiết khấu, khuyến mãi\" e=\"Detail Definition Input\"",
+   "\"Danh mục nhóm hàng tặng\" e=\"Promotional Gift Item Group List\"",
+   "\"Khai báo chương trình chiết khấu, khuyến mãi\" e=\"Discount, Promotion Policy Definition\"",
+   "\"Khai báo nhóm vật tư tùy chọn\" e=\"Optional Item Group Declaration\"",
+   "\"Khai báo ràng buộc tạo dòng chiết khấu\" e=\"Discount Line Generation Rules\"",
+   "\"Điều chỉnh danh sách lao động thanh toán theo chế độ\" e=\"Data Adjustment for Social Insurance Benefits\""
+  ]
+ },
+ "Page.003": {
+  "total": 28,
+  "examples": [
+   "\"Khai báo người sử dụng\" e=\"User Maintenance\"",
+   "\"Khai báo thông tin kết nối ngân hàng\" e=\"Banking Connection\"",
+   "\"Khai báo sử dụng quyết định, thông tư mới theo đơn vị\" e=\"Declaration of Business apply for Decision or Circular by Unit\"",
+   "\"Khai báo tài khoản kết nối\" e=\"Account Profile\"",
+   "\"Khai báo tài khoản kết nối theo người sử dụng\" e=\"Account Management by User\"",
+   "\"Báo cáo tình trạng hóa đơn\" e=\"Invoice Status Report\"",
+   "\"Báo cáo tình trạng xác thực chứng từ\" e=\"Voucher Status Report\"",
+   "\"Bỏ ghi sổ, hạch toán của hóa đơn điện tử\" e=\"Remove Posting of e-invoice\"",
+   "\"Điều chỉnh chi\" e=\"Payment Adjustments\"",
+   "\"Điều chỉnh giấy báo nợ\" e=\"Bank Debit Advice Adjustments\"",
+   "\"Chuyển đổi hóa đơn\" e=\"Sales Invoice Convert\"",
+   "\"Chuyển đổi phiếu xuất\" e=\"Inventory Issue Convert\"",
+   "\"Đề nghị lưu trữ dữ liệu\" e=\"Data Backup Request\"",
+   "\"Phát hành hóa đơn điện tử\" e=\"E-Invoice Registration\"",
+   "\"Phát hành hóa đơn điện tử theo gói\" e=\"E-Invoice Package Release\"",
+   "\"Hủy hóa đơn\" e=\"Cancel Invoice\"",
+   "\"Phát hành phiếu bán hàng\" e=\"Bill Issue\"",
+   "\"Phát hành phiếu xuất\" e=\"E-Invoice Registration\"",
+   "\"Cập nhật thông báo hệ thống\" e=\"Announcement Entry\"",
+   "\"Gửi phiếu lương qua thư điện tử\" e=\"Payslip Emailing\"",
+   "\"Khai báo thông tin gửi tin nhắn\" e=\"Server Key Declaration\"",
+   "\"Khai báo thông tin chứng thư số\" e=\"Digital Certificate Declaration\"",
+   "\"Phát hành chứng từ khấu trừ thuế điện tử\" e=\"Certificate of Personal Income Tax Withholding Release\"",
+   "\"Báo cáo tình trạng chứng từ khấu trừ thuế TNCN\" e=\"Certificate of Personal Income Tax Withholding Status Report\"",
+   "\"Sao chép số liệu\" e=\"Data Copy\"",
+   "\"Chuyển đổi sử dụng hóa đơn xác thực\" e=\"Authentication Mode\"",
+   "\"Xác nhận thanh toán hóa đơn\" e=\"E-Invoice Payment Confirmation\"",
+   "\"Xóa nhiều chứng từ\" e=\"Voucher Mass Delete...\""
+  ]
+ },
+ "Page.004": {
+  "total": 81,
+  "examples": [
+   "\"So sánh giá\" e=\"Price Comparison\"",
+   "\"Phân tích đánh giá nhà cung cấp theo chỉ tiêu\" e=\"Vendor Evaluation Analysis by Criterion\"",
+   "\"Xếp hạng nhà cung cấp\" e=\"Ranking List of Vendors\"",
+   "\"So sánh báo giá\" e=\"Quotation Comparison\"",
+   "\"Báo cáo mua hàng nội bộ xoay theo cột\" e=\"Internal Buying Pivot Report\"",
+   "\"Truy vấn nhu cầu công suất của nguồn lực\" e=\"Resource Load Inquiry\"",
+   "\"Truy vấn nhu cầu công suất của trung tâm công việc\" e=\"Work Center Load Inquiry\"",
+   "\"Báo cáo tổng hợp chi phí xoay theo cột\" e=\"Expense Analysis Report\"",
+   "\"Phân tích mua hàng nhiều kỳ\" e=\"Multi-period Purchase Analysis\"",
+   "\"Báo cáo thống kê trình độ học vấn theo bộ phận, vị trí công việc\" e=\"Education Statistics by Department and Position\"",
+   "\"Phân tích loại lương theo bộ phận nhiều kỳ\" e=\"Multi-period Department Salary by Pay Type\"",
+   "\"Bảng tổng hợp tăng giảm lao động theo bộ phận nhiều kỳ\" e=\"Multi Period Labor Fluctuation Report\"",
+   "\"Báo cáo thống kê nghỉ việc nhiều kỳ theo lý do\" e=\"Multi-period Job Leaving Statistics by Reason\"",
+   "\"Bảng tính khấu hao TSCĐ nhiều kỳ\" e=\"Multi Period Fixed Asset Depreciation Report\"",
+   "\"Báo cáo kết quả hoạt động kinh doanh theo đơn vị cơ sở\" e=\"Multi-unit Income Statement\"",
+   "\"Báo cáo kết quả hoạt động kinh doanh theo nhiều bộ phận\" e=\"Income Statement by Departments\"",
+   "\"Báo cáo so sánh chỉ số kế hoạch, bình quân ngành, công ty khác nhiều kỳ\" e=\"Financial Ratio Comparison for Multiple Periods\"",
+   "\"Phân tích bán hàng nhiều kỳ\" e=\"Multi-period Sales Analysis\"",
+   "\"Bảng tính chi phí phân bổ CCDC nhiều kỳ\" e=\"Multi Period Tool & Supply Allocation Report\"",
+   "\"Bảng chi tiết kế hoạch bảo dưỡng\" e=\"Detail Maintenance Plan Sheet\"",
+   "\"Bảng chi tiết kế hoạch sửa chữa\" e=\"Detail Repair Plan Sheet\"",
+   "\"Bảng dự tính kế hoạch kiểm định theo chu kỳ\" e=\"Inspection Plan Sheet by Cycle\"",
+   "\"Bảng dự tính sửa chữa theo chu kỳ\" e=\"Repair Plan Sheet by Cycle\"",
+   "\"Bảng kế hoạch kiểm định\" e=\"Inspection Plan Sheet\"",
+   "\"Bảng kế hoạch sửa chữa\" e=\"Repair Plan Sheet\"",
+   "\"Báo cáo vật tư, chi phí kiểm định theo định mức\" e=\"Standard Material and Cost Repair Report\"",
+   "\"Báo cáo tình hình thực hiện kế hoạch sửa chữa\" e=\"Standard Material and Cost Repair Report\"",
+   "\"Báo cáo vật tư, chi phí sửa chữa theo thực tế\" e=\"Actual Material and Cost Repair Report\"",
+   "\"Báo cáo chi tiết kết quả kiểm định\" e=\"Detail Inspection Result Report\"",
+   "\"Báo cáo chi tiết kết quả sửa chữa\" e=\"Detail Repair Result Report\"",
+   "\"Báo cáo chứng nhận quá hạn chưa được cấp lại\" e=\"Expired and Unrenewed Certificates Report\"",
+   "\"Báo cáo nhu cầu vật tư, chi phí bảo dưỡng theo kế hoạch\" e=\"Maintenance Plan by Material and Cost\"",
+   "\"Báo cáo so sánh vật tư, chi phí kiểm định thực tế và định mức\" e=\"Inspection Material and Cost Variance Report\"",
+   "\"Báo cáo tình hình thực hiện lệnh sửa chữa\" e=\"Repair Order Execution Status Report\"",
+   "\"Báo cáo tình hình thực hiện lệnh bảo dưỡng\" e=\"Maintenance Order Execution Status Report\"",
+   "\"Báo cáo tổng hợp nhu cầu vật tư, chi phí sửa chữa theo kế hoạch\" e=\"General Repair Plan by Material and Cost\"",
+   "\"Báo cáo tổng hợp kết quả kiểm định\" e=\"General Inspection Result Report\"",
+   "\"Báo cáo tổng hợp kết quả sửa chữa\" e=\"General Repair Result Report\"",
+   "\"Báo cáo lịch sử kiểm định\" e=\"Inspection History Report\"",
+   "\"Báo cáo nhu cầu vật tư, chi phí kiểm định theo kế hoạch\" e=\"Inspection Plan by Material and Cost\"",
+   "\"Báo cáo tổng hợp nhu cầu vật tư, chi phí kiểm định theo kế hoạch\" e=\"General Inspection Plan by Material and Cost\"",
+   "\"Thông số tài sản, thiết bị\" e=\"Asset and Equipment Technical Data\"",
+   "\"Danh sách tài sản, thiết bị sắp hết hạn\" e=\"List of Upcoming Expired Assets and Equipment\"",
+   "\"Danh sách tài sản, thiết bị\" e=\"Asset and Equipment List\"",
+   "\"Danh sách tài sản, thiết bị theo mục đích sử dụng\" e=\"List of Asset and Equipment by Usage Purpose\"",
+   "\"Danh sách tài sản, thiết bị theo nguồn gốc hình thành\" e=\"List of Asset and Equipment by Formation Source\"",
+   "\"Báo cáo giảm tài sản, thiết bị\" e=\"Asset and Equipment Decreasing Report\"",
+   "\"Báo cáo tình hình thực hiện kế hoạch bảo dưỡng\" e=\"Maintenance Plan Execution Report\"",
+   "\"Báo cáo vật tư, chi phí bảo dưỡng theo định mức\" e=\"Standard Material and Cost Maintenance Report\"",
+   "\"Báo cáo so sánh vật tư, chi phí bảo dưỡng thực tế và định mức\" e=\"Maintenance Material and Cost Variance Report\""
+  ]
+ },
+ "Page.005": {
+  "total": 10,
+  "examples": [
+   "\"Phân quyền truy cập nhóm người sử dụng\" e=\"User Group Right Maintenance\"",
+   "\"Phân quyền truy cập\" e=\"User Menu Right Maintenance\"",
+   "\"Giới hạn quyền truy cập nhóm người sử dụng\" e=\"Limit Access Right to User Groups\"",
+   "\"Giới hạn quyền truy cập\" e=\"Limit Access Right to Users\"",
+   "\"Quản lý chức năng theo đơn vị cơ sở\" e=\"Menu Management by Unit\"",
+   "\"Quản lý chức năng theo nhóm người sử dụng\" e=\"Menu Management by User Group\"",
+   "\"Khai báo quyền bộ phận\" e=\"Defining Department Access Control\"",
+   "\"Khai báo quyền chức năng\" e=\"Defining Task Access Control\"",
+   "\"Giới hạn chi tiết quyền truy cập cho các báo cáo\" e=\"Limit Detail Access Right to Reports\"",
+   "\"Quản lý chức năng\" e=\"Menu Management\""
+  ]
+ },
+ "Page.006": {
+  "total": 3,
+  "examples": [
+   "\"Cập nhật danh sách lao động tham gia bảo hiểm\" e=\"Insurance Information Changes Input\"",
+   "\"Cập nhật hợp đồng lao động\" e=\"Labor Contract\"",
+   "\"Cập nhật danh sách lao động phát sinh thanh toán theo chế độ\" e=\"Data Entry for Social Insurance Benefits\""
+  ]
+ },
+ "Page.007": {
+  "total": 2,
+  "examples": [
+   "\"Danh mục mẫu thư\" e=\"Mail Template List\"",
+   "\"Kiểm tra báo cáo tài chính riêng chưa gửi\" e=\"Check Unsent Subsidiary Financial Reports\""
+  ]
+ },
+ "Page.008": {
+  "total": 6,
+  "examples": [
+   "\"Cập nhật thông tin nhân viên\" e=\"Input Employee Information\"",
+   "\"Khai báo nhóm khách hàng tùy chọn\" e=\"Optional Customer Group Declaration\"",
+   "\"Cập nhật thông tin bảo hiểm, công đoàn\" e=\"Employee Insurance and Union Due Information\"",
+   "\"Cập nhật thông tin thuế TNCN cho nhân viên\" e=\"Employee PIT Information\"",
+   "\"Cập nhật thông tin lương nhân viên\" e=\"Employee Salary Information\"",
+   "\"Giao dịch phân xưởng\" e=\"Shop Activity Transactions\""
+  ]
+ },
+ "Page.009": {
+  "total": 2,
+  "examples": [
+   "\"Khai báo thông tin thư điện tử\" e=\"Mail Server Declaration\"",
+   "\"Khai báo thông tin thư điện tử nhận hóa đơn\" e=\"Declaration of Extract e-Invoices from Notification Email\""
+  ]
+ },
+ "Page.010": {
+  "total": 10,
+  "examples": [
+   "\"Vào số dư công nợ đầu kỳ\" e=\"Customer Opening Balance\"",
+   "\"Cập nhật số lượng sản phẩm dở dang đầu kỳ\" e=\"Opening WIP Quantity Input\"",
+   "\"Cập nhật vật tư dở dang đầu kỳ\" e=\"Opening WIP Balance Input by Item\"",
+   "\"Cập nhật giá trị dở dang đầu kỳ theo yếu tố chi phí\" e=\"Opening WIP Balance Input by Cost Factor\"",
+   "\"Vào số phát sinh lũy kế đầu kỳ của các vụ việc\" e=\"Input Job Accumulation\"",
+   "\"Điều chỉnh số dư công nợ đầu kỳ\" e=\"Customer Opening Balance Adjustment\"",
+   "\"Vào số dư đầu kỳ các vụ việc\" e=\"Job Opening Balance\"",
+   "\"Điều chỉnh số dư đầu kỳ các tài khoản\" e=\"Account Opening Balance Adjustment\"",
+   "\"Vào số dư đầu kỳ các tài khoản\" e=\"Account Opening Balance\"",
+   "\"Vào tồn kho đầu kỳ\" e=\"Stock Opening Balance\""
+  ]
+ },
+ "Page.011": {
+  "total": 26,
+  "examples": [
+   "\"Duyệt phiếu nhu cầu\" e=\"PR Approval\"",
+   "\"Duyệt thỏa thuận mua hàng\" e=\"Outline Agreement Approval\"",
+   "\"Duyệt hợp đồng mua hàng\" e=\"Scheduling Agreement Approval\"",
+   "\"Duyệt yêu cầu kiểm định\" e=\"Inspection Lot Approval\"",
+   "\"Duyệt đề nghị chi tiền\" e=\"Supplier Payment Request Approval\"",
+   "\"Duyệt đề nghị thu tiền\" e=\"Customer Payment Request Approval\"",
+   "\"Duyệt chi\" e=\"Payments Approval\"",
+   "\"Duyệt phiếu yêu cầu đào tạo\" e=\"Training Request Approval\"",
+   "\"Duyệt phiếu yêu cầu tuyển dụng\" e=\"Recruitment Request Approval\"",
+   "\"Duyệt phiếu yêu cầu cấp phát công cụ, dụng cụ\" e=\"Tool & Supply Requisition Approval\"",
+   "\"Duyệt phiếu yêu cầu lĩnh vật tư\" e=\"Material Requisition Approval\"",
+   "\"Duyệt đề nghị báo giá\" e=\"RFQ Approval\"",
+   "\"Duyệt đơn hàng\" e=\"PO Approval\"",
+   "\"Duyệt yêu cầu sản xuất\" e=\"Work Order Approval\"",
+   "\"Duyệt giấy báo giá\" e=\"Quotation Approval\"",
+   "\"Duyệt đơn hàng bán\" e=\"Sales Order Approval\"",
+   "\"Duyệt phiếu dự toán\" e=\"Cost Estimate Approval\"",
+   "\"Duyệt đề nghị bảo dưỡng\" e=\"Maintenance Request Approval\"",
+   "\"Duyệt đề nghị sửa chữa\" e=\"Repair Request Approval\"",
+   "\"Duyệt kế hoạch bảo dưỡng\" e=\"Maintenance Plan Approval\"",
+   "\"Duyệt kế hoạch kiểm định\" e=\"Inspection Plan Approval\"",
+   "\"Duyệt kế hoạch sửa chữa\" e=\"Repair Plan Approval\"",
+   "\"Duyệt lệnh bảo dưỡng\" e=\"Maintenance Order Approval\"",
+   "\"Duyệt đề nghị kiểm định\" e=\"Inspection Request Approval\"",
+   "\"Duyệt lệnh kiểm định\" e=\"Inspection Order Approval\"",
+   "\"Duyệt lệnh sửa chữa\" e=\"Repair Order Approval\""
+  ]
+ },
+ "Page.012": {
+  "total": 74,
+  "examples": [
+   "\"Cập nhật báo giá\" e=\"Quotation\"",
+   "\"Hóa đơn bán hàng\" e=\"Sales Invoice\"",
+   "\"Cập nhật mất, cháy, hỏng hóa đơn\" e=\"Lost, Burn or Damaged Invoice\"",
+   "\"Cập nhật kết quả hủy hóa đơn\" e=\"Input the Result of Cancelled Invoice\"",
+   "\"Lệnh sản xuất\" e=\"Manufacturing Order\"",
+   "\"Công cụ dụng cụ\" e=\"Tool & Supply\"",
+   "\"Cập nhật số lượng sản phẩm theo bộ phận\" e=\"Department Product Quantity Input\"",
+   "\"Cập nhật số lượng sản phẩm cá nhân\" e=\"Employee Product Quantity Input\"",
+   "\"Tất toán cho các hóa đơn\" e=\"Write-off\"",
+   "\"Cập nhật thông tin đợt tuyển dụng\" e=\"Recruitment Period Information Input\"",
+   "\"Hóa đơn dịch vụ\" e=\"Service Invoice\"",
+   "\"Cập nhật phát sinh nghĩa vụ thuế khác\" e=\"Miscellaneous Tax Obligation Input\"",
+   "\"Phiếu nhập kho thực tế\" e=\"Goods Receipt\"",
+   "\"Phiếu xuất điều chuyển thực tế\" e=\"Goods Transfer\"",
+   "\"Khai báo nguồn cung ứng\" e=\"Source List\"",
+   "\"Cập nhật kết quả kiểm định\" e=\"Result Recording\"",
+   "\"Quyết định sử dụng\" e=\"Usage Decision\"",
+   "\"Khai báo thông tin đánh giá theo đơn vị mua\" e=\"Maintain Purchasing Organization Data\"",
+   "\"Cập nhật điểm phát sinh theo vật tư\" e=\"Enter Score by Item\"",
+   "\"Điều chỉnh thông tin đánh giá nhà cung cấp\" e=\"Vendor Evaluation Adjustment\"",
+   "\"Bút toán điều chỉnh dòng tiền và thuyết minh\" e=\"Adjustment Entry for the Cash Flow Statement and Interpretation of Financial\"",
+   "\"Cập nhật phát sinh điều chỉnh\" e=\"Miscellaneous Adjustment Entry\"",
+   "\"Khai báo quy trình sản xuất\" e=\"Routing Maintenance\"",
+   "\"Bút toán điều chỉnh số dư đầu năm\" e=\"Opening Balance Adjustment Entry\"",
+   "\"Cập nhật phát sinh theo biểu thuế toàn phần\" e=\"Income by the Flat Rate Tariff\"",
+   "\"Cập nhật thông tin khóa học\" e=\"Training Course Information\"",
+   "\"Cập nhật kết quả khóa học\" e=\"Training Course Result\"",
+   "\"Cập nhật cấp phát công cụ, dụng cụ\" e=\"Tool & Supply Issue\"",
+   "\"Văn bản đề nghị\" e=\"Written Request\"",
+   "\"Phiếu xuất điều chỉnh thông tin\" e=\"Adjustment Issue\"",
+   "\"Lập chứng từ khấu trừ thuế TNCN\" e=\"Certificate of Personal Income Tax Withholding\"",
+   "\"Phiếu nhập mua hàng\" e=\"Purchase Receipt\"",
+   "\"Tờ khai hải quan\" e=\"Customs Declaration Sheet\"",
+   "\"Chọn nhà cung cấp\" e=\"Supplier Allocation\"",
+   "\"Phiếu điều chỉnh phân xưởng\" e=\"Miscellaneous Shop Floor Adjustments\"",
+   "\"Phiếu duyệt chất lượng\" e=\"QA Transactions\"",
+   "\"Lệnh xuất kho\" e=\"Issuing Order\"",
+   "\"Hóa đơn điều chỉnh thông tin\" e=\"Adjustment Invoice\"",
+   "\"Phiếu nhập hàng bán bị trả lại thực tế\" e=\"Goods Return from Customer\"",
+   "\"Phiếu nhập điều chuyển thực tế\" e=\"Goods Transfer in\"",
+   "\"Biên bản giao nhận tài sản, thiết bị\" e=\"Asset Handover and Receipt Minute\"",
+   "\"Cập nhật dữ liệu hoạt động tài sản, thiết bị\" e=\"Asset and Equipment Operating Data Input\"",
+   "\"Phiếu báo hỏng\" e=\"Failure Report\"",
+   "\"Biên bản kiểm tra, đánh giá\" e=\"Checking Minute\"",
+   "\"Khai báo chu kỳ và định mức sửa chữa\" e=\"Declaration of Repair Cycle and Standard\"",
+   "\"Khai báo chu kỳ và định mức kiểm định\" e=\"Declaration of Inspection Cycle and Standard\"",
+   "\"Thanh lý, ghi giảm tài sản, thiết bị\" e=\"Asset and Equipment Disposal, Liquidation\"",
+   "\"Cập nhật kết quả bảo dưỡng\" e=\"Maintenance Result Input\"",
+   "\"Nghiệm thu, bàn giao\" e=\"Acceptance and Handover\"",
+   "\"Danh sách đơn hàng\" e=\"e-Commerce List\""
+  ]
+ },
+ "Page.013": {
+  "total": 18,
+  "examples": [
+   "\"Giấy báo có\" e=\"Bank Credit Advice\"",
+   "\"Phiếu kế toán tổng hợp\" e=\"General Voucher\"",
+   "\"Phiếu nhập điều chuyển\" e=\"Stock Transfer in\"",
+   "\"Bút toán điều chỉnh giảm công nợ\" e=\"Credit/Debit Memo\"",
+   "\"Phiếu thu tiền mặt\" e=\"Cash Receipt\"",
+   "\"Phiếu nhập kho\" e=\"Receipt\"",
+   "\"Hóa đơn giảm giá hàng hóa - dịch vụ\" e=\"Discount Invoice\"",
+   "\"Hóa đơn điều chỉnh giá hàng bán\" e=\"Sales Price Adjustment Invoice\"",
+   "\"Hóa đơn điều chỉnh giá dịch vụ\" e=\"Service Price Adjustment Invoice\"",
+   "\"Phân bổ tiền hàng trả cho các hóa đơn\" e=\"Cash Disbursement Allocation to Invoices\"",
+   "\"Phân bổ thu tiền cho các hóa đơn\" e=\"Cash Receipt Allocation to Invoices\"",
+   "\"Bút toán hủy\" e=\"Reverse Transaction\"",
+   "\"Điều chỉnh số dư tồn kho đầu năm\" e=\"Item Opening Balance Adjustment\"",
+   "\"Phiếu xuất bán\" e=\"Pick List\"",
+   "\"Phiếu xuất kho\" e=\"Issue\"",
+   "\"Phiếu xuất điều chuyển\" e=\"Stock Transfer\"",
+   "\"Hóa đơn mua hàng nhập khẩu\" e=\"Import Purchase Invoice\"",
+   "\"Bút toán IFRS\" e=\"IFRS General Voucher\""
+  ]
+ },
+ "Page.014": {
+  "total": 13,
+  "examples": [
+   "\"Đề nghị báo giá\" e=\"Request for Quotation\"",
+   "\"Giấy báo giá\" e=\"Quotation Entry\"",
+   "\"Đơn hàng bán\" e=\"Sales Order\"",
+   "\"Phiếu dự toán\" e=\"Cost Estimate\"",
+   "\"Đề nghị bảo dưỡng\" e=\"Maintenance Request\"",
+   "\"Đề nghị kiểm định\" e=\"Inspection Request\"",
+   "\"Đề nghị sửa chữa\" e=\"Repair Request\"",
+   "\"Kế hoạch bảo dưỡng\" e=\"Maintenance Plan\"",
+   "\"Kế hoạch kiểm định\" e=\"Inspection Plan\"",
+   "\"Kế hoạch sửa chữa\" e=\"Repair Plan\"",
+   "\"Lệnh bảo dưỡng\" e=\"Maintenance Order\"",
+   "\"Lệnh kiểm định\" e=\"Inspection Order\"",
+   "\"Lệnh sửa chữa\" e=\"Repair Order\""
+  ]
+ },
+ "Page.015": {
+  "total": 13,
+  "examples": [
+   "\"Phiếu yêu cầu tuyển dụng\" e=\"Recruitment Request Form\"",
+   "\"Phiếu yêu cầu kiểm định\" e=\"Inspection Lot\"",
+   "\"Thỏa thuận mua hàng\" e=\"Outline Agreement\"",
+   "\"Hợp đồng mua hàng\" e=\"Scheduling Agreement\"",
+   "\"Đơn hàng mua trong nước\" e=\"Domestic Purchase Order\"",
+   "\"Đơn hàng nhập khẩu\" e=\"Import Purchase Order\"",
+   "\"Đề nghị chi tiền\" e=\"Supplier Payment Request\"",
+   "\"Đề nghị thu tiền\" e=\"Customer Payment Request\"",
+   "\"Phiếu yêu cầu đào tạo\" e=\"Training Request Form\"",
+   "\"Phiếu yêu cầu cấp phát công cụ, dụng cụ\" e=\"Tool & Supply Requisition\"",
+   "\"Phiếu yêu cầu lĩnh vật tư\" e=\"Material Requisition\"",
+   "\"Phiếu nhu cầu vật tư\" e=\"Purchase Requisition\"",
+   "\"Yêu cầu sản xuất\" e=\"Work Order\""
+  ]
+ },
+ "Page.016": {
+  "total": 13,
+  "examples": [
+   "\"Hóa đơn mua dịch vụ\" e=\"Services Purchase Invoice\"",
+   "\"Phiếu thanh toán tạm ứng\" e=\"Payment of Advanced Amount\"",
+   "\"Chứng từ phải trả khác, chứng từ bù trừ công nợ\" e=\"Misc. Payable Transaction, AP-AR Interface\"",
+   "\"Hóa đơn mua hàng trong nước\" e=\"Domestic Purchase Invoice\"",
+   "\"Hóa đơn dịch vụ trả lại\" e=\"Services Sale Return Invoice\"",
+   "\"Phiếu nhập chi phí mua hàng\" e=\"Purchase Expense Transaction\"",
+   "\"Phiếu nhập điều chỉnh giá hàng mua\" e=\"Purchase Adjustment Transaction\"",
+   "\"Hóa đơn nhập mua - xuất thẳng\" e=\"Purchase Receipt - Direct Issue Invoice\"",
+   "\"Phiếu xuất trả lại nhà cung cấp\" e=\"Return to Supplier\"",
+   "\"Hóa đơn dịch vụ trả lại nhà cung cấp\" e=\"Service Return to Supplier\"",
+   "\"Phiếu nhập hàng bán bị trả lại\" e=\"Sales Return\"",
+   "\"Phiếu chi tiền mặt\" e=\"Cash Disbursement\"",
+   "\"Giấy báo nợ\" e=\"Bank Debit Advice\""
+  ]
+ },
+ "Page.017": {
+  "total": 3,
+  "examples": [
+   "\"Bảng cân đối kế toán chủ đầu tư\" e=\"Balance Sheet for Investors\"",
+   "\"Bảng cân đối kế toán tổng hợp\" e=\"General Balance Sheet\"",
+   "\"Kiểm tra khai báo mẫu bảng cân đối kế toán\" e=\"Balance Sheet Declaration Checking\""
+  ]
+ },
+ "Page.018": {
+  "total": 3,
+  "examples": [
+   "\"Cập nhật giá trị cho CCDC tạo từ chứng từ hạch toán\" e=\"Update Original Cost for Tools and Supply from Original Voucher\"",
+   "\"Tạo chứng từ phân bổ cho các hóa đơn\" e=\"Auto generation of Payment Allocation to Invoices\"",
+   "\"Tạo quyết định sử dụng\" e=\"Auto generation of Usage Decision\""
+  ]
+ },
+ "Page.019": {
+  "total": 3,
+  "examples": [
+   "\"Bán phiếu quà tặng\" e=\"Gift Voucher Selling\"",
+   "\"Điều chuyển phiếu quà tặng\" e=\"Gift Voucher Transfer\"",
+   "\"Cập nhật giới hạn chiết khấu, khuyến mãi\" e=\"Discount, Promotion Limitation Input\""
+  ]
+ },
+ "Page.020": {
+  "total": 7,
+  "examples": [
+   "\"Bảng cân đối kế toán theo đơn vị cơ sở\" e=\"Multi-unit Balance Sheet\"",
+   "\"Bảng cân đối kế toán cho nhiều kỳ\" e=\"Multi-period Balance Sheet\"",
+   "\"Báo cáo PL nhiều kỳ IFRS\" e=\"Multi-period PL Statement IFRS\"",
+   "\"Xem chi tiết\" e=\"View Detail\"",
+   "\"Sổ chi tiết lên cho nhiều tài khoản IFRS\" e=\"Detailed ledger for multiple IFRS accounts\"",
+   "\"Bảng cân đối VAS - IFRS (C)\" e=\"VAS - IFRS Trial Balance (C)\"",
+   "\"Bảng cân đối phát sinh so sánh VAS - IFRS\" e=\"VAS - IFRS Trial Balance\""
+  ]
+ },
+ "Page.021": {
+  "total": 1,
+  "examples": [
+   "\"Chứng từ phải thu khác, chứng từ bù trừ công nợ\" e=\"Misc. Receivable Transaction, AR-AP Interface\""
+  ]
+ },
+ "Page.022": {
+  "total": 1,
+  "examples": [
+   "\"Định mức nguyên vật liệu\" e=\"Bill of Material\""
+  ]
+ },
+ "Page.023": {
+  "total": 1,
+  "examples": [
+   "\"Điều chỉnh thông tin lô kiểm định\" e=\"Inspection Lot Adjustment\""
+  ]
+ },
+ "Page.024": {
+  "total": 1,
+  "examples": [
+   "\"Cập nhật hồ sơ ứng viên\" e=\"Applicant Profile Input\""
+  ]
+ },
+ "Post": {
+  "total": 1,
+  "examples": [
+   "\"Thông tin chung...\" e=\"Post...\""
+  ]
+ },
+ "Query": {
+  "total": 9,
+  "examples": [
+   "\"Phân tích số liệu mua hàng\" e=\"Purchasing Data Analysis\"",
+   "\"Truy vấn thông tin nhân viên\" e=\"Query Employee Information\"",
+   "\"Truy vấn số liệu bán hàng\" e=\"Sales Data Inquiry\"",
+   "\"Truy vấn số liệu chứng từ\" e=\"Transaction Data Inquiry\"",
+   "\"Truy vấn số dư, phát sinh các tài khoản\" e=\"Trial Balance Inquiry\"",
+   "\"Phân tích số liệu tồn kho\" e=\"Inventory Data Analysis\"",
+   "\"Truy vấn thông tin tuyển dụng\" e=\"Query Recruitment Information\"",
+   "\"Phân tích số liệu bán hàng\" e=\"Sales Data Analysis\"",
+   "\"Truy vấn thông tin tài sản, thiết bị\" e=\"Asset and Equiptment Inquiry\""
+  ]
+ },
+ "VoucherSignList": {
+  "total": 1,
+  "examples": [
+   "\"Danh sách yêu cầu ký số\" e=\"Digital Signature Request List\""
+  ]
+ }
+}

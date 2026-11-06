@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE dir [
+]>
+<dir code="ma_bp"><fields>
+<field name="ma_bp" type="char" isPrimaryKey="true"><items style="Text"></items></field><field name="ten_bp" type="char"></field></fields><views><view name="Main"><item value="11: [ma_bp] [ten_bp]"/></view></views></dir>

@@ -1,0 +1,2 @@
+# FBO Autocomplete — chỉ ignore file .f (còn lại mở hết cho Cursor)
+**/*.f

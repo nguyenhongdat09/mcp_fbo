@@ -23,6 +23,7 @@ class JsSummary:
     parse_status: Literal["ok", "partial", "failed", "empty"] = "empty"
     sources: list[str] = field(default_factory=list)
     functions: list[str] = field(default_factory=list)
+    function_origins: dict[str, list[str]] = field(default_factory=dict)
     calls: list[str] = field(default_factory=list)
     request_actions: list[str] = field(default_factory=list)
     line_count: int = 0

@@ -54,12 +54,84 @@ from .db_ops import (
 from .type0_flow import execute_type0_flow
 from .type1_flow import execute_type1_flow
 from .type2_data_clone import execute_type2_data_clone
-from .type3_file_clone import run_type3_file_clone
+from .type3_file_clone import run_type3_file_clone, coerce_bool
 from .type4_template import run_type4_template
 from .type5_new_sql_file import run_type5_new_sql_file
 from .type6_save_as import run_type6_save_as
+from .page_registry import register_page_line
 
 logger = logging.getLogger("clone_things")
+
+
+def _run_page_register(
+    page: Any,
+    project_source: str,
+    project_target: str,
+    execute: Any,
+    type: int,
+    warnings: list[str],
+    start_time: float,
+) -> dict[str, Any]:
+    """Page-only mode: chỉ nhét dòng <page> vào <!--Customize--> của
+    PageMetadata.xml (không clone gì thêm)."""
+    if not project_source or not str(project_source).strip():
+        return {
+            "success": False,
+            "spec_version": "1.0",
+            "type": type,
+            "error_code": "invalid_project_source",
+            "message": "project_source is required",
+            "warnings": warnings,
+        }
+    root = str(project_target or "").strip() or str(project_source).strip()
+    res = register_page_line(Path(root), page, coerce_bool(execute))
+    ok = res.get("status") in ("added", "planned")
+    res.update(
+        {
+            "success": True,
+            "spec_version": "1.0",
+            "type": type,
+            "mode": "page_register",
+            "project_source": project_source,
+            "project_target": project_target,
+            "execute": coerce_bool(execute),
+            "agent_message": (
+                "Đã thêm dòng <page> vào <!--Customize--> của "
+                "App_Data/PageMetadata.xml." if ok
+                else "Page chưa được thêm — xem entries[].status."
+            ),
+            "warnings": warnings,
+            "elapsed_ms": int((time.perf_counter() - start_time) * 1000),
+        }
+    )
+    return res
+
+
+def _merge_page_param(
+    result: dict[str, Any],
+    page: Any,
+    project_source: str,
+    project_target: str,
+    execute: Any,
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Post-step: nhét dòng <page> (param page) sau flow type chính."""
+    if not isinstance(result, dict):
+        return result
+    if result.get("success") is False or result.get("needs_user_confirm"):
+        warnings.append(
+            "page_skipped: flow chính chưa xong — gọi lại với page sau"
+        )
+        return result
+    root = str(project_target or "").strip() or str(project_source or "").strip()
+    res = register_page_line(Path(root), page, coerce_bool(execute))
+    result["page_param"] = res
+    if res.get("status") not in ("added", "planned"):
+        detail = "; ".join(
+            f'{e.get("id", "?")}={e["status"]}' for e in res.get("entries", [])
+        ) or res.get("status", "")
+        warnings.append(f"page_not_registered: {detail}")
+    return result
 
 
 def clone_things(
@@ -88,6 +160,7 @@ def clone_things(
     table: str = "",
     where: str = "",
     new_name: str = "",
+    page: Any = "",
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -120,6 +193,7 @@ def clone_things(
         table: Tên bảng cần clone data (type=2). Khi truyền table+where → chạy data clone bất kể type
         where: Điều kiện lọc dòng cho data clone (bắt buộc khi table được truyền)
         new_name: Tên controller mới cho type=4 (vd 'zccnsldkbctdo') — dùng thay token {new} trong tên file và nội dung
+        page: Dòng <page id=".." v=".." e=".." controller=".." template=".."/> (hoặc list dòng) — nhét vào block <!--Customize--> của App_Data/PageMetadata.xml trên project đích (SP30+). object trống → chỉ đăng ký page. Thiếu template → tool tự gợi ý theo khuôn fragment + họ controller
         config: Cấu hình hệ thống từ config.yaml
     """
     start_time = time.perf_counter()
@@ -144,8 +218,25 @@ def clone_things(
     execute_clone_effective = execute_clone if execute_clone is not None else cfg_execute_clone
     open_editor_cmd = clone_cfg.get("open_editor_cmd", "auto")
 
+    # Page-only mode: param page + object trống → chỉ đăng ký dòng <page>
+    # vào <!--Customize--> của PageMetadata.xml (SP30+), không clone.
+    page_only = (
+        bool(page)
+        and not str(object or "").strip()
+        and not str(table or "").strip()
+    )
+    if page_only:
+        return _run_page_register(
+            page,
+            project_source,
+            project_target,
+            execute_clone if execute_clone is not None else execute,
+            type,
+            warnings,
+            start_time,
+        )
+
     # Early check for list_presets in type=3
-    from .type3_file_clone import coerce_bool
     if type == 3 and (coerce_bool(list_presets) or (isinstance(object, str) and object.strip().lower() == "preset:?")):
         return run_type3_file_clone(
             object=object,
@@ -155,7 +246,7 @@ def clone_things(
 
     # type=4: paste template — object='?'/'list' để xem template có sẵn
     if type == 4:
-        return run_type4_template(
+        result = run_type4_template(
             object=object,
             new_name=new_name,
             project_target=project_target,
@@ -165,6 +256,16 @@ def clone_things(
             warnings=warnings,
             start_time=start_time,
         )
+        if page:
+            result = _merge_page_param(
+                result,
+                page,
+                project_source,
+                project_target,
+                execute_clone if execute_clone is not None else execute,
+                warnings,
+            )
+        return result
 
     # 1. Validation
     if type not in (0, 1, 2, 3, 5, 6):
@@ -519,4 +620,13 @@ def clone_things(
         result.setdefault("project_root", ctx_root)
         if ctx_root:
             result.setdefault("resolved_via", "absolute")
+    if page:
+        result = _merge_page_param(
+            result,
+            page,
+            project_source,
+            project_target,
+            execute_clone if execute_clone is not None else execute,
+            warnings,
+        )
     return result

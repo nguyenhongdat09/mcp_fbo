@@ -157,7 +157,7 @@ class TestGetXmlEntitiesInline:
         result = get_xml_entities(r"E:\no\such\file.xml", ["Foo"])
         assert result["success"] is False
 
-    def test_requires_entities_or_list_all(self, tmp_path):
+    def test_content_without_entities_falls_back_to_list(self, tmp_path):
         xml_file = tmp_path / "test.xml"
         xml_file.write_text(
             """<?xml version="1.0" encoding="utf-8"?>
@@ -169,7 +169,9 @@ class TestGetXmlEntitiesInline:
             encoding="utf-8",
         )
         result = get_xml_entities(str(xml_file))
-        assert result["success"] is False
+        assert result["success"] is True
+        assert {e["name"] for e in result["entities"]} == {"Foo"}
+        assert any("mode='list'" in w for w in result["warnings"])
 
     def test_path_requires_entities(self, tmp_path):
         xml_file = tmp_path / "test.xml"

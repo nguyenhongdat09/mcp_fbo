@@ -155,6 +155,19 @@ def test_ac_sf2_1_and_sf2_4_priority_candidate_sorting(tmp_path):
     assert res_false["status"] == "found"
 
 
+def test_priority_xml_aspx_ent_before_other_extensions(tmp_path):
+    """Thứ tự đọc: xml -> aspx -> ent -> các đuôi còn lại, kể cả khi file khác khớp tên pattern."""
+    root = tmp_path / "ctrl"
+    root.mkdir()
+    for name in ("zz_key.js", "zz_key.sql", "b.ent", "c.aspx", "d.xml", "a.txt"):
+        (root / name).write_text("key_abc", encoding="utf-8")
+
+    res = search_files(root=str(root), pattern="key_abc", max_matches_per_file=1)
+    order = [m["path"] for m in res["matches"]]
+    assert order[:3] == ["d.xml", "c.aspx", "b.ent"]
+    assert set(order[3:]) == {"zz_key.js", "zz_key.sql", "a.txt"}
+
+
 def test_ac_sf2_2_empty_auto_extends_to_all_candidates(tmp_path):
     """AC-SF2-2: 0 match sau max_files → quét tiếp hết candidate, status=not_found."""
     root = tmp_path / "warn_proj"
@@ -231,6 +244,24 @@ def test_ac_sf2_5_f_files_never_read_even_matching_name(tmp_path):
     assert res["success"] is True
     assert all(not m["path"].endswith(".f") for m in res["matches"])
     assert any(m["path"].endswith(".xml") for m in res["matches"])
+
+
+def test_non_text_extensions_skipped_in_content_even_if_glob_matches(tmp_path):
+    """Content search bỏ rpt/xlsx/pdf/png/dll dù include_glob khớp; files_only vẫn liệt kê."""
+    root = tmp_path / "nontext_proj"
+    root.mkdir(parents=True, exist_ok=True)
+    for name in ("NDTTran.rpt", "NDTTran.xlsx", "NDTTran.pdf", "NDTTran.png", "NDTTran.dll"):
+        (root / name).write_text("rs_PrintNDTTran", encoding="utf-8")
+    (root / "NDTTran.xml").write_text("<r>rs_PrintNDTTran</r>", encoding="utf-8")
+
+    res = search_files(root=str(root), pattern="rs_PrintNDTTran", include_glob="*NDT*")
+    assert res["success"] is True
+    assert res["files_candidate"] == 1
+    assert [m["path"] for m in res["matches"]] == ["NDTTran.xml"]
+
+    names = search_files(root=str(root), mode="files_only", include_glob="*NDT*")
+    # .dll đã bị exclude_glob mặc định loại; còn lại xml/rpt/xlsx/pdf/png vẫn liệt kê theo tên
+    assert names["files_candidate"] == 5
 
 
 def test_ac_nit_sf_1_to_3_warnings_format(tmp_path):
@@ -633,3 +664,33 @@ def test_tc_b3_non_identifier_no_filename_glob(tmp_path):
     assert "thu thu hep root hoac include_glob" in hints[0]
 
 
+
+
+def test_prefetch_texts_keeps_candidate_order_and_reports_errors(tmp_path):
+    from search_files.service import _prefetch_texts
+
+    candidates = []
+    for i in range(40):
+        f = tmp_path / f"f{i:02d}.txt"
+        f.write_text(f"noi dung {i}", encoding="utf-8")
+        candidates.append((f.name, str(f)))
+    candidates.insert(5, ("missing.txt", str(tmp_path / "missing.txt")))
+
+    for workers in (1, 8):
+        out = list(_prefetch_texts(candidates, workers, lambda: False))
+        assert [rel for rel, _, _, _ in out] == [rel for rel, _ in candidates]
+        missing = out[5]
+        assert missing[2] is None and isinstance(missing[3], OSError)
+        assert out[0][2] == "noi dung 0" and out[1][2] == "noi dung 1"
+
+
+def test_search_content_same_result_with_parallel_workers(tmp_path, monkeypatch):
+    for i in range(30):
+        (tmp_path / f"a{i:02d}.xml").write_text("x\nrs_Target here\n" if i % 7 == 0 else "x\n", encoding="utf-8")
+
+    results = []
+    for workers in ("1", "16"):
+        monkeypatch.setenv("FBO_SEARCH_READ_WORKERS", workers)
+        res = search_files(root=str(tmp_path), pattern="rs_Target")
+        results.append([(m["path"], m["line"]) for m in res["matches"]])
+    assert results[0] == results[1] and len(results[0]) == 5

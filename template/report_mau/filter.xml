@@ -127,6 +127,7 @@ function on$Filter$ResponseComplete(sender, e) {
       var d1 = f.getItem('tu_ngay').value, d2 = f.getItem('den_ngay').value;
       g._alterTitle = [null, [['%f', formName, true], ['%d1', d1, true], ['%d2', d2, true]]];
       // AGENT: sửa _hiddenFields theo cặp cột tiền tệ thật của grid.xml
+      // BẮT BUỘC: có remove$GridReport$Filter(g) thì phải có g._hiddenFields (kể cả = []) — KHÔNG xóa khối này
       g._hiddenFields = [
         {Fields: 'name_decimal_3, name_decimal_4', Value: v == '10'},
         {Fields: 'name_decimal_1, name_decimal_2', Value: v == '20'}

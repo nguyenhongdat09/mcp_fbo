@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE grid [
+]>
+<grid code="stt_rec">
+<fields><field name="stt_rec" type="char" isPrimaryKey="true"></field><field name="ma_kh" type="char" allowFilter="true"></field><field name="tien" type="decimal"><items style="Numeric"></items></field></fields>
+<views></views>
+</grid>

@@ -8,6 +8,7 @@ __pycache__/
 build/
 dist/
 *.exe
+!excel_handler/assets/PivotExcelExe/PivotExcel.exe
 FastBusiness-MCP-Package/
 logs/
 .fbograph/

@@ -6,7 +6,8 @@ import fnmatch
 import os
 import re
 import time
-from collections import Counter
+from collections import Counter, deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -47,6 +48,23 @@ def _is_binary(chunk: bytes) -> bool:
     return b"\x00" in chunk
 
 
+# Đuôi file không phải text: luôn bỏ qua khi đọc nội dung (content/definition/references),
+# kể cả khi include_glob khớp — tránh mở và đọc cả file nhị phân qua UNC.
+NON_TEXT_EXTENSIONS = frozenset({
+    ".rpt", ".xls", ".xlsx", ".xlsm", ".xlsb", ".doc", ".docx", ".ppt", ".pptx", ".pdf",
+    ".dll", ".exe", ".pdb", ".so", ".obj", ".lib", ".msi",
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".tif", ".tiff", ".webp",
+    ".zip", ".rar", ".7z", ".gz", ".tar", ".cab",
+    ".db", ".mdf", ".ldf", ".bak", ".sdf",
+    ".ttf", ".otf", ".woff", ".woff2", ".eot",
+    ".mp3", ".mp4", ".avi", ".wav", ".mov",
+})
+
+
+def _is_non_text_file(fname: str) -> bool:
+    return os.path.splitext(fname)[1].lower() in NON_TEXT_EXTENSIONS
+
+
 # Heuristic: pattern chứa metachar regex điển hình — | ( \b\d\s\w [class]
 # {m,n} ^anchor $anchor. Chỉ dùng để WARN khi regex=false, không auto-promote
 # (false-positive ở warn level là chấp nhận được — chỉ là hint).
@@ -61,13 +79,72 @@ def _read_text_file(abs_file: str) -> str | None:
     from fastbusiness_mcp.utils.file_utils import decode_bytes, detect_bom_encoding
 
     with open(abs_file, "rb") as f_in:
-        raw_bytes = f_in.read()
-    if not raw_bytes:
-        return ""
-    if detect_bom_encoding(raw_bytes) is None and _is_binary(raw_bytes[:4096]):
-        return None
+        head = f_in.read(4096)
+        if not head:
+            return ""
+        # Kiểm tra nhị phân trên 4096 byte đầu trước khi đọc phần còn lại (đỡ kéo cả file qua UNC).
+        if detect_bom_encoding(head) is None and _is_binary(head):
+            return None
+        raw_bytes = head + f_in.read()
     text, _enc = decode_bytes(raw_bytes)
     return text
+
+
+# Đọc file qua UNC bị giới hạn bởi độ trễ SMB, không phải CPU: 1 luồng ~150 file/s, 16 luồng ~450–950 file/s,
+# trên 16 luồng không nhanh thêm (đã đo). Mặc định 16, đổi bằng biến môi trường FBO_SEARCH_READ_WORKERS.
+DEFAULT_READ_WORKERS = 16
+MAX_READ_WORKERS = 64
+
+
+def _read_worker_count() -> int:
+    raw = os.environ.get("FBO_SEARCH_READ_WORKERS", "").strip()
+    try:
+        value = int(raw) if raw else DEFAULT_READ_WORKERS
+    except ValueError:
+        value = DEFAULT_READ_WORKERS
+    return max(1, min(value, MAX_READ_WORKERS))
+
+
+def _prefetch_texts(candidates, workers: int, should_stop):
+    """Đọc trước nội dung file bằng thread pool nhưng trả về ĐÚNG thứ tự candidates.
+
+    Yield (rel_path, abs_file, text, error). Chỉ giữ tối đa workers*2 file đang đọc dở
+    nên thoát sớm (đủ match, hết time_budget) không đọc thừa cả danh sách."""
+    if workers <= 1:
+        for rel_path, abs_file in candidates:
+            try:
+                yield rel_path, abs_file, _read_text_file(abs_file), None
+            except Exception as ex:
+                yield rel_path, abs_file, None, ex
+        return
+
+    window = workers * 2
+    pending: deque = deque()
+    source = iter(candidates)
+    executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="search_files_read")
+
+    def refill() -> None:
+        while len(pending) < window and not should_stop():
+            try:
+                rel_path, abs_file = next(source)
+            except StopIteration:
+                return
+            pending.append((rel_path, abs_file, executor.submit(_read_text_file, abs_file)))
+
+    try:
+        refill()
+        while pending:
+            rel_path, abs_file, future = pending.popleft()
+            try:
+                text, error = future.result(), None
+            except Exception as ex:
+                text, error = None, ex
+            refill()
+            yield rel_path, abs_file, text, error
+    finally:
+        for _, _, future in pending:
+            future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _matches_globs(rel_path: str, include_globs: List[str], exclude_globs: List[str]) -> bool:
@@ -190,7 +267,7 @@ def search_files(
     exclude_glob: str = "**/*.f,**/*.xsd,**/*.dll,**/*.pdb,**/bin/**",
     recursive: bool = True,
     case_sensitive: bool = False,
-    max_files: int = 500,
+    max_files: int = 0,
     max_matches_per_file: int = 5,
     max_total_matches: int = 100,
     context_lines: int = 0,
@@ -334,6 +411,8 @@ def search_files(
     candidates: List[tuple[str, str]] = []  # (rel_path, abs_file)
     enum_capped = False
     dirs_walked = 0
+    skip_non_text = mode_norm != "files_only"
+    skipped_non_text = 0
     if single_file is not None:
         # root là 1 file: search đúng file đó, bỏ glob (vẫn cấm *.f, *.xsd)
         if not single_file.name.lower().endswith((".f", ".xsd")):
@@ -349,6 +428,9 @@ def search_files(
                     ]
                 for fname in sorted(filenames):
                     if fname.lower().endswith((".f", ".xsd")):
+                        continue
+                    if skip_non_text and _is_non_text_file(fname):
+                        skipped_non_text += 1
                         continue
 
                     abs_file = os.path.join(dirpath, fname)
@@ -382,6 +464,9 @@ def search_files(
                 for fname in sorted(filenames):
                     if fname.lower().endswith((".f", ".xsd")):
                         continue
+                    if skip_non_text and _is_non_text_file(fname):
+                        skipped_non_text += 1
+                        continue
 
                     abs_file = os.path.join(dirpath, fname)
                     try:
@@ -409,6 +494,11 @@ def search_files(
         )
 
     files_candidate = len(candidates)
+    if skipped_non_text and not candidates:
+        warnings.append(
+            f"Đã bỏ qua {skipped_non_text} file không phải text (rpt, xlsx, pdf, dll, ảnh...) "
+            "khi tìm nội dung; muốn tìm theo tên file dùng mode='files_only'."
+        )
 
     # 2. Priority sort candidates
     if prefer_name_match:
@@ -419,13 +509,14 @@ def search_files(
         else:
             pattern_sub = sort_pattern if case_sensitive else sort_pattern.lower()
 
+        # xml, aspx, ent đọc trước; các đuôi còn lại đọc sau (js, html, txt, config, sql...).
         ext_priority = {
-            ".js": 0,
-            ".xml": 1,
-            ".aspx": 2,
-            ".html": 3,
-            ".txt": 4,
-            ".ent": 5,
+            ".xml": 0,
+            ".aspx": 1,
+            ".ent": 2,
+            ".js": 3,
+            ".html": 4,
+            ".txt": 5,
             ".config": 6,
             ".sql": 10,
         }
@@ -462,13 +553,16 @@ def search_files(
                     break
 
             # Priority 3: Alphabetical POSIX relative path
-            return (p0, p1, p_in_key, p_custom, p2, rel_p.lower())
+            return (p1, p0, p_in_key, p_custom, p2, rel_p.lower())
 
         candidates.sort(key=candidate_sort_key)
     else:
         candidates.sort(key=lambda item: item[0].lower())
 
     root_display = str(root_path).replace("\\", "/")
+    read_workers = _read_worker_count()
+    # max_files <= 0: quét hết mọi candidate (chỉ dừng do time_budget / max_total_matches).
+    progress_total = min(files_candidate, max_files) if max_files > 0 else files_candidate
 
     # --- mode=files_only: chỉ list candidates, KHÔNG đọc nội dung ---
     if mode_norm == "files_only":
@@ -503,22 +597,23 @@ def search_files(
         truncated = False
         auto_extended = False
 
-        for rel_path, abs_file in candidates:
+        for rel_path, abs_file, text, read_err in _prefetch_texts(candidates, read_workers, _deadline_hit):
             if _deadline_hit():
                 truncated = True
                 break
-            if files_scanned >= max_files:
+            if max_files > 0 and files_scanned >= max_files:
                 if definitions:
                     truncated = True
                     break
                 auto_extended = True
             try:
-                text = _read_text_file(abs_file)
+                if read_err is not None:
+                    raise read_err
                 if text is None:
                     continue
                 files_scanned += 1
                 if files_scanned % 10 == 0:
-                    _report(files_scanned, min(files_candidate, max_files), "Dang quet noi dung...")
+                    _report(files_scanned, progress_total, "Dang quet noi dung...")
                 file_used = False
                 for idx, line in enumerate(text.splitlines(), 1):
                     if sym in line:
@@ -599,8 +694,8 @@ def search_files(
         truncated_reason: str | None = None
         auto_extended = False
 
-        for rel_path, abs_file in candidates:
-            if files_scanned >= max_files:
+        for rel_path, abs_file, text, read_err in _prefetch_texts(candidates, read_workers, _deadline_hit):
+            if max_files > 0 and files_scanned >= max_files:
                 if not (usages or definitions):
                     auto_extended = True
                 else:
@@ -612,12 +707,13 @@ def search_files(
                 truncated_reason = "time_budget"
                 break
             try:
-                text = _read_text_file(abs_file)
+                if read_err is not None:
+                    raise read_err
                 if text is None:
                     continue
                 files_scanned += 1
                 if files_scanned % 10 == 0:
-                    _report(files_scanned, min(files_candidate, max_files), "Dang quet noi dung...")
+                    _report(files_scanned, progress_total, "Dang quet noi dung...")
                 file_matches_count = 0
                 for idx, line in enumerate(text.splitlines(), 1):
                     if sym not in line:
@@ -713,8 +809,8 @@ def search_files(
     auto_extended = False
 
     # 3. Search contents
-    for rel_path, abs_file in candidates:
-        if files_scanned >= max_files:
+    for rel_path, abs_file, text, read_err in _prefetch_texts(candidates, read_workers, _deadline_hit):
+        if max_files > 0 and files_scanned >= max_files:
             # Chưa có match nào → quét tiếp tới hết time_budget thay vì trả 0 sai
             if not matches:
                 auto_extended = True
@@ -727,16 +823,17 @@ def search_files(
             truncated_reason = "time_budget"
             break
 
-        # Read and search file
+        # Search file (nội dung đã được đọc trước song song)
         try:
-            text = _read_text_file(abs_file)
+            if read_err is not None:
+                raise read_err
             if text is None:
                 continue
 
             lines = text.splitlines()
             files_scanned += 1
             if files_scanned % 10 == 0:
-                _report(files_scanned, min(files_candidate, max_files), "Dang quet noi dung...")
+                _report(files_scanned, progress_total, "Dang quet noi dung...")
             file_matches_count = 0
 
             for idx, line in enumerate(lines, 1):

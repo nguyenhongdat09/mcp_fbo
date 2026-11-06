@@ -37,3 +37,6 @@ edit_guide: |
      khớp (ẩn/hiện theo mau_bc).
   4. File in Excel (templateFile {new}_01) thiết kế ngoài.
   5. Đăng ký menu thủ công.
+  6. Filter on$Filter$ResponseComplete (case 'Checking'): đi kèm
+     remove$GridReport$Filter(g); BẮT BUỘC phải có g._hiddenFields = []
+     (hoặc mảng thật) — không được xóa/bỏ dù không ẩn cột nào.

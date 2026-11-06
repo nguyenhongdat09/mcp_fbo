@@ -33,6 +33,11 @@ from .file_manager import (
     ensure_use_db_sections,
 )
 from .helpers import normalize_object_name
+from find_connect_by_path.project_version import (
+    generation_of,
+    render_by_generation,
+)
+
 from .open_editor import open_file_for_user
 from .script_transform import transform_create_to_alter
 from .type3_file_clone import (
@@ -436,9 +441,15 @@ def run_type6_save_as(
                 "hỏi user chọn rồi gọi lại bằng saveas:ctrl:<tên>->.... "
                 "Gợi ý: controller KHÔNG hậu tố Graph/Group/Detail/Form "
                 "thường là trang chính (suggested=true nếu chỉ có 1); "
-                'phân biệt thêm bằng search_files mode=content pattern '
-                '\'Controller="<stem>"\' trên <project>\\Main — trang .aspx '
-                "chính trỏ đúng controller đó",
+                + render_by_generation(
+                    'phân biệt thêm bằng search_files mode=content '
+                    "⟪L:pattern 'Controller=\"<stem>\"' trên <project>\\Main — "
+                    "trang .aspx chính trỏ đúng controller đó⟫"
+                    "⟪N:pattern 'controller=\"<stem>\"' trên "
+                    "<project>\\App_Data\\Metadata — dòng <page> chính trỏ "
+                    "đúng controller đó⟫",
+                    generation_of(root_src_path),
+                ),
                 warnings,
                 elapsed,
                 candidates=candidates,
@@ -489,6 +500,13 @@ def run_type6_save_as(
         w for w in warnings if not (w in seen_warn or seen_warn.add(w))
     ]
 
+    # --- 2b. Program mới (SP30+): nhân bản dòng <page> của controller nguồn ---
+    # type=3 suite đã nhân bản dòng <page> (controller chính + controller đi kèm).
+    page_entries = clone_res.get("page_entries") or []
+    page_info = next(
+        (p for p in page_entries if p.get("src_controller") == source_ctrl), None
+    )
+
     # --- 3. SQL refs → export ALTER ra .sql temp ---
     sql_names = _collect_sql_refs(root_src_path, suite_files, warnings)
     out_file, pasted, unresolved, encrypted = (
@@ -517,14 +535,33 @@ def run_type6_save_as(
         "không auto-rename",
         f"Sửa <title v=...> trong Filter/Report XML mới ({dst_ctrl}) thành "
         "title chức năng mới theo UR",
-        "Đăng ký menu/aspx cho chức năng mới nếu UR yêu cầu",
+        "Đăng ký menu cho chức năng mới nếu UR yêu cầu (link "
+        "'⟪L:<tên file aspx>⟫⟪N:<id dòng page>⟫.aspx')",
         "Áp dụng các yêu cầu chỉnh sửa còn lại của UR (cách tính, toolbar, "
         "đồ thị, ...) lên bản clone",
         "Check syntax .sql bằng query_database query_type=3 (PARSEONLY) "
         "trước khi báo user F5",
     ]
     warn_txt = " ".join(warnings)
-    if "suite_aspx_detected" in warn_txt:
+    ok_pages = [p for p in page_entries if p.get("status") in ("added", "planned")]
+    if ok_pages:
+        for p in ok_pages:
+            done = "Đã thêm" if p["status"] == "added" else "Sẽ thêm (dry-run)"
+            next_steps.append(
+                f"{done} dòng <page id=\"{p['id']}\" controller=\"{p['dst_controller']}\" "
+                f"template=\"{p['template']}\"> vào {p['file']} (dòng {p['line_no']}) — "
+                f"sửa v/e (và tinyv/tinye nếu dòng có) theo UR; menu trỏ link '{p['id']}.aspx' (đổi id nếu cần link "
+                "khác, id phải duy nhất)"
+            )
+    elif "suite_page_detected" in warn_txt or "suite_page_missing" in warn_txt:
+        next_steps.append(
+            "Program mới (SP30+): đăng ký dòng <page id=\"<id mới>\" "
+            f"controller=\"{dst_ctrl}\" template=\"<cùng template trang nguồn>\"/> "
+            "bằng param page của clone_things — tool nhét vào "
+            "<!--Customize--> của App_Data/PageMetadata.xml "
+            "(không có file Main/*.aspx để copy)"
+        )
+    elif "suite_aspx_detected" in warn_txt:
         next_steps.append(
             "Review file .aspx detect được trong planned[]/copied[] — "
             "same-project save-as sẽ skip same-name: copy tay + đổi tên + "
@@ -555,7 +592,9 @@ def run_type6_save_as(
             + ", ".join(Path(f).name for f in graph_files)
             + ") — clone chỉ đổi TÊN file: nội dung vẫn trỏ "
             f"entity/Identification của {source_ctrl}, sửa tay sau clone "
-            "(nút Đồ thị còn cần aspx có LoadControl Chart.ascx + entity "
+            "(nút Đồ thị còn cần "
+            "⟪L:aspx có LoadControl Chart.ascx⟫"
+            "⟪N:khuôn Page.0xx của dòng <page> có nạp Chart⟫ + entity "
             "Identification/GraphMa*)"
         )
     has_excel = any(
@@ -568,6 +607,12 @@ def run_type6_save_as(
             "Excel mới thì clone/tạo tay bằng clone_things type=3 + "
             "excel-mcp (xem skill fbo-excel-pivot-template)"
         )
+
+    tgt_gen = generation_of(project_target) if project_target else None
+    next_steps = [
+        render_by_generation(s, tgt_gen or generation_of(root_src_path))
+        for s in next_steps
+    ]
 
     result: dict[str, Any] = {
         "success": True,
@@ -593,6 +638,10 @@ def run_type6_save_as(
         "sql_objects_unresolved": unresolved,
         "sql_objects_encrypted": encrypted,
         "path_to_pasted": out_file,
+        "page_entry": page_info,
+        "page_entries": page_entries,
+        "aggregation_entries": clone_res.get("aggregation_entries") or [],
+        "target_generation": clone_res.get("target_generation"),
         "next_steps": next_steps,
         "warnings": warnings,
         "elapsed_ms": elapsed(),

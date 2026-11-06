@@ -37,6 +37,10 @@ clone_things:
   # true = tự động deploy (EXECUTE DDL/definition) lên DB target; false = chỉ ghi file .sql
   execute_clone: false
 
+# Tool acceptance_xml: mặc định format (ghi đè, pretty-print) trước khi check legacy.
+# false → chỉ check legacy trừ khi agent truyền format=true vào tool.
+format_in_acceptance: false
+
 # Response oversize guard (spill ra file local khi vượt ngưỡng token client)
 response_guard:
   max_chars: 60000   # response tool > ngưỡng này → spill ra logs/overflow-*.json

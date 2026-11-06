@@ -21,4 +21,6 @@ TOOLS_ENABLED = {
     "compare_things": True,
     "search_files": True,
     "tool_help": True,
+    "excel_handler": True,
+    "acceptance_xml": True,
 }

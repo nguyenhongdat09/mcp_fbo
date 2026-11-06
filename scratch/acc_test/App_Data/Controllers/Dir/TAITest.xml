@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE dir [
+<!ENTITY ListField SYSTEM "TestField.ent">
+<!ENTITY ListView SYSTEM "TestView.ent">
+]>
+<dir code="ma_bp" table="dmtest">
+<fields>&ListField;</fields>
+<views><view name="Main">&ListView;</view>
+</views>
+<queries></queries>
+</dir>

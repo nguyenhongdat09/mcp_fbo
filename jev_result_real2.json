@@ -1,0 +1,204 @@
+{
+ "description": "Each step is recommended the most suitable tool to execute. Always try the recommended tool first (step.tool + step.call). Only fall back to step.alternatives or another tool if the recommended one fails or cannot fulfill the task. confidence_to_use_top = số candidate Jev chấm >20% (đáp án nằm trong top-N) — KHÔNG phải xác suất đúng; luôn đối chiếu pitfalls và required_params trước khi call.",
+ "steps": [
+  {
+   "step": "Đọc cấu trúc file DCTran*.xml của chứng từ Đề nghị chi tiền (cactbpc) để tìm chức năng lấy số liệu HDDV",
+   "task_type": "read_summary",
+   "confidence_to_use_top": 1,
+   "confidence": 0.58,
+   "decision": "review",
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 3
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "read_option=3 chỉ summary cho .xml trực thuộc Dir/Grid/Filter; file khác tự fallback raw"
+   ],
+   "decision_note": "Jev chưa chắc task_type — đối chiếu pitfalls/required_params của top-1 và alternatives trước khi gọi",
+   "tool_level": {
+    "tool": "read_local_file",
+    "probability": 0.67
+   },
+   "related_skills": [
+    "fbo-create-hddv"
+   ]
+  },
+  {
+   "step": "Tìm hàm JS gán dữ liệu HDDV xuống lưới và xử lý đổi ma_kh ở master",
+   "task_type": "grep_content",
+   "confidence_to_use_top": 2,
+   "confidence": 0.27,
+   "decision": "fallback",
+   "tool": "search_files",
+   "call": {
+    "root": "<abs path>",
+    "pattern": "<chuỗi>",
+    "mode": "content"
+   },
+   "required_params": [
+    "root",
+    "pattern"
+   ],
+   "pitfalls": [
+    "mode=files_only KHÔNG đọc nội dung — chỉ match tên file; tìm chuỗi trong file phải dùng mode=content",
+    "regex=True chỉ khi pattern có ký tự regex; mặc định literal"
+   ],
+   "alternatives": [
+    {
+     "task_type": "read_summary",
+     "confidence_to_use_top": 2,
+     "tool": "read_local_file",
+     "call": {
+      "file_path": "<path file>",
+      "read_option": 3
+     },
+     "required_params": [
+      "file_path"
+     ],
+     "pitfalls": [
+      "read_option=3 chỉ summary cho .xml trực thuộc Dir/Grid/Filter; file khác tự fallback raw"
+     ]
+    }
+   ],
+   "decision_note": "Jev không chắc task_type — chỉ tin mức tool (tool_level); tự chọn mode theo step, hoặc tách step rõ hơn rồi hỏi lại",
+   "tool_level": {
+    "tool": "search_files",
+    "probability": 0.6
+   },
+   "related_skills": [
+    "fbo-create-hddv"
+   ]
+  },
+  {
+   "step": "Sửa logic gán Mã loại chứng từ GTGT khi để trắng và giữ nguyên dòng kế thừa HDDV",
+   "task_type": "read_suggest_edit",
+   "confidence_to_use_top": 1,
+   "confidence": 0.94,
+   "decision": "act",
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 4,
+    "old_string|symbol|block": "<selector>",
+    "new_string": "<code thay thế>"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "Nhiều edit 1 file → truyền edits[] (batch) thay vì selector top-level"
+   ],
+   "related_skills": [
+    "fbo-create-hddv"
+   ]
+  },
+  {
+   "step": "Thêm kiểm tra khi lưu: tổng tiền hàng, tiền thuế theo số hóa đơn - thuế suất phải khớp danh sách hóa đơn đầu vào",
+   "task_type": "read_suggest_edit",
+   "confidence_to_use_top": 1,
+   "confidence": 0.83,
+   "decision": "act",
+   "tool": "read_local_file",
+   "call": {
+    "file_path": "<path file>",
+    "read_option": 4,
+    "old_string|symbol|block": "<selector>",
+    "new_string": "<code thay thế>"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "Nhiều edit 1 file → truyền edits[] (batch) thay vì selector top-level"
+   ]
+  },
+  {
+   "step": "Check syntax file XML sau khi sửa",
+   "task_type": "entity_check",
+   "confidence_to_use_top": 1,
+   "confidence": 0.75,
+   "decision": "act",
+   "tool": "get_xml_entities",
+   "call": {
+    "file_path": "<path file>",
+    "mode": "checking"
+   },
+   "required_params": [
+    "file_path"
+   ],
+   "pitfalls": [
+    "source_roots=[<abs path project mẫu>] để gợi ý entity có sẵn ở nguồn"
+   ]
+  }
+ ],
+ "param_examples": {
+  "_note": "CHỈ LÀ VÍ DỤ format giá trị — thay mọi path \\\\172.168.5.14\\...\\SP2264 bằng path project HIỆN TẠI của user; đừng copy nguyên địa chỉ/tên file trong ví dụ",
+  "read_local_file": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml",
+   "symbol": "fsd_TinhLai",
+   "block": "command:Inserting",
+   "start_line": 120,
+   "end_line": 160
+  },
+  "get_xml_entities": {
+   "file_path": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers\\Dir\\zccntttdcd.xml",
+   "entities": [
+    "filter",
+    "dmdt"
+   ],
+   "source_roots": [
+    "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264"
+   ]
+  },
+  "search_files": {
+   "root": "\\\\172.168.5.14\\CustomerPro\\FBI\\CHUBB\\SP2264\\App_Data\\Controllers",
+   "pattern": "dmku",
+   "include_glob": "*kheuoc*",
+   "symbol": "fn_TinhLai"
+  }
+ },
+ "jev_usage": {
+  "input_tokens": 14552,
+  "output_tokens": 2969
+ },
+ "requirement": {
+  "type": "none",
+  "confidence_to_use_top": 1,
+  "confidence": 0.96,
+  "decision": "act"
+ },
+ "notice": {
+  "1": "FBO: nếu IDE có sẵn grep/search đã indexing file (vd Cursor) thì ưu tiên dùng IDE — nhanh và tiện hơn; nếu không thì dùng tool MCP (read_local_file, search_files, query_database, clone_things...) — KHÔNG chạy shell/grep/find thô trên đường dẫn UNC của project"
+ },
+ "related_skills": [
+  "fbo-create-hddv"
+ ],
+ "related_skills_by": {
+  "fbo-create-hddv": "regex"
+ },
+ "plan_patch": [
+  {
+   "insert_after": 4,
+   "rule": "parse_check_after_xml",
+   "step": "Đọc lại file vừa sửa kiểm tra js/sql parse_status",
+   "tool": "read_local_file",
+   "call": {
+    "read_option": 3
+   },
+   "why": "CLAUDE.md: sau khi sửa gọi read_option=3 check parse_status"
+  }
+ ],
+ "patched_plan": [
+  "Đọc cấu trúc file DCTran*.xml của chứng từ Đề nghị chi tiền (cactbpc) để tìm chức năng lấy số liệu HDDV",
+  "Tìm hàm JS gán dữ liệu HDDV xuống lưới và xử lý đổi ma_kh ở master",
+  "Sửa logic gán Mã loại chứng từ GTGT khi để trắng và giữ nguyên dòng kế thừa HDDV",
+  "Thêm kiểm tra khi lưu: tổng tiền hàng, tiền thuế theo số hóa đơn - thuế suất phải khớp danh sách hóa đơn đầu vào",
+  "[+parse_check_after_xml] Đọc lại file vừa sửa kiểm tra js/sql parse_status",
+  "Check syntax file XML sau khi sửa"
+ ],
+ "jev_model": "jev-1.14.0"
+}

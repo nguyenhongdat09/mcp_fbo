@@ -135,6 +135,11 @@ def set_project_root(project_root: str | Path | None) -> Optional[str]:
     return switched_from
 
 
+def last_project_root() -> Optional[str]:
+    """Project root dùng gần nhất (sticky context), None nếu chưa có."""
+    return _LAST_PROJECT_ROOT
+
+
 def known_projects() -> list[str]:
     """Danh sách project root đã biết (LRU, mới nhất trước)."""
     return list(_PROJECT_ROOTS)

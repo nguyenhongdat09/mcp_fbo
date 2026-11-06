@@ -131,6 +131,25 @@ class XmlSegmentTokenizer:
         return segments
 
 
+# --- Entity trace ---
+
+def record_entity_trace(trace: Dict[str, Any] | None, ent_name: str, ent_decl: Dict[str, Any], raw_content: str) -> None:
+    """Ghi lại nội dung THÔ (chưa bung entity con) của entity vừa được bung.
+
+    trace: dict dùng chung xuyên suốt một lần flat; None thì bỏ qua.
+    Lưu nội dung thô để hàm JS được gán cho entity trực tiếp chứa nó,
+    không gán cho entity cha.
+    """
+    if trace is None or ent_name in trace:
+        return
+    trace[ent_name] = {
+        'source_file': ent_decl.get('sourceFile') or '',
+        'declared_in_file': ent_decl.get('declaredInFile') or ent_decl.get('sourceFile') or '',
+        'line': ent_decl.get('line') or 0,
+        'raw': raw_content,
+    }
+
+
 # --- Merger ---
 
 class TextBlockMerger:
@@ -142,7 +161,8 @@ class TextBlockMerger:
         if options is None:
             options = {}
         max_depth = options.get('max_depth', 20)
-        
+        entity_trace = options.get('entity_trace')
+
         warnings = []
         text_inner = text_inner.replace('\r\n', '\n')
         sub_segments = XmlSegmentTokenizer.tokenize(text_inner)
@@ -176,7 +196,8 @@ class TextBlockMerger:
                     raw_content = f"/* Không tìm thấy file SYSTEM: {ent_file} */"
             else:
                 raw_content = (ent_decl.get('value') or "").replace('\r\n', '\n')
-                
+
+            record_entity_trace(entity_trace, ent_name, ent_decl, raw_content)
             next_stack = expanding_stack + [ent_name]
             sub_expanded = expand_text(raw_content, depth + 1, next_stack, ent_file)
             
@@ -246,15 +267,18 @@ class XmlEntityExpander:
         if options is None:
             options = {}
         max_depth = options.get('max_depth', 20)
-        
+        entity_trace = options.get('entity_trace')
+
         source_text = source_text.replace('\r\n', '\n')
-        general_entities, param_ents, _, _ = resolve_fbo_xml_entities(file_path)
-        
+        general_entities, param_ents, _, file_mtimes = resolve_fbo_xml_entities(file_path)
+
         entities_dict = {
             name: {
                 'value': ent.get('value'),
                 'systemUrl': ent.get('systemUrl') or ent.get('external_file'),
-                'sourceFile': ent.get('sourceFile') or ent.get('declared_in_file') or file_path
+                'sourceFile': ent.get('sourceFile') or ent.get('declared_in_file') or file_path,
+                'declaredInFile': ent.get('declaredInFile') or ent.get('sourceFile') or file_path,
+                'line': ent.get('line') or 0,
             }
             for name, ent in general_entities.items()
         }
@@ -303,6 +327,7 @@ class XmlEntityExpander:
                             raw_content = (ent_decl.get('value') or "").replace('\r\n', '\n')
                             
                     if not is_missing:
+                        record_entity_trace(entity_trace, ent_name, ent_decl, raw_content)
                         next_stack = expanding_stack + [ent_name]
                         res = expand_outside_text(raw_content, depth + 1, next_stack)
                         result += res['text']
@@ -341,7 +366,10 @@ class XmlEntityExpander:
                     
                 text_inner = source_text[text_start + 6:text_end]
                 
-                merged_model = TextBlockMerger.merge_text_block(text_inner, file_path, entities_dict, {'max_depth': max_depth})
+                merged_model = TextBlockMerger.merge_text_block(
+                    text_inner, file_path, entities_dict,
+                    {'max_depth': max_depth, 'entity_trace': entity_trace},
+                )
                 raw_merged = merged_model['merged_text']
                 escaped_merged = XmlEntityExpander.escape_cdata_content(raw_merged)
                 
@@ -358,5 +386,6 @@ class XmlEntityExpander:
             'flat_text': flat_text,
             'warnings': warnings,
             'system_entities': entities_dict,
-            'param_entities': param_ents
+            'param_entities': param_ents,
+            'file_mtimes': file_mtimes,
         }

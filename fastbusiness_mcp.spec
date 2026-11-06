@@ -9,6 +9,7 @@ a = Analysis(
         ('query_database/queries', 'query_database/queries'),
         ('query_database/object_catalog/queries', 'query_database/object_catalog/queries'),
         ('template', 'template'),
+        ('excel_handler/assets', 'excel_handler/assets'),
 
         # config_jev.xml / config_jev.yaml intentionally NOT in datas
         # (per-machine entitlement file, xin riêng — không ship trong dist)
@@ -136,6 +137,13 @@ a = Analysis(
         'xml_fbograph.utils.any_path',
         'xml_fbograph.parsers.xml_parser',
         'xml_fbograph.mcp_tools',
+        'excel_handler',
+        'excel_handler.service',
+        'excel_handler.grid_parser',
+        'excel_handler.normal_export',
+        'excel_handler.pivot_export',
+        'excel_handler.report_fields',
+        'openpyxl',
     ],
     hookspath=[],
     hooksconfig={},
